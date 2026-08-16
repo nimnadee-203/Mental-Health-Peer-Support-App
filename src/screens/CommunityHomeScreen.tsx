@@ -1,7 +1,6 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
-  Dimensions,
-  FlatList,
+  ActivityIndicator,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -11,284 +10,355 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 
-const {width: SCREEN_WIDTH} = Dimensions.get('window');
+// ─── Config ───────────────────────────────────────────────────────────────────
+// Android emulator → host machine localhost.
+// Change to your machine's LAN IP (e.g. 192.168.1.x) for a physical device.
+const API_BASE = 'http://10.0.2.2:3000/api';
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface Community {
+  _id: string;
+  name: string;
+  category: string;
+  emoji: string;
+  bgColor: string;
+  description: string;
+  memberCount: number;
+  memberAvatarColors: string[];
+  isJoined: boolean;
+}
 
-const STORIES = [
-  {id: '1', name: 'You', initial: '+', color: '#A78BFA', isAdd: true},
-  {id: '2', name: 'Priya', initial: 'P', color: '#8B5CF6'},
-  {id: '3', name: 'Alex', initial: 'A', color: '#6366F1'},
-  {id: '4', name: 'Sam', initial: 'S', color: '#EC4899'},
-  {id: '5', name: 'Jordan', initial: 'J', color: '#14B8A6'},
-  {id: '6', name: 'River', initial: 'R', color: '#F59E0B'},
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// ─── Fallback mock data (used when backend is unreachable) ────────────────────
+const MOCK_COMMUNITIES: Community[] = [
+  {
+    _id: '1',
+    name: 'Managing Academic Stress',
+    category: 'Academic Pressure',
+    emoji: '📚',
+    bgColor: '#FDDCB5',
+    description:
+      'Share experiences and discover ways to manage academic pressure together.',
+    memberCount: 128,
+    memberAvatarColors: ['#C5DFF8', '#F9D4E0', '#C8EDD5'],
+    isJoined: false,
+  },
+  {
+    _id: '2',
+    name: 'Mindfulness & Healthy Habits',
+    category: 'Mindfulness',
+    emoji: '🧘',
+    bgColor: '#D4C9F5',
+    description:
+      'A supportive community focused on building healthier everyday habits.',
+    memberCount: 96,
+    memberAvatarColors: ['#FDDCB5', '#C5DFF8', '#F9D4E0'],
+    isJoined: false,
+  },
+  {
+    _id: '3',
+    name: 'Anxiety Support Circle',
+    category: 'Stress & Anxiety',
+    emoji: '🌊',
+    bgColor: '#C5DFF8',
+    description:
+      'A safe space for people to share experiences and support one another.',
+    memberCount: 154,
+    memberAvatarColors: ['#C8EDD5', '#D4C9F5', '#FDDCB5'],
+    isJoined: false,
+  },
+  {
+    _id: '4',
+    name: 'Grief & Loss',
+    category: 'General Wellbeing',
+    emoji: '🕊️',
+    bgColor: '#F9D4E0',
+    description:
+      'Gentle, supportive conversations about loss, grief, and healing at your pace.',
+    memberCount: 112,
+    memberAvatarColors: ['#C5DFF8', '#C8EDD5', '#FDDCB5'],
+    isJoined: false,
+  },
+  {
+    _id: '5',
+    name: 'Recovery & Growth',
+    category: 'General Wellbeing',
+    emoji: '🌱',
+    bgColor: '#C8EDD5',
+    description:
+      'Celebrating progress together — big milestones and small everyday wins.',
+    memberCount: 87,
+    memberAvatarColors: ['#F9D4E0', '#D4C9F5', '#C5DFF8'],
+    isJoined: false,
+  },
+  {
+    _id: '6',
+    name: 'Relationships & Connection',
+    category: 'Relationships',
+    emoji: '🤝',
+    bgColor: '#F9D4E0',
+    description:
+      'A space to talk about friendship, connection, and the challenges they bring.',
+    memberCount: 73,
+    memberAvatarColors: ['#FDDCB5', '#C8EDD5', '#C5DFF8'],
+    isJoined: false,
+  },
+  {
+    _id: '7',
+    name: 'Emotional Wellbeing',
+    category: 'General Wellbeing',
+    emoji: '💛',
+    bgColor: '#FDDCB5',
+    description:
+      "Share what's on your mind and find support from people who understand.",
+    memberCount: 141,
+    memberAvatarColors: ['#F9D4E0', '#C5DFF8', '#D4C9F5'],
+    isJoined: false,
+  },
 ];
 
 const CATEGORIES = [
   {id: 'all', label: 'All'},
-  {id: 'anxiety', label: 'Anxiety'},
-  {id: 'depression', label: 'Depression'},
-  {id: 'recovery', label: 'Recovery'},
-  {id: 'mindfulness', label: 'Mindfulness'},
-  {id: 'grief', label: 'Grief'},
-  {id: 'ptsd', label: 'PTSD'},
+  {id: 'Stress & Anxiety', label: 'Stress & Anxiety'},
+  {id: 'Academic Pressure', label: 'Academic Pressure'},
+  {id: 'Mindfulness', label: 'Mindfulness'},
+  {id: 'Healthy Habits', label: 'Healthy Habits'},
+  {id: 'Relationships', label: 'Relationships'},
+  {id: 'General Wellbeing', label: 'General Wellbeing'},
 ];
 
-const ONLINE_MEMBERS = [
-  {id: '1', name: 'Mia', initial: 'M', color: '#8B5CF6'},
-  {id: '2', name: 'Leo', initial: 'L', color: '#6366F1'},
-  {id: '3', name: 'Zara', initial: 'Z', color: '#EC4899'},
-  {id: '4', name: 'Dev', initial: 'D', color: '#14B8A6'},
-  {id: '5', name: 'Nina', initial: 'N', color: '#F59E0B'},
-];
-
-const TRENDING = [
-  {id: '1', tag: '#AnxietyTips', posts: '1.2k posts'},
-  {id: '2', tag: '#MorningMindset', posts: '890 posts'},
-  {id: '3', tag: '#HealingJourney', posts: '654 posts'},
-];
-
-const FEED_POSTS = [
-  {
-    id: '1',
-    author: 'Maya R.',
-    initial: 'M',
-    color: '#8B5CF6',
-    time: '12 min ago',
-    category: 'Recovery',
-    categoryColor: '#10B981',
-    title: 'A small win today 🌱',
-    body: 'I went for a short walk after a really hard morning. It was not perfect, but it helped me breathe a little easier. Progress over perfection.',
-    supports: 48,
-    replies: 12,
-    supported: false,
-  },
-  {
-    id: '2',
-    author: 'Alex K.',
-    initial: 'A',
-    color: '#6366F1',
-    time: '1 hr ago',
-    category: 'Anxiety',
-    categoryColor: '#F59E0B',
-    title: 'How I manage panic attacks at work',
-    body: 'I have been dealing with workplace anxiety for 2 years. Here are the 3 techniques that genuinely helped me stay grounded during high-pressure moments...',
-    supports: 127,
-    replies: 34,
-    supported: true,
-  },
-  {
-    id: '3',
-    author: 'Sam T.',
-    initial: 'S',
-    color: '#EC4899',
-    time: '3 hr ago',
-    category: 'Mindfulness',
-    categoryColor: '#6366F1',
-    title: 'Daily gratitude changed my perspective',
-    body: 'Three months of writing just three things I am grateful for each morning. The shift in how I see my days has been incredible. Would love to hear your experience.',
-    supports: 89,
-    replies: 21,
-    supported: false,
-  },
-  {
-    id: '4',
-    author: 'Jordan M.',
-    initial: 'J',
-    color: '#14B8A6',
-    time: '5 hr ago',
-    category: 'Depression',
-    categoryColor: '#EC4899',
-    title: 'Some days just getting out of bed is enough',
-    body: 'Reminder to anyone who needs it: surviving a hard day is an achievement. Be gentle with yourself. You are doing better than you think.',
-    supports: 214,
-    replies: 56,
-    supported: false,
-  },
-];
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function StoryItem({item}: {item: (typeof STORIES)[0]}) {
+// ─── Member Avatars (overlapping circles) ────────────────────────────────────
+function MemberAvatars({colors}: {colors: string[]}) {
   return (
-    <Pressable style={styles.storyItem}>
-      <View
-        style={[
-          styles.storyRing,
-          item.isAdd ? styles.storyRingAdd : styles.storyRingActive,
-        ]}>
-        <View style={[styles.storyAvatar, {backgroundColor: item.color}]}>
-          <Text style={styles.storyInitial}>{item.initial}</Text>
-        </View>
-      </View>
-      <Text style={styles.storyName} numberOfLines={1}>
-        {item.name}
-      </Text>
-    </Pressable>
-  );
-}
-
-function CategoryChip({
-  item,
-  isSelected,
-  onPress,
-}: {
-  item: (typeof CATEGORIES)[0];
-  isSelected: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.chip, isSelected && styles.chipSelected]}>
-      <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-        {item.label}
-      </Text>
-    </Pressable>
-  );
-}
-
-function OnlineMember({item}: {item: (typeof ONLINE_MEMBERS)[0]}) {
-  return (
-    <View style={styles.onlineMember}>
-      <View style={[styles.onlineAvatar, {backgroundColor: item.color}]}>
-        <Text style={styles.onlineInitial}>{item.initial}</Text>
-      </View>
-      <View style={styles.onlineDot} />
+    <View style={styles.avatarGroup}>
+      {colors.map((color, i) => (
+        <View
+          key={i}
+          style={[
+            styles.avatarCircle,
+            {backgroundColor: color, marginLeft: i === 0 ? 0 : -7},
+          ]}
+        />
+      ))}
     </View>
   );
 }
 
-function PostCard({
-  post,
-  onSupport,
+// ─── Community Card ───────────────────────────────────────────────────────────
+function CommunityCard({
+  community,
+  onJoin,
 }: {
-  post: (typeof FEED_POSTS)[0];
-  onSupport: () => void;
+  community: Community;
+  onJoin: () => void;
 }) {
+  const gradStart = hexToRgba(community.bgColor, 0.376);
+  const gradEnd = hexToRgba(community.bgColor, 0.125);
+
   return (
-    <View style={styles.postCard}>
-      {/* Post Header */}
-      <View style={styles.postHeader}>
-        <View style={[styles.postAvatar, {backgroundColor: post.color}]}>
-          <Text style={styles.postAvatarText}>{post.initial}</Text>
+    <View style={styles.card}>
+      {/* Gradient header */}
+      <LinearGradient
+        colors={[gradStart, gradEnd]}
+        start={{x: 0, y: 0}}
+        end={{x: 1, y: 1}}
+        style={styles.cardHeader}>
+        {/* Emoji icon */}
+        <View style={[styles.emojiBox, {backgroundColor: community.bgColor}]}>
+          <Text style={styles.emojiText}>{community.emoji}</Text>
         </View>
-        <View style={styles.postMeta}>
-          <Text style={styles.postAuthor}>{post.author}</Text>
-          <Text style={styles.postTime}>{post.time}</Text>
-        </View>
-        <View
-          style={[
-            styles.categoryBadge,
-            {backgroundColor: post.categoryColor + '22'},
-          ]}>
-          <Text style={[styles.categoryBadgeText, {color: post.categoryColor}]}>
-            {post.category}
+
+        {/* Text info */}
+        <View style={styles.cardInfo}>
+          <Text style={styles.cardCategory}>{community.category}</Text>
+          <Text style={styles.cardName} numberOfLines={1}>
+            {community.name}
+          </Text>
+          <Text style={styles.cardDesc} numberOfLines={2}>
+            {community.description}
           </Text>
         </View>
-      </View>
+      </LinearGradient>
 
-      {/* Post Content */}
-      <Text style={styles.postTitle}>{post.title}</Text>
-      <Text style={styles.postBody} numberOfLines={3}>
-        {post.body}
-      </Text>
+      {/* Footer */}
+      <View style={styles.cardFooter}>
+        <View style={styles.memberRow}>
+          <MemberAvatars colors={community.memberAvatarColors} />
+          <Text style={styles.memberCount}>{community.memberCount} members</Text>
+        </View>
 
-      {/* Post Footer */}
-      <View style={styles.postFooter}>
-        <Pressable
-          onPress={onSupport}
-          style={[styles.actionBtn, post.supported && styles.actionBtnActive]}>
-          <Text style={[styles.actionIcon, post.supported && {color: '#8B5CF6'}]}>
-            💜
-          </Text>
-          <Text
-            style={[
-              styles.actionText,
-              post.supported && styles.actionTextActive,
-            ]}>
-            {post.supports} Support
-          </Text>
-        </Pressable>
-
-        <Pressable style={styles.actionBtn}>
-          <Text style={styles.actionIcon}>💬</Text>
-          <Text style={styles.actionText}>{post.replies} Reply</Text>
-        </Pressable>
-
-        <Pressable style={styles.actionBtn}>
-          <Text style={styles.actionIcon}>🔗</Text>
-          <Text style={styles.actionText}>Share</Text>
+        <Pressable onPress={onJoin} accessibilityRole="button">
+          <LinearGradient
+            colors={
+              community.isJoined ? ['#E8E8F0', '#E8E8F0'] : ['#C5DFF8', '#C8EDD5']
+            }
+            start={{x: 0, y: 0}}
+            end={{x: 1, y: 1}}
+            style={styles.joinBtn}>
+            <Text style={styles.joinBtnText}>
+              {community.isJoined ? 'Leave' : 'Join'}
+            </Text>
+          </LinearGradient>
         </Pressable>
       </View>
+    </View>
+  );
+}
+
+// ─── Bottom Navigation ────────────────────────────────────────────────────────
+const NAV_ITEMS = [
+  {id: 'home', label: 'Home', icon: '⌂'},
+  {id: 'resources', label: 'Resources', icon: '⊟'},
+  {id: 'groups', label: 'Groups', icon: '◈'},
+  {id: 'messages', label: 'Messages', icon: '✉'},
+  {id: 'profile', label: 'Profile', icon: '◯'},
+];
+
+function BottomNav() {
+  const [active, setActive] = useState('groups');
+  return (
+    <View style={styles.bottomNav}>
+      {NAV_ITEMS.map(item => {
+        const isActive = active === item.id;
+        return (
+          <Pressable
+            key={item.id}
+            style={styles.navBtn}
+            onPress={() => setActive(item.id)}
+            accessibilityRole="button"
+            accessibilityLabel={item.label}>
+            <Text style={[styles.navIcon, isActive && styles.navIconActive]}>
+              {item.icon}
+            </Text>
+            <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
+              {item.label}
+            </Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
-
 function CommunityHomeScreen() {
+  const [communities, setCommunities] = useState<Community[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [posts, setPosts] = useState(FEED_POSTS);
 
-  const filteredPosts =
-    selectedCategory === 'all'
-      ? posts
-      : posts.filter(
-          p => p.category.toLowerCase() === selectedCategory.toLowerCase(),
-        );
+  useEffect(() => {
+    fetchCommunities();
+  }, []);
 
-  const handleSupport = (postId: string) => {
-    setPosts(prev =>
-      prev.map(p =>
-        p.id === postId
+  async function fetchCommunities() {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_BASE}/communities`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: Community[] = await res.json();
+      setCommunities(data);
+    } catch {
+      // Graceful fallback to mock data when backend is unavailable
+      setCommunities(MOCK_COMMUNITIES);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleJoin(id: string) {
+    // Optimistic update
+    setCommunities(prev =>
+      prev.map(c =>
+        c._id === id
           ? {
-              ...p,
-              supported: !p.supported,
-              supports: p.supported ? p.supports - 1 : p.supports + 1,
+              ...c,
+              isJoined: !c.isJoined,
+              memberCount: c.isJoined ? c.memberCount - 1 : c.memberCount + 1,
             }
-          : p,
+          : c,
       ),
     );
-  };
+
+    try {
+      await fetch(`${API_BASE}/communities/${id}/join`, {method: 'POST'});
+    } catch {
+      // Revert optimistic update on network failure
+      setCommunities(prev =>
+        prev.map(c =>
+          c._id === id
+            ? {
+                ...c,
+                isJoined: !c.isJoined,
+                memberCount: c.isJoined ? c.memberCount - 1 : c.memberCount + 1,
+              }
+            : c,
+        ),
+      );
+    }
+  }
+
+  const filtered = communities
+    .filter(
+      c => selectedCategory === 'all' || c.category === selectedCategory,
+    )
+    .filter(
+      c =>
+        searchText.trim() === '' ||
+        c.name.toLowerCase().includes(searchText.toLowerCase()) ||
+        c.category.toLowerCase().includes(searchText.toLowerCase()),
+    );
 
   return (
     <SafeAreaView style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor="#1E0A3C" />
-
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerSub}>Welcome back 👋</Text>
-          <Text style={styles.headerTitle}>Community</Text>
-        </View>
-        <View style={styles.headerRight}>
-          <Pressable style={styles.notifBtn}>
-            <Text style={styles.notifIcon}>🔔</Text>
-            <View style={styles.notifBadge} />
-          </Pressable>
-          <View style={styles.myAvatar}>
-            <Text style={styles.myAvatarText}>P</Text>
-          </View>
-        </View>
-      </View>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
 
+        {/* ── Header Row ── */}
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.heading}>Find your community</Text>
+            <Text style={styles.headingSub}>
+              Connect with people who understand what you're going through.
+            </Text>
+          </View>
+
+          <View style={styles.createBtnWrap}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Create a community">
+              <LinearGradient
+                colors={['#C5DFF8', '#C8EDD5']}
+                start={{x: 0, y: 0}}
+                end={{x: 1, y: 1}}
+                style={styles.createBtn}>
+                <Text style={styles.createBtnText}>+ Create</Text>
+              </LinearGradient>
+            </Pressable>
+          </View>
+        </View>
+
         {/* ── Search Bar ── */}
-        <View style={styles.searchContainer}>
-          <Text style={styles.searchIcon}>🔍</Text>
+        <View style={styles.searchBar}>
+          <Text style={styles.searchIconChar}>🔍</Text>
           <TextInput
             style={styles.searchInput}
-            placeholder="Search discussions, topics…"
-            placeholderTextColor="#9CA3AF"
+            placeholder="Search groups"
+            placeholderTextColor="rgba(45,45,58,0.5)"
             value={searchText}
             onChangeText={setSearchText}
+            accessibilityLabel="Search groups"
           />
           {searchText.length > 0 && (
             <Pressable onPress={() => setSearchText('')}>
@@ -297,670 +367,408 @@ function CommunityHomeScreen() {
           )}
         </View>
 
-        {/* ── Stories Strip ── */}
-        <Text style={styles.sectionLabel}>Stories</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.storiesScroll}
-          contentContainerStyle={styles.storiesContent}>
-          {STORIES.map(item => (
-            <StoryItem key={item.id} item={item} />
-          ))}
-        </ScrollView>
-
-        {/* ── Category Filters ── */}
+        {/* ── Category Filter Chips ── */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.chipsScroll}
           contentContainerStyle={styles.chipsContent}>
-          {CATEGORIES.map(item => (
-            <CategoryChip
-              key={item.id}
-              item={item}
-              isSelected={selectedCategory === item.id}
-              onPress={() => setSelectedCategory(item.id)}
-            />
-          ))}
+          {CATEGORIES.map(cat => {
+            const isActive = selectedCategory === cat.id;
+            return (
+              <Pressable
+                key={cat.id}
+                onPress={() => setSelectedCategory(cat.id)}
+                style={[styles.chip, isActive && styles.chipActive]}
+                accessibilityRole="button"
+                accessibilityLabel={cat.label}>
+                <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+                  {cat.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </ScrollView>
 
-        {/* ── Featured / Pinned Post ── */}
-        <View style={styles.featuredCard}>
-          <View style={styles.featuredBadge}>
-            <Text style={styles.featuredBadgeText}>📌 Featured</Text>
-          </View>
-          <Text style={styles.featuredTitle}>
-            You are not alone in this journey
-          </Text>
-          <Text style={styles.featuredBody}>
-            This community is a safe space built by people who understand what
-            you are going through. Share freely, listen kindly.
-          </Text>
-          <Pressable style={styles.featuredBtn}>
-            <Text style={styles.featuredBtnText}>Read Community Guidelines →</Text>
-          </Pressable>
-        </View>
-
-        {/* ── Online Members ── */}
-        <View style={styles.onlineSection}>
-          <View style={styles.onlineHeader}>
-            <View style={styles.onlineLiveDot} />
-            <Text style={styles.onlineTitle}>Online Now</Text>
-            <Text style={styles.onlineCount}>• {ONLINE_MEMBERS.length} members</Text>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.onlineList}>
-            {ONLINE_MEMBERS.map(m => (
-              <OnlineMember key={m.id} item={m} />
-            ))}
-            <Pressable style={styles.onlineMore}>
-              <Text style={styles.onlineMoreText}>+12</Text>
-            </Pressable>
-          </ScrollView>
-        </View>
-
-        {/* ── Trending Topics ── */}
-        <View style={styles.trendingSection}>
-          <Text style={styles.sectionLabel}>🔥 Trending Topics</Text>
-          <View style={styles.trendingList}>
-            {TRENDING.map((t, idx) => (
-              <Pressable key={t.id} style={styles.trendingItem}>
-                <Text style={styles.trendingRank}>{idx + 1}</Text>
-                <View style={styles.trendingInfo}>
-                  <Text style={styles.trendingTag}>{t.tag}</Text>
-                  <Text style={styles.trendingPosts}>{t.posts}</Text>
-                </View>
-                <Text style={styles.trendingArrow}>›</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        {/* ── Discussion Feed ── */}
-        <View style={styles.feedSection}>
-          <View style={styles.feedHeader}>
-            <Text style={styles.sectionLabel}>💬 Discussion Feed</Text>
-            <Text style={styles.feedCount}>{filteredPosts.length} posts</Text>
+        {/* ── All Communities ── */}
+        <View style={styles.communitiesSection}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionHeaderText}>ALL COMMUNITIES</Text>
           </View>
 
-          {filteredPosts.length === 0 ? (
-            <View style={styles.emptyFeed}>
-              <Text style={styles.emptyEmoji}>🌿</Text>
-              <Text style={styles.emptyText}>
-                No posts in this category yet.{'\n'}Be the first to share!
-              </Text>
+          {loading ? (
+            <ActivityIndicator
+              color="#2D2D3A"
+              size="large"
+              style={styles.loader}
+            />
+          ) : filtered.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyEmoji}>🔍</Text>
+              <Text style={styles.emptyText}>No communities found.</Text>
             </View>
           ) : (
-            filteredPosts.map(post => (
-              <PostCard
-                key={post.id}
-                post={post}
-                onSupport={() => handleSupport(post.id)}
-              />
-            ))
+            <View style={styles.cardsList}>
+              {filtered.map(community => (
+                <CommunityCard
+                  key={community._id}
+                  community={community}
+                  onJoin={() => handleJoin(community._id)}
+                />
+              ))}
+            </View>
           )}
         </View>
 
-        <View style={styles.bottomSpacer} />
+        {/* ── Info Banner ── */}
+        <View style={styles.infoBannerWrap}>
+          <View style={styles.infoBanner}>
+            <Text style={styles.infoBannerEmoji}>🌱</Text>
+            <Text style={styles.infoBannerText}>
+              MindConnect communities are peer-support spaces. They are not a
+              substitute for professional mental health care.
+            </Text>
+          </View>
+        </View>
+
+        {/* Bottom spacer for nav bar */}
+        <View style={styles.scrollSpacer} />
       </ScrollView>
 
-      {/* ── Floating Action Button ── */}
-      <Pressable style={styles.fab}>
-        <Text style={styles.fabIcon}>✏️</Text>
-        <Text style={styles.fabText}>Post</Text>
-      </Pressable>
+      {/* ── Fixed Bottom Navigation ── */}
+      <BottomNav />
     </SafeAreaView>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+export default CommunityHomeScreen;
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#0F0520',
+    backgroundColor: '#FFFFFF',
   },
 
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 16,
-    backgroundColor: '#1E0A3C',
-  },
-  headerSub: {
-    color: '#C4B5FD',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  headerTitle: {
-    color: '#FFFFFF',
-    fontSize: 26,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-    marginTop: 2,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  notifBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#2D1B4E',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  notifIcon: {
-    fontSize: 18,
-  },
-  notifBadge: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#EC4899',
-    borderWidth: 1.5,
-    borderColor: '#2D1B4E',
-  },
-  myAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#7C3AED',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#A78BFA',
-  },
-  myAvatarText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-
-  // Scroll
+  // ── Scroll ──────────────────────────────────────────────────────────────────
   scroll: {
     flex: 1,
-    backgroundColor: '#F5F3FF',
+    backgroundColor: '#FFFFFF',
   },
   scrollContent: {
-    paddingTop: 20,
-    paddingBottom: 100,
+    paddingTop: 16,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
   },
 
-  // Search
-  searchContainer: {
+  // ── Header ──────────────────────────────────────────────────────────────────
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  headerLeft: {
+    flex: 1,
+    marginRight: 12,
+  },
+  heading: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#2D2D3A',
+    letterSpacing: -0.48,
+    lineHeight: 36,
+  },
+  headingSub: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B6B80',
+    lineHeight: 21,
+    marginTop: 4,
+  },
+  createBtnWrap: {
+    paddingTop: 2,
+  },
+  createBtn: {
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    shadowColor: '#C5DFF8',
+    shadowOffset: {width: 0, height: 3},
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  createBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2D2D3A',
+  },
+
+  // ── Search Bar ──────────────────────────────────────────────────────────────
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F7F7FB',
+    borderWidth: 1.64,
+    borderColor: '#E8E8F0',
     borderRadius: 14,
     paddingHorizontal: 14,
     height: 48,
-    shadowColor: '#7C3AED',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-    marginBottom: 24,
+    marginBottom: 0,
   },
-  searchIcon: {
-    fontSize: 16,
+  searchIconChar: {
+    fontSize: 15,
     marginRight: 8,
+    color: '#A0A0B8',
   },
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: '#1F2937',
+    fontWeight: '500',
+    color: '#2D2D3A',
+    padding: 0,
   },
   searchClear: {
-    color: '#9CA3AF',
-    fontSize: 14,
+    fontSize: 13,
+    color: '#A0A0B8',
     paddingLeft: 8,
   },
 
-  // Section label
-  sectionLabel: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1F2937',
-    marginHorizontal: 20,
-    marginBottom: 12,
-  },
-
-  // Stories
-  storiesScroll: {
-    marginBottom: 20,
-  },
-  storiesContent: {
-    paddingHorizontal: 20,
-    gap: 14,
-  },
-  storyItem: {
-    alignItems: 'center',
-    width: 62,
-  },
-  storyRing: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    padding: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  storyRingActive: {
-    borderWidth: 2.5,
-    borderColor: '#7C3AED',
-  },
-  storyRingAdd: {
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    borderStyle: 'dashed',
-  },
-  storyAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  storyInitial: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  storyName: {
-    color: '#4B5563',
-    fontSize: 11,
-    fontWeight: '600',
-    textAlign: 'center',
-    width: 60,
-  },
-
-  // Category chips
+  // ── Category Chips ──────────────────────────────────────────────────────────
   chipsScroll: {
-    marginBottom: 20,
+    // Negative margins to break out of parent 20px padding
+    marginHorizontal: -20,
+    marginTop: 20,
+    marginBottom: 0,
   },
   chipsContent: {
     paddingHorizontal: 20,
     gap: 8,
+    paddingBottom: 4,
   },
   chip: {
-    height: 36,
-    paddingHorizontal: 16,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.64,
+    borderColor: '#E8E8F0',
   },
-  chipSelected: {
-    backgroundColor: '#7C3AED',
-    borderColor: '#7C3AED',
+  chipActive: {
+    backgroundColor: '#2D2D3A',
+    borderColor: '#2D2D3A',
   },
   chipText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#6B7280',
+    color: '#6B6B80',
   },
-  chipTextSelected: {
+  chipTextActive: {
     color: '#FFFFFF',
   },
 
-  // Featured card
-  featuredCard: {
-    marginHorizontal: 20,
-    borderRadius: 20,
-    backgroundColor: '#1E0A3C',
-    padding: 20,
-    marginBottom: 24,
-    shadowColor: '#7C3AED',
-    shadowOffset: {width: 0, height: 6},
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8,
+  // ── Communities Section ──────────────────────────────────────────────────────
+  communitiesSection: {
+    paddingTop: 28,
   },
-  featuredBadge: {
-    backgroundColor: '#7C3AED33',
-    alignSelf: 'flex-start',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginBottom: 12,
-  },
-  featuredBadgeText: {
-    color: '#C4B5FD',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  featuredTitle: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '800',
-    lineHeight: 28,
-    marginBottom: 8,
-  },
-  featuredBody: {
-    color: '#C4B5FD',
-    fontSize: 14,
-    lineHeight: 21,
-    marginBottom: 16,
-  },
-  featuredBtn: {
-    alignSelf: 'flex-start',
-  },
-  featuredBtnText: {
-    color: '#A78BFA',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-
-  // Online members
-  onlineSection: {
-    marginHorizontal: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  onlineHeader: {
+  sectionHeaderRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 14,
   },
-  onlineLiveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#10B981',
-    marginRight: 6,
-  },
-  onlineTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#1F2937',
-  },
-  onlineCount: {
+  sectionHeaderText: {
     fontSize: 13,
-    color: '#6B7280',
-    marginLeft: 4,
-  },
-  onlineList: {
-    gap: 10,
-    alignItems: 'center',
-  },
-  onlineMember: {
-    position: 'relative',
-  },
-  onlineAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  onlineInitial: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  onlineDot: {
-    position: 'absolute',
-    bottom: 1,
-    right: 1,
-    width: 11,
-    height: 11,
-    borderRadius: 6,
-    backgroundColor: '#10B981',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  onlineMore: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#EDE9FE',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  onlineMoreText: {
-    color: '#7C3AED',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-
-  // Trending
-  trendingSection: {
-    marginHorizontal: 20,
-    marginBottom: 24,
-  },
-  trendingList: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  trendingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  trendingRank: {
-    width: 24,
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#7C3AED',
-    marginRight: 12,
-  },
-  trendingInfo: {
-    flex: 1,
-  },
-  trendingTag: {
-    fontSize: 14,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#6B6B80',
+    letterSpacing: 0.65,
   },
-  trendingPosts: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginTop: 2,
+  loader: {
+    marginTop: 40,
+    marginBottom: 20,
   },
-  trendingArrow: {
-    fontSize: 20,
-    color: '#9CA3AF',
-    fontWeight: '300',
-  },
-
-  // Feed
-  feedSection: {
-    marginHorizontal: 20,
-  },
-  feedHeader: {
-    flexDirection: 'row',
+  emptyState: {
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 0,
-  },
-  feedCount: {
-    fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '600',
-    marginRight: 20,
-    marginBottom: 12,
-  },
-  emptyFeed: {
-    alignItems: 'center',
-    paddingVertical: 48,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    paddingTop: 48,
   },
   emptyEmoji: {
-    fontSize: 40,
+    fontSize: 32,
     marginBottom: 12,
   },
   emptyText: {
     fontSize: 14,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    lineHeight: 22,
+    color: '#6B6B80',
+    fontWeight: '500',
+  },
+  cardsList: {
+    gap: 14,
   },
 
-  // Post card
-  postCard: {
+  // ── Community Card ───────────────────────────────────────────────────────────
+  card: {
+    borderRadius: 20,
+    borderWidth: 1.64,
+    borderColor: '#E8E8F0',
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     padding: 16,
-    marginBottom: 14,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
+    paddingBottom: 12,
+    gap: 12,
   },
-  postHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  postAvatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
+  emojiBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     justifyContent: 'center',
-    marginRight: 10,
-  },
-  postAvatarText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  postMeta: {
-    flex: 1,
-  },
-  postAuthor: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#1F2937',
-  },
-  postTime: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginTop: 1,
-  },
-  categoryBadge: {
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  categoryBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  postTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 8,
-    lineHeight: 22,
-  },
-  postBody: {
-    fontSize: 14,
-    color: '#4B5563',
-    lineHeight: 21,
-    marginBottom: 14,
-  },
-  postFooter: {
-    flexDirection: 'row',
-    gap: 4,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  actionBtn: {
-    flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: 10,
-    gap: 4,
+    flexShrink: 0,
   },
-  actionBtnActive: {
-    backgroundColor: '#EDE9FE',
+  emojiText: {
+    fontSize: 24,
   },
-  actionIcon: {
-    fontSize: 14,
+  cardInfo: {
+    flex: 1,
+    justifyContent: 'flex-start',
   },
-  actionText: {
-    fontSize: 12,
+  cardCategory: {
+    fontSize: 10,
     fontWeight: '700',
-    color: '#6B7280',
+    color: '#6B6B80',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
-  actionTextActive: {
-    color: '#7C3AED',
-  },
-
-  // FAB
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 20,
-    backgroundColor: '#7C3AED',
-    borderRadius: 28,
-    paddingHorizontal: 22,
-    paddingVertical: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    shadowColor: '#7C3AED',
-    shadowOffset: {width: 0, height: 6},
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  fabIcon: {
-    fontSize: 18,
-  },
-  fabText: {
-    color: '#FFFFFF',
+  cardName: {
     fontSize: 15,
     fontWeight: '800',
-    letterSpacing: 0.3,
+    color: '#2D2D3A',
+    lineHeight: 18,
+    marginTop: 3,
+  },
+  cardDesc: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6B6B80',
+    lineHeight: 17,
+    marginTop: 4,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderTopWidth: 1.64,
+    borderTopColor: '#E8E8F0',
+  },
+  memberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.64,
+    borderColor: '#FFFFFF',
+  },
+  memberCount: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#A0A0B8',
+    marginLeft: 6,
+  },
+  joinBtn: {
+    borderRadius: 17,
+    paddingHorizontal: 16,
+    height: 34,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 59,
+    shadowColor: '#C5DFF8',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  joinBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2D2D3A',
+    textAlign: 'center',
   },
 
-  bottomSpacer: {
-    height: 20,
+  // ── Info Banner ──────────────────────────────────────────────────────────────
+  infoBannerWrap: {
+    paddingTop: 32,
+  },
+  infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F7F7FB',
+    borderWidth: 1.64,
+    borderColor: '#E8E8F0',
+    borderRadius: 14,
+    padding: 12,
+    gap: 10,
+  },
+  infoBannerEmoji: {
+    fontSize: 16,
+    lineHeight: 18,
+  },
+  infoBannerText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6B6B80',
+    lineHeight: 18,
+  },
+  scrollSpacer: {
+    height: 24,
+  },
+
+  // ── Bottom Navigation ────────────────────────────────────────────────────────
+  bottomNav: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1.64,
+    borderTopColor: '#E8E8F0',
+  },
+  navBtn: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 12,
+    gap: 3,
+  },
+  navIcon: {
+    fontSize: 19,
+    color: '#A0A0B8',
+  },
+  navIconActive: {
+    color: '#2D2D3A',
+  },
+  navLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#A0A0B8',
+    letterSpacing: 0.1,
+    textAlign: 'center',
+  },
+  navLabelActive: {
+    fontWeight: '800',
+    color: '#2D2D3A',
   },
 });
-
-export default CommunityHomeScreen;
