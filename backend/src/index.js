@@ -5,6 +5,7 @@ const cors = require('cors');
 
 const communitiesRouter = require('./routes/communities');
 const postsRouter = require('./routes/posts');
+const commentsRouter = require('./routes/comments');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,6 +18,7 @@ app.use(express.json());
 // ── Routes ──────────────────────────────────────────────────────────────────
 app.use('/api/communities', communitiesRouter);
 app.use('/api/posts', postsRouter);
+app.use('/api/comments', commentsRouter);
 
 app.get('/health', (_req, res) => res.json({status: 'ok', time: new Date()}));
 
