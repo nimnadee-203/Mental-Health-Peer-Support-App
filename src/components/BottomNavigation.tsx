@@ -26,6 +26,7 @@ function BottomNavigation({ activeTab, onChangeTab }: BottomNavigationProps) {
           return (
             <Pressable
               key={item.label}
+              testID={`nav-${item.label}`}
               onPress={() => onChangeTab(item.label)}
               style={[styles.navItem, isActive && styles.navItemActive]}>
               <Text style={[styles.navIcon, isActive && styles.navIconActive]}>
