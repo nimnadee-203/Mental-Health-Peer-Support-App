@@ -1,8 +1,11 @@
 import bcrypt from 'bcryptjs';
 import cors from 'cors';
+import dns from 'dns';
 import dotenv from 'dotenv';
 import express from 'express';
 import mongoose from 'mongoose';
+
+dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 dotenv.config();
 
