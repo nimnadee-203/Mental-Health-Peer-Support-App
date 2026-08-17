@@ -44,6 +44,7 @@ interface GroupDiscussionScreenProps {
   community: Community;
   onBack: () => void;
   onCreatePost: (community: Community) => void;
+  onPostPress: (post: Post) => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -73,6 +74,7 @@ export default function GroupDiscussionScreen({
   community,
   onBack,
   onCreatePost,
+  onPostPress,
 }: GroupDiscussionScreenProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -148,7 +150,7 @@ export default function GroupDiscussionScreen({
               </View>
             ) : (
               posts.map(post => (
-                <View key={post._id} style={styles.postCard}>
+                <Pressable key={post._id} style={styles.postCard} onPress={() => onPostPress(post)}>
                   <View style={styles.postHeader}>
                     <View style={styles.avatarPlaceholder}>
                       <Text style={styles.avatarEmoji}>🙂</Text>
@@ -184,7 +186,7 @@ export default function GroupDiscussionScreen({
                       <Text style={styles.reportIcon}>🚩</Text>
                     </Pressable>
                   </View>
-                </View>
+                </Pressable>
               ))
             )}
           </View>
