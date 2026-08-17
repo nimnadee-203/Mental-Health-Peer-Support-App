@@ -30,11 +30,43 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    bio: {
+      type: String,
+      trim: true,
+      default: 'Sharing small steps, honest updates, and support with the community.',
+    },
+    interests: {
+      type: [String],
+      default: ['Anxiety support', 'Mindfulness', 'Daily journaling'],
+    },
+    stats: {
+      posts: {
+        type: Number,
+        default: 0,
+      },
+      supports: {
+        type: Number,
+        default: 0,
+      },
+      replies: {
+        type: Number,
+        default: 0,
+      },
+    },
   },
   { timestamps: true },
 );
 
 const User = mongoose.model('User', userSchema);
+
+const buildUserProfile = user => ({
+  id: user._id,
+  fullName: user.fullName,
+  email: user.email,
+  bio: user.bio,
+  interests: user.interests,
+  stats: user.stats,
+});
 
 app.get('/health', (_request, response) => {
   response.json({ status: 'ok' });
@@ -60,11 +92,7 @@ app.post('/auth/signup', async (request, response) => {
     const user = await User.create({ fullName, email, passwordHash });
 
     return response.status(201).json({
-      user: {
-        id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-      },
+      user: buildUserProfile(user),
     });
   } catch (error) {
     return response.status(500).json({ message: 'Could not create account.' });
@@ -89,14 +117,75 @@ app.post('/auth/login', async (request, response) => {
     }
 
     return response.json({
-      user: {
-        id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-      },
+      user: buildUserProfile(user),
     });
   } catch (error) {
     return response.status(500).json({ message: 'Could not log in.' });
+  }
+});
+
+app.get('/profile/:userId', async (request, response) => {
+  try {
+    const { userId } = request.params;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return response.status(400).json({ message: 'Invalid user ID.' });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return response.status(404).json({ message: 'User not found.' });
+    }
+
+    return response.json({ user: buildUserProfile(user) });
+  } catch (error) {
+    return response.status(500).json({ message: 'Could not load profile.' });
+  }
+});
+
+app.put('/profile/:userId', async (request, response) => {
+  try {
+    const { userId } = request.params;
+    const { fullName, bio, interests } = request.body;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return response.status(400).json({ message: 'Invalid user ID.' });
+    }
+
+    const updates = {};
+
+    if (typeof fullName === 'string') {
+      updates.fullName = fullName.trim();
+    }
+
+    if (typeof bio === 'string') {
+      updates.bio = bio.trim();
+    }
+
+    if (Array.isArray(interests)) {
+      updates.interests = interests
+        .filter(interest => typeof interest === 'string')
+        .map(interest => interest.trim())
+        .filter(Boolean);
+    }
+
+    if (updates.fullName === '') {
+      return response.status(400).json({ message: 'Full name cannot be empty.' });
+    }
+
+    const user = await User.findByIdAndUpdate(userId, updates, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!user) {
+      return response.status(404).json({ message: 'User not found.' });
+    }
+
+    return response.json({ user: buildUserProfile(user) });
+  } catch (error) {
+    return response.status(500).json({ message: 'Could not update profile.' });
   }
 });
 
