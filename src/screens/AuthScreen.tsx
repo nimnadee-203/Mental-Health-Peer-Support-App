@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
+  ActivityIndicator,
   Platform,
   Pressable,
   SafeAreaView,
@@ -17,11 +18,16 @@ type AuthScreenProps = {
   onAuthenticated: () => void;
 };
 
+const API_BASE_URL =
+  Platform.OS === 'android' ? 'http://10.0.2.2:4000' : 'http://localhost:4000';
+
 function AuthScreen({ onAuthenticated }: AuthScreenProps) {
   const [mode, setMode] = useState<AuthMode>('login');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isSignup = mode === 'signup';
   const title = isSignup ? 'Create your account' : 'Welcome back';
@@ -39,13 +45,43 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
     return hasAuthFields && fullName.trim().length > 0;
   }, [email, fullName, isSignup, password]);
 
-  const handleSubmit = () => {
-    if (!canSubmit) {
+  const handleSubmit = async () => {
+    if (!canSubmit || isSubmitting) {
       return;
     }
 
-    // Replace this with your MongoDB/API authentication call later.
-    onAuthenticated();
+    setErrorMessage('');
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/auth/${isSignup ? 'signup' : 'login'}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fullName: fullName.trim(),
+            email: email.trim(),
+            password,
+          }),
+        },
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setErrorMessage(result.message || 'Something went wrong. Please try again.');
+        return;
+      }
+
+      onAuthenticated();
+    } catch {
+      setErrorMessage('Could not reach the server. Make sure the API is running.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -112,18 +148,28 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
 
               <Pressable
                 accessibilityRole="button"
-                disabled={!canSubmit}
+                disabled={!canSubmit || isSubmitting}
                 style={({ pressed }) => [
                   styles.primaryButton,
-                  !canSubmit && styles.primaryButtonDisabled,
-                  pressed && canSubmit && styles.primaryButtonPressed,
+                  (!canSubmit || isSubmitting) && styles.primaryButtonDisabled,
+                  pressed && canSubmit && !isSubmitting && styles.primaryButtonPressed,
                 ]}
                 onPress={handleSubmit}
               >
-                <Text style={styles.primaryButtonText}>
-                  {isSignup ? 'Sign Up' : 'Log In'}
-                </Text>
+                {isSubmitting ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>
+                    {isSignup ? 'Sign Up' : 'Log In'}
+                  </Text>
+                )}
               </Pressable>
+
+              {errorMessage ? (
+                <Text accessibilityRole="alert" style={styles.errorText}>
+                  {errorMessage}
+                </Text>
+              ) : null}
             </View>
           </View>
 
@@ -228,6 +274,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '900',
+  },
+  errorText: {
+    color: '#B91C1C',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
+    textAlign: 'center',
   },
   footer: {
     flexDirection: 'row',
