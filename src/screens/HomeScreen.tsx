@@ -10,7 +10,11 @@ import {
 
 const moods = ['Calm', 'Anxious', 'Hopeful'];
 
-function HomeScreen() {
+type HomeScreenProps = {
+  onOpenProfile: () => void;
+};
+
+function HomeScreen({ onOpenProfile }: HomeScreenProps) {
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -19,9 +23,13 @@ function HomeScreen() {
             <Text style={styles.greeting}>Good morning</Text>
             <Text style={styles.title}>Patient Stories</Text>
           </View>
-          <View style={styles.avatar}>
+          <Pressable
+            accessibilityRole="button"
+            style={styles.avatar}
+            onPress={onOpenProfile}
+          >
             <Text style={styles.avatarText}>P</Text>
-          </View>
+          </Pressable>
         </View>
 
         <View style={styles.hero}>
