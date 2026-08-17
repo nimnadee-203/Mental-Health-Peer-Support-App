@@ -13,9 +13,9 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-// Android emulator → host machine localhost.
-// Change to your machine's LAN IP (e.g. 192.168.1.x) for a physical device.
-const API_BASE = 'http://10.0.2.2:3000/api';
+// Physical Android device → set to your PC's LAN IP.
+// Run `ipconfig` on Windows to confirm. Keep port 3000 open on your firewall.
+const API_BASE = 'http://192.168.8.158:3000/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Community {
