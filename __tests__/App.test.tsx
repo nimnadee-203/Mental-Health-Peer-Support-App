@@ -3,10 +3,12 @@
  */
 
 import React from 'react';
-import { Text } from 'react-native';
+import { Pressable, Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import BottomNavigation from '../src/components/BottomNavigation';
 import HomeScreen from '../src/screens/HomeScreen';
+import ResourceArticleScreen from '../src/screens/ResourceArticleScreen';
+import ResourcesScreen from '../src/screens/ResourcesScreen';
 
 test('renders the home screen content and the full shared bottom navigation', async () => {
   let homeComponent: ReactTestRenderer.ReactTestRenderer;
@@ -36,4 +38,48 @@ test('renders the home screen content and the full shared bottom navigation', as
   expect(navTextLabels).toContain('Groups');
   expect(navTextLabels).toContain('Messages');
   expect(navTextLabels).toContain('Profile');
+});
+
+test('opens the article detail screen when the resources card is pressed', async () => {
+  const onOpenArticle = jest.fn();
+  let resourceComponent: ReactTestRenderer.ReactTestRenderer;
+
+  await ReactTestRenderer.act(() => {
+    resourceComponent = ReactTestRenderer.create(
+      <ResourcesScreen onOpenArticle={onOpenArticle} />,
+    );
+  });
+
+  const articleCard = resourceComponent!.root
+    .findAll(node => node.props.testID === 'resource-article-card')[0];
+
+  expect(articleCard).toBeTruthy();
+
+  await ReactTestRenderer.act(() => {
+    articleCard.props.onPress();
+  });
+
+  expect(onOpenArticle).toHaveBeenCalledTimes(1);
+});
+
+test('allows the user to go back from the article detail screen', async () => {
+  const onBack = jest.fn();
+  let articleComponent: ReactTestRenderer.ReactTestRenderer;
+
+  await ReactTestRenderer.act(() => {
+    articleComponent = ReactTestRenderer.create(
+      <ResourceArticleScreen onBack={onBack} />,
+    );
+  });
+
+  const backButton = articleComponent!.root
+    .findAll(node => node.props.testID === 'resource-article-back')[0];
+
+  expect(backButton).toBeTruthy();
+
+  await ReactTestRenderer.act(() => {
+    backButton.props.onPress();
+  });
+
+  expect(onBack).toHaveBeenCalledTimes(1);
 });
