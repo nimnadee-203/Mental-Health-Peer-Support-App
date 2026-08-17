@@ -35,6 +35,8 @@ export interface GroupDetailScreenProps {
   communityId?: string;
   /** Called when the back button is pressed. */
   onBack?: () => void;
+  /** Called when the Join button is pressed. */
+  onJoin?: () => void;
 }
 
 // ─── Fallback community (matches the Figma design) ───────────────────────────
@@ -145,6 +147,7 @@ function GroupDetailScreen({
   community: communityProp,
   communityId,
   onBack,
+  onJoin,
 }: GroupDetailScreenProps) {
   // ── State ──────────────────────────────────────────────────────────────────
   const [community, setCommunity] = useState<Community>(
@@ -199,6 +202,8 @@ function GroupDetailScreen({
       if (res.ok) {
         const updated: Community = await res.json();
         setCommunity(updated);
+        // Call the parent callback to navigate
+        onJoin?.();
       } else {
         throw new Error('API error');
       }
@@ -209,6 +214,9 @@ function GroupDetailScreen({
         isJoined: wasJoined,
         memberCount: wasJoined ? prev.memberCount + 1 : prev.memberCount - 1,
       }));
+      
+      // Fallback for demo mode (if API fails, still navigate)
+      onJoin?.();
     } finally {
       setJoining(false);
     }

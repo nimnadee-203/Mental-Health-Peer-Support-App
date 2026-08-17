@@ -250,7 +250,11 @@ function BottomNav() {
 }
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
-function CommunityHomeScreen() {
+export interface CommunityHomeScreenProps {
+  onCommunityPress?: (community: Community) => void;
+}
+
+export default function CommunityHomeScreen({ onCommunityPress }: CommunityHomeScreenProps) {
   const [communities, setCommunities] = useState<Community[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
@@ -410,11 +414,12 @@ function CommunityHomeScreen() {
           ) : (
             <View style={styles.cardsList}>
               {filtered.map(community => (
-                <CommunityCard
-                  key={community._id}
-                  community={community}
-                  onJoin={() => handleJoin(community._id)}
-                />
+                <Pressable key={community._id} onPress={() => onCommunityPress?.(community)}>
+                  <CommunityCard
+                    community={community}
+                    onJoin={() => handleJoin(community._id)}
+                  />
+                </Pressable>
               ))}
             </View>
           )}
@@ -440,8 +445,6 @@ function CommunityHomeScreen() {
     </SafeAreaView>
   );
 }
-
-export default CommunityHomeScreen;
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
