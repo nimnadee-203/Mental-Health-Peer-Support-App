@@ -3,7 +3,6 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 
-const communitiesRouter = require('./routes/communities');
 const postsRouter = require('./routes/posts');
 const commentsRouter = require('./routes/comments');
 
@@ -16,7 +15,6 @@ app.use(cors());
 app.use(express.json());
 
 // ── Routes ──────────────────────────────────────────────────────────────────
-app.use('/api/communities', communitiesRouter);
 app.use('/api/posts', postsRouter);
 app.use('/api/comments', commentsRouter);
 

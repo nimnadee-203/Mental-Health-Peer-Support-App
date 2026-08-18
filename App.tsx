@@ -1,30 +1,33 @@
 import React, { useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import CommunityHomeScreen from './src/screens/CommunityHomeScreen';
-import GroupDetailScreen from './src/screens/GroupDetailScreen';
 import GroupDiscussionScreen, { Community, Post } from './src/screens/GroupDiscussionScreen';
 import CreatePostScreen from './src/screens/CreatePostScreen';
 import PostDetailScreen from './src/screens/PostDetailScreen';
 
+// Mock Community since we bypassed the Group Join screen
+const MOCK_COMMUNITY: Community = {
+  _id: 'mock_mindfulness',
+  name: 'Mindfulness & Healthy Habits',
+  category: 'Mindfulness',
+  themeColor: '#D4C9F5',
+  memberCount: 154,
+  guidelines: [
+    'Be kind and respectful.',
+    'All posts here are anonymous.',
+    'This is peer support — not professional advice.'
+  ],
+  isJoined: true,
+};
+
 function App() {
-  const [currentScreen, setCurrentScreen] = useState<'home' | 'detail' | 'discussion' | 'create' | 'postDetail'>('home');
-  const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null);
+  const [currentScreen, setCurrentScreen] = useState<'discussion' | 'create' | 'postDetail'>('discussion');
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
-  const navigateToHome = () => setCurrentScreen('home');
-  
-  const navigateToDetail = (community: Community) => {
-    setSelectedCommunity(community);
-    setCurrentScreen('detail');
-  };
-
-  const navigateToDiscussion = (community: Community) => {
-    setSelectedCommunity(community);
+  const navigateToDiscussion = () => {
     setCurrentScreen('discussion');
   };
 
-  const navigateToCreate = (community: Community) => {
-    setSelectedCommunity(community);
+  const navigateToCreate = () => {
     setCurrentScreen('create');
   };
 
@@ -35,35 +38,25 @@ function App() {
 
   return (
     <SafeAreaProvider>
-      {currentScreen === 'home' && (
-        <CommunityHomeScreen onCommunityPress={navigateToDetail} />
-      )}
-      {currentScreen === 'detail' && selectedCommunity && (
-        <GroupDetailScreen 
-          community={selectedCommunity} 
-          onBack={navigateToHome}
-          onJoin={() => navigateToDiscussion(selectedCommunity)}
-        />
-      )}
-      {currentScreen === 'discussion' && selectedCommunity && (
+      {currentScreen === 'discussion' && (
         <GroupDiscussionScreen 
-          community={selectedCommunity}
-          onBack={navigateToHome}
+          community={MOCK_COMMUNITY}
+          onBack={() => { /* Handled natively or ignored in isolation mode */ }}
           onCreatePost={navigateToCreate}
           onPostPress={navigateToPostDetail}
         />
       )}
-      {currentScreen === 'create' && selectedCommunity && (
+      {currentScreen === 'create' && (
         <CreatePostScreen 
-          community={selectedCommunity}
-          onBack={() => navigateToDiscussion(selectedCommunity)}
-          onPostCreated={() => navigateToDiscussion(selectedCommunity)}
+          community={MOCK_COMMUNITY}
+          onBack={navigateToDiscussion}
+          onPostCreated={navigateToDiscussion}
         />
       )}
-      {currentScreen === 'postDetail' && selectedPost && selectedCommunity && (
+      {currentScreen === 'postDetail' && selectedPost && (
         <PostDetailScreen
           post={selectedPost}
-          onBack={() => navigateToDiscussion(selectedCommunity)}
+          onBack={navigateToDiscussion}
         />
       )}
     </SafeAreaProvider>
