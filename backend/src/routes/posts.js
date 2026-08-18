@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const Post = require('../models/Post');
-const Community = require('../models/Community');
 
 /**
  * GET /api/posts/group/:groupId
@@ -28,12 +27,7 @@ router.post('/group/:groupId', async (req, res) => {
     const { groupId } = req.params;
     const { content, topic, contentNote, isAnonymous } = req.body;
 
-    // Optional: verify the community exists
-    const community = await Community.findById(groupId);
-    if (!community) {
-      return res.status(404).json({ error: 'Community not found' });
-    }
-
+    // Community validation removed since we are in isolation mode
     const post = new Post({
       groupId,
       content,

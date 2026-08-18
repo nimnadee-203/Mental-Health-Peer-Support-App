@@ -17,7 +17,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import type { Community } from './GroupDiscussionScreen';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const API_BASE = 'http://192.168.8.158:3000/api';
+const API_BASE = 'http://localhost:3000/api';
 
 const TOPICS = [
   'General',

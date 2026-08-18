@@ -16,7 +16,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import type { Post } from './GroupDiscussionScreen';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const API_BASE = 'http://192.168.8.158:3000/api';
+const API_BASE = 'http://localhost:3000/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface Comment {
