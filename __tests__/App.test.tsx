@@ -9,6 +9,7 @@ import BottomNavigation from '../src/components/BottomNavigation';
 import HomeScreen from '../src/screens/HomeScreen';
 import ResourceArticleScreen from '../src/screens/ResourceArticleScreen';
 import ResourcesScreen from '../src/screens/ResourcesScreen';
+import { resourceArticles } from '../src/types/ResourceArticle';
 
 test('renders the home screen content and the full shared bottom navigation', async () => {
   let homeComponent: ReactTestRenderer.ReactTestRenderer;
@@ -38,6 +39,9 @@ test('renders the home screen content and the full shared bottom navigation', as
   expect(navTextLabels).toContain('Groups');
   expect(navTextLabels).toContain('Messages');
   expect(navTextLabels).toContain('Profile');
+
+  homeComponent!.unmount();
+  navComponent!.unmount();
 });
 
 test('opens the article detail screen when the resources card is pressed', async () => {
@@ -46,7 +50,7 @@ test('opens the article detail screen when the resources card is pressed', async
 
   await ReactTestRenderer.act(() => {
     resourceComponent = ReactTestRenderer.create(
-      <ResourcesScreen onOpenArticle={onOpenArticle} />,
+      <ResourcesScreen onOpenArticle={onOpenArticle} savedResources={[]} />,
     );
   });
 
@@ -60,6 +64,46 @@ test('opens the article detail screen when the resources card is pressed', async
   });
 
   expect(onOpenArticle).toHaveBeenCalledTimes(1);
+
+  resourceComponent!.unmount();
+});
+
+test('starts the breathing exercise flow from the resources screen', async () => {
+  jest.useFakeTimers();
+
+  let resourceComponent: ReactTestRenderer.ReactTestRenderer;
+
+  try {
+    await ReactTestRenderer.act(() => {
+      resourceComponent = ReactTestRenderer.create(
+        <ResourcesScreen onOpenArticle={() => {}} savedResources={[]} />,
+      );
+    });
+
+    const startButton = resourceComponent!.root
+      .findAll(node => node.props.testID === 'breathing-start-button')[0];
+
+    expect(startButton).toBeTruthy();
+
+    await ReactTestRenderer.act(() => {
+      startButton.props.onPress();
+      jest.runOnlyPendingTimers();
+    });
+
+    const activityText = resourceComponent!.root
+      .findAllByType(Text)
+      .map(node => node.props.children)
+      .flatMap(value => (Array.isArray(value) ? value : [value]))
+      .join(' ');
+
+    expect(activityText).toContain('Breathe in slowly');
+  } finally {
+    await ReactTestRenderer.act(() => {
+      resourceComponent?.unmount();
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
+  }
 });
 
 test('allows the user to go back from the article detail screen', async () => {
@@ -68,7 +112,7 @@ test('allows the user to go back from the article detail screen', async () => {
 
   await ReactTestRenderer.act(() => {
     articleComponent = ReactTestRenderer.create(
-      <ResourceArticleScreen onBack={onBack} />,
+      <ResourceArticleScreen article={resourceArticles[0]} onBack={onBack} />,
     );
   });
 
@@ -82,4 +126,6 @@ test('allows the user to go back from the article detail screen', async () => {
   });
 
   expect(onBack).toHaveBeenCalledTimes(1);
+
+  articleComponent!.unmount();
 });

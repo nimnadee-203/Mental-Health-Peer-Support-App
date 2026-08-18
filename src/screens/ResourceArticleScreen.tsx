@@ -1,12 +1,16 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ResourceArticle, resourceArticles } from '../types/ResourceArticle';
 
 type ResourceArticleScreenProps = {
+  article?: ResourceArticle;
   onBack: () => void;
 };
 
-function ResourceArticleScreen({ onBack }: ResourceArticleScreenProps) {
+function ResourceArticleScreen({ article, onBack }: ResourceArticleScreenProps) {
+  const currentArticle = article ?? resourceArticles[0];
+
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView
@@ -24,36 +28,33 @@ function ResourceArticleScreen({ onBack }: ResourceArticleScreenProps) {
           <View style={styles.headerSpacer} />
         </View>
 
-        <Text style={styles.label}>EMOTIONAL WELLBEING</Text>
-        <Text style={styles.title}>Take one breath at a time</Text>
+        <Image
+          source={{ uri: currentArticle.image }}
+          style={styles.heroImage}
+          resizeMode="cover"
+        />
 
-        <Text style={styles.intro}>
-          Difficult days can feel overwhelming, but small actions still count.
-          Focus on one gentle movement, one slow breath, or one moment of stillness.
-        </Text>
+        <Text style={styles.label}>{currentArticle.category.toUpperCase()}</Text>
+        <Text style={styles.title}>{currentArticle.title}</Text>
 
-        <View style={styles.section}>
-          <Text style={styles.heading}>Start with one small thing</Text>
-          <Text style={styles.body}>
-            Instead of trying to fix everything at once, choose one manageable step.
-            A short walk, a glass of water, or a quiet pause is still progress.
-          </Text>
+        <Text style={styles.intro}>{currentArticle.description}</Text>
+
+        <View style={styles.metaRow}>
+          <Text style={styles.metaText}>{currentArticle.readTime}</Text>
+          <Text style={styles.metaDot}>•</Text>
+          <Text style={styles.metaText}>{currentArticle.section}</Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.heading}>Take a mindful pause</Text>
-          <Text style={styles.body}>
-            Put one hand on your chest or stomach and notice the rise and fall of your
-            breath. Let your breath slow down naturally and return to the present.
-          </Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.heading}>Be kind to yourself</Text>
-          <Text style={styles.body}>
-            You do not need to earn rest. Slow, gentle support is part of healing.
-          </Text>
-        </View>
+        {currentArticle.content.map(section => (
+          <View key={section.heading} style={styles.section}>
+            <Text style={styles.heading}>{section.heading}</Text>
+            {section.paragraphs.map(paragraph => (
+              <Text key={paragraph} style={styles.body}>
+                {paragraph}
+              </Text>
+            ))}
+          </View>
+        ))}
       </ScrollView>
     </SafeAreaView>
   );
@@ -65,7 +66,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2F5F7',
   },
   content: {
-    padding: 20,
+    paddingHorizontal: 18,
+    paddingTop: 18,
     paddingBottom: 40,
   },
   headerRow: {
@@ -99,6 +101,15 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 36,
   },
+  heroImage: {
+    width: '100%',
+    height: 210,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E7E7E7',
+    marginBottom: 14,
+    backgroundColor: '#E8EEF2',
+  },
   label: {
     color: '#7A7F86',
     fontSize: 11,
@@ -117,13 +128,30 @@ const styles = StyleSheet.create({
     color: '#6A7280',
     fontSize: 15,
     lineHeight: 23,
-    marginBottom: 24,
+    marginBottom: 12,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+  metaText: {
+    color: '#6A7280',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  metaDot: {
+    color: '#A0A8B0',
+    fontSize: 12,
+    marginHorizontal: 8,
   },
   section: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
     padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E7E7E7',
   },
   heading: {
     color: '#1F2A37',
