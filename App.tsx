@@ -5,7 +5,7 @@ import BottomNavigation from './src/components/BottomNavigation';
 import HomeScreen from './src/screens/HomeScreen';
 import ResourceArticleScreen from './src/screens/ResourceArticleScreen';
 import { ResourceArticle } from './src/types/ResourceArticle';
-
+import GroupsHomeScreen from './src/screens/GroupsHomeScreen';
 type ResourcesScreenProps = {
   onOpenArticle: (article: ResourceArticle) => void;
   savedResources?: string[];
@@ -62,18 +62,10 @@ function App() {
             onOpenArticle={handleOpenArticle}
           />
         );
-      case 'Groups':
-        return (
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: '#F2F5F7',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}>
-            <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-          </View>
-        );
+
+        case 'Groups':
+  return <GroupsHomeScreen />;
+  
       case 'Messages':
         return (
           <View
