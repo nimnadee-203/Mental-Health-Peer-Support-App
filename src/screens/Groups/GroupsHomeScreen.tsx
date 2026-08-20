@@ -13,7 +13,13 @@ const GroupsHomeScreen = () => {
     <View style={styles.container}>
 
       {/* Header */}
-      <Text style={styles.title}>Find Your Community</Text>
+      <View style={styles.headerRow}>
+  <Text style={styles.title}>Find Your Community</Text>
+
+  <Pressable style={styles.createButton}>
+    <Text style={styles.createButtonText}>+ Create</Text>
+  </Pressable>
+</View>
 
       <Text style={styles.subtitle}>
         Connect with people who understand
@@ -92,9 +98,7 @@ const GroupsHomeScreen = () => {
 
           <View style={styles.groupBottom}>
 
-            <Text style={styles.memberCount}>
-              👥 128 members
-            </Text>
+        
 
             <Pressable style={styles.joinButton}>
               <Text style={styles.joinButtonText}>
@@ -132,9 +136,7 @@ const GroupsHomeScreen = () => {
 
           <View style={styles.groupBottom}>
 
-            <Text style={styles.memberCount}>
-              👥 96 members
-            </Text>
+           
 
             <Pressable style={styles.joinButton}>
               <Text style={styles.joinButtonText}>
@@ -172,9 +174,7 @@ const GroupsHomeScreen = () => {
 
           <View style={styles.groupBottom}>
 
-            <Text style={styles.memberCount}>
-              👥 74 members
-            </Text>
+            
 
             <Pressable style={styles.joinButton}>
               <Text style={styles.joinButtonText}>
@@ -212,9 +212,7 @@ const GroupsHomeScreen = () => {
 
           <View style={styles.groupBottom}>
 
-            <Text style={styles.memberCount}>
-              👥 112 members
-            </Text>
+         
 
             <Pressable style={styles.joinButton}>
               <Text style={styles.joinButtonText}>
@@ -243,7 +241,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: '#1F2937',
-    marginHorizontal: 20,
+    marginHorizontal: 10,
   },
 
   subtitle: {
@@ -252,6 +250,26 @@ const styles = StyleSheet.create({
     color: '#667085',
     marginHorizontal: 20,
   },
+
+  headerRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginHorizontal: 10,
+},
+
+createButton: {
+  backgroundColor: '#2673FF',
+  paddingHorizontal: 14,
+  paddingVertical: 8,
+  borderRadius: 10,
+},
+
+createButtonText: {
+  color: '#FFFFFF',
+  fontSize: 12,
+  fontWeight: '700',
+},
 
   searchBar: {
     height: 50,
@@ -366,15 +384,11 @@ const styles = StyleSheet.create({
 
   groupBottom: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     marginTop: 14,
   },
 
-  memberCount: {
-    fontSize: 11,
-    color: '#667085',
-  },
+
 
   joinButton: {
     backgroundColor: '#2673FF',

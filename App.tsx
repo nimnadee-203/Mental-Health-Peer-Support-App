@@ -6,7 +6,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import ResourceArticleScreen from './src/screens/ResourceArticleScreen';
 import ActivitiesScreen from './src/screens/ActivitiesScreen';
 import { ResourceArticle } from './src/types/ResourceArticle';
-import GroupsHomeScreen from './src/screens/GroupsHomeScreen';
+import GroupsHomeScreen from './src/screens/Groups/GroupsHomeScreen';
 
 type ResourcesScreenProps = {
   onOpenArticle: (article: ResourceArticle) => void;
