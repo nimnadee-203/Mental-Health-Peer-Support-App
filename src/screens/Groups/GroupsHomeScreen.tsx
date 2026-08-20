@@ -8,7 +8,13 @@ import {
   Pressable,
 } from 'react-native';
 
-const GroupsHomeScreen = () => {
+type GroupsHomeScreenProps = {
+  onCreateGroup: () => void;
+};
+
+const GroupsHomeScreen = ({
+  onCreateGroup,
+}: GroupsHomeScreenProps) => {
   return (
     <View style={styles.container}>
 
@@ -16,9 +22,13 @@ const GroupsHomeScreen = () => {
       <View style={styles.headerRow}>
   <Text style={styles.title}>Find Your Community</Text>
 
-  <Pressable style={styles.createButton}>
-    <Text style={styles.createButtonText}>+ Create</Text>
-  </Pressable>
+ <Pressable
+  style={styles.createButton}
+  onPress={() => onCreateGroup()}
+>
+  <Text style={styles.createButtonText}>+ Create</Text>
+</Pressable>
+
 </View>
 
       <Text style={styles.subtitle}>

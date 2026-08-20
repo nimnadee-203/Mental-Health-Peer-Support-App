@@ -7,6 +7,7 @@ import ResourceArticleScreen from './src/screens/ResourceArticleScreen';
 import ActivitiesScreen from './src/screens/ActivitiesScreen';
 import { ResourceArticle } from './src/types/ResourceArticle';
 import GroupsHomeScreen from './src/screens/Groups/GroupsHomeScreen';
+import CreateGroupScreen from './src/screens/Groups/CreateGroupScreen';
 
 type ResourcesScreenProps = {
   onOpenArticle: (article: ResourceArticle) => void;
@@ -37,6 +38,9 @@ function App() {
   const [isActivityOpen, setIsActivityOpen] =
     useState(false);
 
+  const [isCreateGroupOpen, setIsCreateGroupOpen] = 
+  useState(false);
+
   const [selectedActivity, setSelectedActivity] =
     useState<
       'breathing' | 'mindfulness' | 'journaling'
@@ -53,6 +57,7 @@ function App() {
     setActiveTab(tab);
     setIsArticleOpen(false);
     setIsActivityOpen(false);
+     setIsCreateGroupOpen(false);
   };
 
   const handleOpenArticle = (
@@ -107,6 +112,17 @@ function App() {
       );
     }
 
+    if (isCreateGroupOpen) {
+  return (
+    <CreateGroupScreen
+      onBack={() => {
+        setIsCreateGroupOpen(false);
+        setActiveTab('Groups');
+      }}
+    />
+  );
+}
+
     switch (activeTab) {
       case 'Resources':
         return (
@@ -116,9 +132,14 @@ function App() {
             onOpenActivity={handleOpenActivity}
           />
         );
-
-      case 'Groups':
-        return <GroupsHomeScreen />;
+case 'Groups':
+  return (
+    <GroupsHomeScreen
+      onCreateGroup={() => {
+        setIsCreateGroupOpen(true);
+      }}
+    />
+  );
 
       case 'Messages':
         return (
@@ -172,6 +193,7 @@ function App() {
     selectedArticle,
     isActivityOpen,
     selectedActivity,
+    isCreateGroupOpen,
   ]);
 
   return (
