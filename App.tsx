@@ -1,24 +1,42 @@
 import React, { useMemo, useState } from 'react';
-import { StatusBar, useColorScheme, View } from 'react-native';
+import {
+  StatusBar,
+  useColorScheme,
+  View,
+} from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 import BottomNavigation from './src/components/BottomNavigation';
 import HomeScreen from './src/screens/HomeScreen';
 import ResourceArticleScreen from './src/screens/ResourceArticleScreen';
 import ActivitiesScreen from './src/screens/ActivitiesScreen';
+import EmergencySupportScreen from './src/screens/EmergencySupportScreen';
+
 import { ResourceArticle } from './src/types/ResourceArticle';
+
 import GroupsHomeScreen from './src/screens/Groups/GroupsHomeScreen';
 import CreateGroupScreen from './src/screens/Groups/CreateGroupScreen';
 
+type ActivityType =
+  | 'breathing'
+  | 'mindfulness'
+  | 'journaling';
+
 type ResourcesScreenProps = {
   onOpenArticle: (article: ResourceArticle) => void;
+
   onOpenActivity: (
-    activity: 'breathing' | 'mindfulness' | 'journaling'
+    activity: ActivityType
   ) => void;
+
+  onOpenEmergencySupport: () => void;
+
   savedResources?: string[];
 };
 
 const ResourcesScreen =
-  require('./src/screens/ResourcesScreen').default as React.ComponentType<ResourcesScreenProps>;
+  require('./src/screens/ResourcesScreen')
+    .default as React.ComponentType<ResourcesScreenProps>;
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
@@ -27,7 +45,8 @@ function App() {
     'Home' | 'Resources' | 'Groups' | 'Messages' | 'Profile'
   >('Home');
 
-  const [isArticleOpen, setIsArticleOpen] = useState(false);
+  const [isArticleOpen, setIsArticleOpen] =
+    useState(false);
 
   const [selectedArticle, setSelectedArticle] =
     useState<ResourceArticle | null>(null);
@@ -38,13 +57,14 @@ function App() {
   const [isActivityOpen, setIsActivityOpen] =
     useState(false);
 
-  const [isCreateGroupOpen, setIsCreateGroupOpen] = 
-  useState(false);
+  const [isEmergencyOpen, setIsEmergencyOpen] =
+    useState(false);
+
+  const [isCreateGroupOpen, setIsCreateGroupOpen] =
+    useState(false);
 
   const [selectedActivity, setSelectedActivity] =
-    useState<
-      'breathing' | 'mindfulness' | 'journaling'
-    >('breathing');
+    useState<ActivityType>('breathing');
 
   const changeTab = (
     tab:
@@ -55,9 +75,12 @@ function App() {
       | 'Profile'
   ) => {
     setActiveTab(tab);
+
     setIsArticleOpen(false);
     setIsActivityOpen(false);
-     setIsCreateGroupOpen(false);
+    setIsEmergencyOpen(false);
+    setIsCreateGroupOpen(false);
+    setSelectedArticle(null);
   };
 
   const handleOpenArticle = (
@@ -77,16 +100,36 @@ function App() {
   };
 
   const handleOpenActivity = (
-    activity:
-      | 'breathing'
-      | 'mindfulness'
-      | 'journaling'
+    activity: ActivityType
   ) => {
     setSelectedActivity(activity);
     setIsActivityOpen(true);
   };
 
+  const handleOpenEmergency = () => {
+    setIsEmergencyOpen(true);
+  };
+
+  const handleBackFromEmergency = () => {
+    setIsEmergencyOpen(false);
+    setActiveTab('Resources');
+  };
+
   const screen = useMemo(() => {
+    /*
+     * Emergency Support Screen
+     */
+    if (isEmergencyOpen) {
+      return (
+        <EmergencySupportScreen
+          onBack={handleBackFromEmergency}
+        />
+      );
+    }
+
+    /*
+     * Resource Article Screen
+     */
     if (isArticleOpen && selectedArticle) {
       return (
         <ResourceArticleScreen
@@ -100,10 +143,16 @@ function App() {
       );
     }
 
+    /*
+     * Activities Screen
+     */
     if (isActivityOpen) {
       return (
         <ActivitiesScreen
           activity={selectedActivity}
+          onSelectActivity={activity => {
+            setSelectedActivity(activity);
+          }}
           onBack={() => {
             setIsActivityOpen(false);
             setActiveTab('Resources');
@@ -112,17 +161,23 @@ function App() {
       );
     }
 
+    /*
+     * Create Group Screen
+     */
     if (isCreateGroupOpen) {
-  return (
-    <CreateGroupScreen
-      onBack={() => {
-        setIsCreateGroupOpen(false);
-        setActiveTab('Groups');
-      }}
-    />
-  );
-}
+      return (
+        <CreateGroupScreen
+          onBack={() => {
+            setIsCreateGroupOpen(false);
+            setActiveTab('Groups');
+          }}
+        />
+      );
+    }
 
+    /*
+     * Main Tabs
+     */
     switch (activeTab) {
       case 'Resources':
         return (
@@ -130,16 +185,18 @@ function App() {
             savedResources={savedResources}
             onOpenArticle={handleOpenArticle}
             onOpenActivity={handleOpenActivity}
+            onOpenEmergencySupport={handleOpenEmergency}
           />
         );
-case 'Groups':
-  return (
-    <GroupsHomeScreen
-      onCreateGroup={() => {
-        setIsCreateGroupOpen(true);
-      }}
-    />
-  );
+
+      case 'Groups':
+        return (
+          <GroupsHomeScreen
+            onCreateGroup={() => {
+              setIsCreateGroupOpen(true);
+            }}
+          />
+        );
 
       case 'Messages':
         return (
@@ -189,10 +246,11 @@ case 'Groups':
     activeTab,
     isDarkMode,
     isArticleOpen,
-    savedResources,
     selectedArticle,
+    savedResources,
     isActivityOpen,
     selectedActivity,
+    isEmergencyOpen,
     isCreateGroupOpen,
   ]);
 
@@ -208,12 +266,17 @@ case 'Groups':
 
       {screen}
 
-      {!isArticleOpen && !isActivityOpen && (
-        <BottomNavigation
-          activeTab={activeTab}
-          onChangeTab={changeTab}
-        />
-      )}
+      {/* Bottom navigation should NOT appear on
+          Article, Activity, Emergency or Create Group screens */}
+      {!isArticleOpen &&
+        !isActivityOpen &&
+        !isEmergencyOpen &&
+        !isCreateGroupOpen && (
+          <BottomNavigation
+            activeTab={activeTab}
+            onChangeTab={changeTab}
+          />
+        )}
     </SafeAreaProvider>
   );
 }

@@ -30,21 +30,21 @@ type ResourceFilter =
 
 const quickTips = [
   {
-    title: 'Breathing exercise',
+    title: 'Breathing Exercise',
     time: '5 min',
     accent: '#C9E8D3',
     icon: '❋',
     activity: 'breathing' as ActivityType,
   },
   {
-    title: 'Mindfulness break',
+    title: 'Mindfulness Break',
     time: '3 min',
     accent: '#D8E6FC',
     icon: '✦',
     activity: 'mindfulness' as ActivityType,
   },
   {
-    title: 'Journaling prompt',
+    title: 'Journaling',
     time: 'Open-ended',
     accent: '#F2D9BC',
     icon: '✎',
@@ -69,28 +69,33 @@ const sectionOrder = [
 
 type ResourcesScreenProps = {
   onOpenArticle: (article: ResourceArticle) => void;
-  onOpenActivity: (activity: ActivityType) => void;
+
+  // Optional because View All Activities opens
+  // ActivitiesScreen without selecting an activity.
+  onOpenActivity: (activity?: ActivityType) => void;
+
+  onOpenEmergencySupport: () => void;
   savedResources?: string[];
 };
 
 function ResourcesScreen({
   onOpenArticle,
   onOpenActivity,
+  onOpenEmergencySupport,
   savedResources = [],
 }: ResourcesScreenProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] =
     useState<ResourceFilter>('All');
 
-  const [imageLoadErrors, setImageLoadErrors] = useState<string[]>(
-    [],
-  );
+  const [imageLoadErrors, setImageLoadErrors] =
+    useState<string[]>([]);
 
-  const [saveOverrides, setSaveOverrides] = useState<
-    Record<string, boolean>
-  >({});
+  const [saveOverrides, setSaveOverrides] =
+    useState<Record<string, boolean>>({});
 
-  const { width: screenWidth } = useWindowDimensions();
+  const { width: screenWidth } =
+    useWindowDimensions();
 
   const horizontalPadding = 36;
   const cardGap = 12;
@@ -98,7 +103,8 @@ function ResourcesScreen({
   const computedCardWidth =
     (screenWidth - horizontalPadding - cardGap) / 2;
 
-  const useSingleColumn = computedCardWidth < 170;
+  const useSingleColumn =
+    computedCardWidth < 170;
 
   const gridCardWidth = useSingleColumn
     ? screenWidth - horizontalPadding
@@ -124,24 +130,31 @@ function ResourcesScreen({
         return byTitle?.id;
       })
       .filter(
-        (value): value is string => Boolean(value),
+        (value): value is string =>
+          Boolean(value),
       );
   }, [savedResources]);
 
-  const isResourceSaved = (resourceId: string) => {
+  const isResourceSaved = (
+    resourceId: string,
+  ) => {
     if (
       Object.prototype.hasOwnProperty.call(
         saveOverrides,
         resourceId,
       )
     ) {
-      return Boolean(saveOverrides[resourceId]);
+      return Boolean(
+        saveOverrides[resourceId],
+      );
     }
 
     return savedFromProp.includes(resourceId);
   };
 
-  const toggleSavedResource = (resourceId: string) => {
+  const toggleSavedResource = (
+    resourceId: string,
+  ) => {
     const nextValue =
       !isResourceSaved(resourceId);
 
@@ -178,20 +191,28 @@ function ResourcesScreen({
           .toLowerCase()
           .includes(normalizedQuery);
 
-      return matchesCategory && matchesSearch;
+      return (
+        matchesCategory &&
+        matchesSearch
+      );
     });
-  }, [normalizedQuery, selectedFilter]);
+  }, [
+    normalizedQuery,
+    selectedFilter,
+  ]);
 
-  const featuredArticle = resourceArticles.find(
-    article =>
-      article.id ===
-      'small-steps-for-difficult-days',
-  );
+  const featuredArticle =
+    resourceArticles.find(
+      article =>
+        article.id ===
+        'small-steps-for-difficult-days',
+    );
 
   const visibleFeatured =
     featuredArticle &&
     filteredResources.some(
-      article => article.id === featuredArticle.id,
+      article =>
+        article.id === featuredArticle.id,
     )
       ? featuredArticle
       : null;
@@ -215,7 +236,9 @@ function ResourcesScreen({
         sectionMap[article.section] = [];
       }
 
-      sectionMap[article.section].push(article);
+      sectionMap[article.section].push(
+        article,
+      );
     });
 
     return sectionMap;
@@ -224,7 +247,9 @@ function ResourcesScreen({
   const shouldShowEmptyResults =
     filteredResources.length === 0;
 
-  const addImageError = (resourceId: string) => {
+  const addImageError = (
+    resourceId: string,
+  ) => {
     setImageLoadErrors(current => {
       if (current.includes(resourceId)) {
         return current;
@@ -251,17 +276,23 @@ function ResourcesScreen({
       >
         {hasImageError ? (
           <View style={styles.imageFallback}>
-            <Text style={styles.imageFallbackIcon}>
+            <Text
+              style={styles.imageFallbackIcon}
+            >
               {resource.icon}
             </Text>
 
-            <Text style={styles.imageFallbackText}>
+            <Text
+              style={styles.imageFallbackText}
+            >
               Image unavailable
             </Text>
           </View>
         ) : (
           <Image
-            source={{ uri: resource.image }}
+            source={{
+              uri: resource.image,
+            }}
             style={styles.resourceImage}
             resizeMode="cover"
             onError={() =>
@@ -273,15 +304,20 @@ function ResourcesScreen({
         <Pressable
           onPress={event => {
             event.stopPropagation();
-            toggleSavedResource(resource.id);
+            toggleSavedResource(
+              resource.id,
+            );
           }}
           hitSlop={8}
           style={[
             styles.saveButton,
-            isSaved && styles.saveButtonActive,
+            isSaved &&
+              styles.saveButtonActive,
           ]}
         >
-          <Text style={styles.saveButtonText}>
+          <Text
+            style={styles.saveButtonText}
+          >
             {isSaved ? '♥' : '♡'}
           </Text>
         </Pressable>
@@ -293,7 +329,8 @@ function ResourcesScreen({
     resource: ResourceArticle,
     isFeatured: boolean,
   ) => {
-    const isSaved = isResourceSaved(resource.id);
+    const isSaved =
+      isResourceSaved(resource.id);
 
     return (
       <Pressable
@@ -306,7 +343,8 @@ function ResourcesScreen({
           !isFeatured && {
             width: gridCardWidth,
           },
-          pressed && styles.cardPressed,
+          pressed &&
+            styles.cardPressed,
         ]}
         onPress={() =>
           onOpenArticle(resource)
@@ -327,17 +365,27 @@ function ResourcesScreen({
             {resource.title}
           </Text>
 
-          <Text style={styles.cardDescription}>
+          <Text
+            style={styles.cardDescription}
+          >
             {resource.description}
           </Text>
 
-          <View style={styles.cardMetaRow}>
-            <Text style={styles.cardMetaText}>
+          <View
+            style={styles.cardMetaRow}
+          >
+            <Text
+              style={styles.cardMetaText}
+            >
               {resource.readTime}
             </Text>
 
-            <View style={styles.arrowButton}>
-              <Text style={styles.arrowText}>
+            <View
+              style={styles.arrowButton}
+            >
+              <Text
+                style={styles.arrowText}
+              >
                 ↗
               </Text>
             </View>
@@ -351,21 +399,28 @@ function ResourcesScreen({
     <SafeAreaView style={styles.screen}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={
+          styles.content
+        }
       >
         {/* Header */}
+
         <View style={styles.pageHeader}>
           <Text style={styles.pageTitle}>
             Resources
           </Text>
 
-          <Text style={styles.pageSubtitle}>
-            Explore tools, guidance, and small activities
-            to support your wellbeing.
+          <Text
+            style={styles.pageSubtitle}
+          >
+            Explore tools, guidance, and
+            small activities to support
+            your wellbeing.
           </Text>
         </View>
 
         {/* Search */}
+
         <View style={styles.searchWrap}>
           <Text style={styles.searchIcon}>
             ⌕
@@ -381,60 +436,132 @@ function ResourcesScreen({
         </View>
 
         {/* Filters */}
+
         <ScrollView
           horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterRow}
+          showsHorizontalScrollIndicator={
+            false
+          }
+          contentContainerStyle={
+            styles.filterRow
+          }
         >
-          {categoryFilters.map(filter => {
-            const isSelected =
-              selectedFilter === filter;
+          {categoryFilters.map(
+            filter => {
+              const isSelected =
+                selectedFilter ===
+                filter;
 
-            return (
-              <Pressable
-                key={filter}
-                style={[
-                  styles.filterChip,
-                  isSelected
-                    ? styles.filterChipSelected
-                    : styles.filterChipIdle,
-                ]}
-                onPress={() =>
-                  setSelectedFilter(filter)
-                }
-              >
-                <Text
+              return (
+                <Pressable
+                  key={filter}
                   style={[
-                    styles.filterChipText,
+                    styles.filterChip,
                     isSelected
-                      ? styles.filterChipTextSelected
-                      : styles.filterChipTextIdle,
+                      ? styles.filterChipSelected
+                      : styles.filterChipIdle,
                   ]}
+                  onPress={() =>
+                    setSelectedFilter(
+                      filter,
+                    )
+                  }
                 >
-                  {filter}
-                </Text>
-              </Pressable>
-            );
-          })}
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      isSelected
+                        ? styles.filterChipTextSelected
+                        : styles.filterChipTextIdle,
+                    ]}
+                  >
+                    {filter}
+                  </Text>
+                </Pressable>
+              );
+            },
+          )}
         </ScrollView>
 
+        {/* Emergency Support */}
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.emergencyCard,
+            pressed &&
+              styles.emergencyCardPressed,
+          ]}
+          onPress={
+            onOpenEmergencySupport
+          }
+        >
+          <View
+            style={styles.emergencyIcon}
+          >
+            <Text
+              style={
+                styles.emergencyIconText
+              }
+            >
+              🚨
+            </Text>
+          </View>
+
+          <View
+            style={styles.emergencyContent}
+          >
+            <Text
+              style={styles.emergencyTitle}
+            >
+              Do you need emergency
+              support?
+            </Text>
+
+            <Text
+              style={
+                styles.emergencyDescription
+              }
+            >
+              If you or someone else is in
+              immediate danger, get help
+              from an emergency service
+              or trusted person.
+            </Text>
+
+            <Text
+              style={styles.emergencyLink}
+            >
+              Get emergency support →
+            </Text>
+          </View>
+        </Pressable>
+
         {/* Resources */}
+
         {shouldShowEmptyResults ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>
+            <Text
+              style={styles.emptyTitle}
+            >
               No resources found
             </Text>
 
             <Text style={styles.emptyText}>
-              Try changing your search or category filter.
+              Try changing your search or
+              category filter.
             </Text>
           </View>
         ) : (
           <>
             {/* Featured */}
+
             {visibleFeatured && (
-              <View style={styles.sectionBlock}>
-                <Text style={styles.sectionTitle}>
+              <View
+                style={styles.sectionBlock}
+              >
+                <Text
+                  style={styles.sectionTitle}
+                >
                   Featured
                 </Text>
 
@@ -446,55 +573,117 @@ function ResourcesScreen({
             )}
 
             {/* Sections */}
-            {sectionOrder.map(sectionName => {
-              const sectionItems =
-                resourcesBySection[
-                  sectionName
-                ] ?? [];
 
-              if (sectionItems.length === 0) {
-                return null;
-              }
+            {sectionOrder.map(
+              sectionName => {
+                const sectionItems =
+                  resourcesBySection[
+                    sectionName
+                  ] ?? [];
 
-              return (
-                <View
-                  key={sectionName}
-                  style={styles.sectionBlock}
-                >
-                  <Text style={styles.sectionTitle}>
-                    {sectionName}
-                  </Text>
+                if (
+                  sectionItems.length ===
+                  0
+                ) {
+                  return null;
+                }
 
+                return (
                   <View
-                    style={[
-                      styles.gridWrap,
-                      useSingleColumn &&
-                        styles.singleColumnGridWrap,
-                    ]}
+                    key={sectionName}
+                    style={
+                      styles.sectionBlock
+                    }
                   >
-                    {sectionItems.map(article =>
-                      renderResourceCard(
-                        article,
-                        false,
-                      ),
-                    )}
+                    <Text
+                      style={
+                        styles.sectionTitle
+                      }
+                    >
+                      {sectionName}
+                    </Text>
+
+                    <View
+                      style={[
+                        styles.gridWrap,
+                        useSingleColumn &&
+                          styles.singleColumnGridWrap,
+                      ]}
+                    >
+                      {sectionItems.map(
+                        article =>
+                          renderResourceCard(
+                            article,
+                            false,
+                          ),
+                      )}
+                    </View>
                   </View>
-                </View>
-              );
-            })}
+                );
+              },
+            )}
           </>
         )}
 
         {/* Activities */}
+
         <View style={styles.sectionBlock}>
-          <Text style={styles.sectionTitle}>
-            Try Something New
-          </Text>
+          <View
+            style={styles.activitiesHeader}
+          >
+            <View
+              style={
+                styles.activitiesHeaderText
+              }
+            >
+              <Text
+                style={styles.sectionTitle}
+              >
+                Activities
+              </Text>
+
+              <Text
+                style={
+                  styles.activitiesSubtitle
+                }
+              >
+                Take a few minutes for
+                yourself.
+              </Text>
+            </View>
+
+            <Pressable
+              onPress={() =>
+                onOpenActivity(undefined)
+              }
+              style={
+                styles.viewAllButton
+              }
+            >
+              <Text
+                style={
+                  styles.viewAllButtonText
+                }
+              >
+                View All
+              </Text>
+            </Pressable>
+          </View>
 
           {quickTips.map(item => (
-            <View
+            <Pressable
               key={item.title}
-              style={styles.tipRow}
+              testID={`${item.activity}-activity-card`}
+              style={({ pressed }) => [
+                styles.activityPreviewCard,
+                pressed &&
+                  styles.cardPressed,
+              ]}
+              onPress={() =>
+                onOpenActivity(
+                  item.activity,
+                )
+              }
             >
               <View
                 style={[
@@ -505,41 +694,52 @@ function ResourcesScreen({
                   },
                 ]}
               >
-                <Text style={styles.tipIconText}>
+                <Text
+                  style={
+                    styles.tipIconText
+                  }
+                >
                   {item.icon}
                 </Text>
               </View>
 
-              <View style={styles.tipCopy}>
-                <Text style={styles.tipTitle}>
+              <View
+                style={styles.tipCopy}
+              >
+                <Text
+                  style={styles.tipTitle}
+                >
                   {item.title}
                 </Text>
 
-                <Text style={styles.tipMeta}>
+                <Text
+                  style={styles.tipMeta}
+                >
                   {item.time}
                 </Text>
               </View>
 
-              <Pressable
-                testID={`${item.activity}-start-button`}
-                style={styles.startButton}
-                onPress={() =>
-                  onOpenActivity(
-                    item.activity,
-                  )
-                }
+              <View
+                style={styles.activityArrow}
               >
-                <Text style={styles.startButtonText}>
-                  Start
+                <Text
+                  style={
+                    styles.activityArrowText
+                  }
+                >
+                  →
                 </Text>
-              </Pressable>
-            </View>
+              </View>
+            </Pressable>
           ))}
         </View>
 
         {/* Saved Resources */}
+
         <View style={styles.sectionBlock}>
-          <Text style={styles.sectionTitle}>
+          <Text
+            style={styles.sectionTitle}
+          >
             Saved Resources
           </Text>
 
@@ -551,7 +751,9 @@ function ResourcesScreen({
                   <Pressable
                     key={resource.id}
                     onPress={() =>
-                      onOpenArticle(resource)
+                      onOpenArticle(
+                        resource,
+                      )
                     }
                   >
                     <Text
@@ -565,9 +767,13 @@ function ResourcesScreen({
                 ),
               )
             ) : (
-              <Text style={styles.savedEmptyText}>
-                Your saved resources will appear
-                here.
+              <Text
+                style={
+                  styles.savedEmptyText
+                }
+              >
+                Your saved resources will
+                appear here.
               </Text>
             )}
           </View>
@@ -668,6 +874,63 @@ const styles = StyleSheet.create({
   filterChipTextIdle: {
     color: '#6A7280',
   },
+
+  /* Emergency */
+
+  emergencyCard: {
+    backgroundColor: '#FFF7ED',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+
+  emergencyCardPressed: {
+    opacity: 0.8,
+  },
+
+  emergencyIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: '#FFEDD5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+
+  emergencyIconText: {
+    fontSize: 22,
+  },
+
+  emergencyContent: {
+    flex: 1,
+  },
+
+  emergencyTitle: {
+    color: '#9A3412',
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+
+  emergencyDescription: {
+    color: '#C2410C',
+    fontSize: 11,
+    lineHeight: 16,
+    marginBottom: 6,
+  },
+
+  emergencyLink: {
+    color: '#9A3412',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+
+  /* Resources */
 
   sectionBlock: {
     marginBottom: 24,
@@ -849,28 +1112,62 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  tipRow: {
+  /* Activities */
+
+  activitiesHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+
+  activitiesHeaderText: {
+    flex: 1,
+  },
+
+  activitiesSubtitle: {
+    color: '#6A7280',
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: -7,
+  },
+
+  viewAllButton: {
+    backgroundColor: '#E6F7EF',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginLeft: 10,
+  },
+
+  viewAllButtonText: {
+    color: '#198F78',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+
+  activityPreviewCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 10,
+    borderRadius: 16,
+    padding: 12,
     borderWidth: 1,
     borderColor: '#E7E7E7',
     marginBottom: 10,
   },
 
   tipIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
 
   tipIconText: {
-    fontSize: 18,
+    fontSize: 20,
   },
 
   tipCopy: {
@@ -880,28 +1177,32 @@ const styles = StyleSheet.create({
   tipTitle: {
     color: '#202938',
     fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 2,
+    fontWeight: '800',
+    marginBottom: 3,
   },
 
   tipMeta: {
     color: '#758195',
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
   },
 
-  startButton: {
-    backgroundColor: '#CBE9D8',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+  activityArrow: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    backgroundColor: '#F1F8F5',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
-  startButtonText: {
-    color: '#1D2E25',
-    fontSize: 12,
+  activityArrowText: {
+    color: '#198F78',
+    fontSize: 17,
     fontWeight: '800',
   },
+
+  /* Saved */
 
   savedList: {
     backgroundColor: '#FFFFFF',
