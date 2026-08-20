@@ -8,6 +8,7 @@ import ActivitiesScreen from './src/screens/ActivitiesScreen';
 import { ResourceArticle } from './src/types/ResourceArticle';
 import GroupsHomeScreen from './src/screens/Groups/GroupsHomeScreen';
 import CreateGroupScreen from './src/screens/Groups/CreateGroupScreen';
+import GroupDetailsScreen from './src/screens/Groups/GroupDetailsScreen';
 
 type ResourcesScreenProps = {
   onOpenArticle: (article: ResourceArticle) => void;
@@ -40,6 +41,13 @@ function App() {
 
   const [isCreateGroupOpen, setIsCreateGroupOpen] = 
   useState(false);
+
+  const [selectedGroup, setSelectedGroup] = useState<{
+  groupName: string;
+  category: string;
+  description: string;
+  guidelines: string;
+} | null>(null);
 
   const [selectedActivity, setSelectedActivity] =
     useState<
@@ -112,6 +120,21 @@ function App() {
       );
     }
 
+    if (selectedGroup) {
+  return (
+    <GroupDetailsScreen
+      groupName={selectedGroup.groupName}
+      category={selectedGroup.category}
+      description={selectedGroup.description}
+      guidelines={selectedGroup.guidelines}
+      onBack={() => {
+        setSelectedGroup(null);
+        setActiveTab('Groups');
+      }}
+    />
+  );
+}
+
     if (isCreateGroupOpen) {
   return (
     <CreateGroupScreen
@@ -132,14 +155,19 @@ function App() {
             onOpenActivity={handleOpenActivity}
           />
         );
-case 'Groups':
+
+       case 'Groups':
   return (
     <GroupsHomeScreen
       onCreateGroup={() => {
         setIsCreateGroupOpen(true);
       }}
+      onOpenGroup={(group) => {
+        setSelectedGroup(group);
+      }}
     />
-  );
+  ); 
+
 
       case 'Messages':
         return (
@@ -194,6 +222,8 @@ case 'Groups':
     isActivityOpen,
     selectedActivity,
     isCreateGroupOpen,
+    selectedGroup,
+
   ]);
 
   return (
