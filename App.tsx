@@ -47,8 +47,18 @@ function App() {
   category: string;
   description: string;
   guidelines: string;
+  emoji: string;
 } | null>(null);
 
+  const [joinedGroups, setJoinedGroups] = useState<
+  {
+    groupName: string;
+    category: string;
+    description: string;
+    guidelines: string;
+    emoji: string;
+  }[]
+>([]);
   const [selectedActivity, setSelectedActivity] =
     useState<
       'breathing' | 'mindfulness' | 'journaling'
@@ -127,6 +137,20 @@ function App() {
       category={selectedGroup.category}
       description={selectedGroup.description}
       guidelines={selectedGroup.guidelines}
+        emoji={selectedGroup.emoji}
+onJoin={() => {
+  setJoinedGroups(current => {
+    const alreadyJoined = current.some(
+      group => group.groupName === selectedGroup.groupName
+    );
+
+    if (alreadyJoined) {
+      return current;
+    }
+
+    return [...current, selectedGroup];
+  });
+}}
       onBack={() => {
         setSelectedGroup(null);
         setActiveTab('Groups');
@@ -156,19 +180,26 @@ function App() {
           />
         );
 
-       case 'Groups':
+case 'Groups':
   return (
     <GroupsHomeScreen
+      joinedGroups={joinedGroups}
+
       onCreateGroup={() => {
         setIsCreateGroupOpen(true);
       }}
+
       onOpenGroup={(group) => {
         setSelectedGroup(group);
       }}
+
+      onLeaveGroup={(groupName) => {
+        setJoinedGroups(current =>
+          current.filter(group => group.groupName !== groupName)
+        );
+      }}
     />
-  ); 
-
-
+  );
       case 'Messages':
         return (
           <View
@@ -223,6 +254,7 @@ function App() {
     selectedActivity,
     isCreateGroupOpen,
     selectedGroup,
+    joinedGroups,
 
   ]);
 

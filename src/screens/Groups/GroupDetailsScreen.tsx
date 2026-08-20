@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Pressable,
+  Animated,
 } from 'react-native';
 
 type GroupDetailsScreenProps = {
@@ -12,7 +13,9 @@ type GroupDetailsScreenProps = {
   category: string;
   description: string;
   guidelines: string;
+  emoji: string;
   onBack: () => void;
+  onJoin: () => void;
 };
 
 const GroupDetailsScreen = ({
@@ -20,8 +23,15 @@ const GroupDetailsScreen = ({
   category,
   description,
   guidelines,
+  emoji,
   onBack,
+  onJoin,
 }: GroupDetailsScreenProps) => {
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [isJoined, setIsJoined] = useState(false);
+const celebrationScale = useRef(
+  new Animated.Value(0)
+).current;
   return (
     <View style={styles.container}>
       <ScrollView
@@ -42,9 +52,7 @@ const GroupDetailsScreen = ({
         {/* Group Header */}
         <View style={styles.header}>
           <View style={styles.groupImage}>
-            <Text style={styles.groupImageText}>
-              💙
-            </Text>
+           <Text style={styles.groupImageText}>{emoji}</Text>
           </View>
 
           <Text style={styles.category}>
@@ -81,13 +89,85 @@ const GroupDetailsScreen = ({
         </View>
 
         {/* Join Button */}
-        <Pressable style={styles.joinButton}>
-          <Text style={styles.joinButtonText}>
-            Join Group
-          </Text>
-        </Pressable>
+ {!isJoined ? (
+  <Pressable
+    style={styles.joinButton}
+    onPress={() => {
+      onJoin();
+      setIsJoined(true);
+      setShowSuccess(true);
+
+      Animated.spring(celebrationScale, {
+        toValue: 1,
+        useNativeDriver: true,
+      }).start();
+    }}
+  >
+    <Text style={styles.joinButtonText}>
+      Join Group
+    </Text>
+  </Pressable>
+) : (
+  <Pressable
+    style={styles.backToCommunitiesButton}
+    onPress={onBack}
+  >
+    <Text style={styles.backToCommunitiesText}>
+      Back to Communities
+    </Text>
+  </Pressable>
+)}
 
       </ScrollView>
+      {showSuccess && (
+  <Pressable
+    style={styles.successOverlay}
+    onPress={() => setShowSuccess(false)}
+  >
+
+          <Pressable
+  style={styles.successCard}
+  onPress={() => {}}
+>
+
+            <Animated.View
+              style={[
+                styles.successIcon,
+                {
+                  transform: [
+                    {
+                      scale: celebrationScale,
+                    },
+                  ],
+                },
+              ]}
+            >
+              <Text style={styles.successIconText}>
+                🎊
+              </Text>
+            </Animated.View>
+
+            <Text style={styles.successTitle}>
+              You're now a member! 🎉
+            </Text>
+
+            <Text style={styles.successMessage}>
+  Welcome to {groupName}! We're glad to have
+  you here. This is a supportive space to
+  connect, share, and support one another.
+</Text>
+
+            <Pressable style={styles.goToGroupButton}>
+              <Text style={styles.goToGroupText}>
+                Go to Group
+              </Text>
+            </Pressable>
+
+          </Pressable>
+
+        </Pressable>
+      )}
+
     </View>
   );
 };
@@ -193,11 +273,96 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 
+  joinedButton: {
+  backgroundColor: '#22C55E',
+},
+
   joinButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
   },
+
+  successOverlay: {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: 'rgba(31, 41, 55, 0.35)',
+  justifyContent: 'center',
+  alignItems: 'center',
+  paddingHorizontal: 24,
+},
+
+successCard: {
+  width: '100%',
+  backgroundColor: '#FFFFFF',
+  borderRadius: 24,
+  padding: 24,
+  alignItems: 'center',
+},
+
+successIcon: {
+  width: 72,
+  height: 72,
+  borderRadius: 36,
+  backgroundColor: '#EEF4FF',
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginBottom: 16,
+},
+
+successIconText: {
+  fontSize: 36,
+},
+
+successTitle: {
+  fontSize: 21,
+  fontWeight: '700',
+  color: '#1F2937',
+  textAlign: 'center',
+  marginBottom: 10,
+},
+
+successMessage: {
+  fontSize: 14,
+  lineHeight: 21,
+  color: '#667085',
+  textAlign: 'center',
+  marginBottom: 22,
+},
+
+goToGroupButton: {
+  width: '100%',
+  height: 48,
+  backgroundColor: '#2673FF',
+  borderRadius: 12,
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+
+goToGroupText: {
+  color: '#FFFFFF',
+  fontSize: 14,
+  fontWeight: '700',
+},
+
+backToCommunitiesButton: {
+  height: 52,
+  backgroundColor: '#EEF4FF',
+  borderRadius: 12,
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginTop: 8,
+},
+
+backToCommunitiesText: {
+  color: '#2673FF',
+  fontSize: 15,
+  fontWeight: '700',
+},
+
 });
 
 export default GroupDetailsScreen;
