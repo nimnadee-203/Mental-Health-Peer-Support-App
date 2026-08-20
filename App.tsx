@@ -16,6 +16,7 @@ import { ResourceArticle } from './src/types/ResourceArticle';
 
 import GroupsHomeScreen from './src/screens/Groups/GroupsHomeScreen';
 import CreateGroupScreen from './src/screens/Groups/CreateGroupScreen';
+import GroupDetailsScreen from './src/screens/Groups/GroupDetailsScreen';
 
 type ActivityType =
   | 'breathing'
@@ -63,6 +64,13 @@ function App() {
   const [isCreateGroupOpen, setIsCreateGroupOpen] =
     useState(false);
 
+  const [selectedGroup, setSelectedGroup] = useState<{
+    groupName: string;
+    category: string;
+    description: string;
+    guidelines: string;
+  } | null>(null);
+
   const [selectedActivity, setSelectedActivity] =
     useState<ActivityType>('breathing');
 
@@ -81,6 +89,7 @@ function App() {
     setIsEmergencyOpen(false);
     setIsCreateGroupOpen(false);
     setSelectedArticle(null);
+    setSelectedGroup(null);
   };
 
   const handleOpenArticle = (
@@ -162,6 +171,24 @@ function App() {
     }
 
     /*
+     * Group Details Screen
+     */
+    if (selectedGroup) {
+      return (
+        <GroupDetailsScreen
+          groupName={selectedGroup.groupName}
+          category={selectedGroup.category}
+          description={selectedGroup.description}
+          guidelines={selectedGroup.guidelines}
+          onBack={() => {
+            setSelectedGroup(null);
+            setActiveTab('Groups');
+          }}
+        />
+      );
+    }
+
+    /*
      * Create Group Screen
      */
     if (isCreateGroupOpen) {
@@ -194,6 +221,9 @@ function App() {
           <GroupsHomeScreen
             onCreateGroup={() => {
               setIsCreateGroupOpen(true);
+            }}
+            onOpenGroup={group => {
+              setSelectedGroup(group);
             }}
           />
         );
@@ -252,6 +282,7 @@ function App() {
     selectedActivity,
     isEmergencyOpen,
     isCreateGroupOpen,
+    selectedGroup,
   ]);
 
   return (
@@ -267,11 +298,13 @@ function App() {
       {screen}
 
       {/* Bottom navigation should NOT appear on
-          Article, Activity, Emergency or Create Group screens */}
+          Article, Activity, Emergency, Create Group
+          or Group Details screens */}
       {!isArticleOpen &&
         !isActivityOpen &&
         !isEmergencyOpen &&
-        !isCreateGroupOpen && (
+        !isCreateGroupOpen &&
+        !selectedGroup && (
           <BottomNavigation
             activeTab={activeTab}
             onChangeTab={changeTab}

@@ -10,10 +10,17 @@ import {
 
 type GroupsHomeScreenProps = {
   onCreateGroup: () => void;
+  onOpenGroup: (group: {
+    groupName: string;
+    category: string;
+    description: string;
+    guidelines: string;
+  }) => void;
 };
 
 const GroupsHomeScreen = ({
   onCreateGroup,
+  onOpenGroup,
 }: GroupsHomeScreenProps) => {
   return (
     <View style={styles.container}>
@@ -110,12 +117,23 @@ const GroupsHomeScreen = ({
 
         
 
-            <Pressable style={styles.joinButton}>
-              <Text style={styles.joinButtonText}>
-                Join
-              </Text>
-            </Pressable>
-
+            <Pressable
+  style={styles.joinButton}
+  onPress={() =>
+    onOpenGroup({
+      groupName: 'Managing Academic Stress',
+      category: 'Academic Pressure',
+      description:
+        'A supportive space to share experiences and learn ways to manage academic pressure.',
+      guidelines:
+        'Be respectful, supportive, and avoid judging others. Do not share personal information outside the group.',
+    })
+  }
+>
+  <Text style={styles.joinButtonText}>
+    Join
+  </Text>
+</Pressable>
           </View>
         </View>
 
@@ -148,11 +166,23 @@ const GroupsHomeScreen = ({
 
            
 
-            <Pressable style={styles.joinButton}>
-              <Text style={styles.joinButtonText}>
-                Join
-              </Text>
-            </Pressable>
+            <Pressable
+  style={styles.joinButton}
+  onPress={() =>
+    onOpenGroup({
+      groupName: 'Calm Minds Community',
+      category: 'Stress & Anxiety',
+      description:
+        'A safe community to share feelings, coping strategies, and everyday experiences.',
+      guidelines:
+        'Be respectful and supportive. Listen to others without judgement and keep shared experiences private.',
+    })
+  }
+>
+  <Text style={styles.joinButtonText}>
+    Join
+  </Text>
+</Pressable>
 
           </View>
         </View>
@@ -186,11 +216,23 @@ const GroupsHomeScreen = ({
 
             
 
-            <Pressable style={styles.joinButton}>
-              <Text style={styles.joinButtonText}>
-                Join
-              </Text>
-            </Pressable>
+        <Pressable
+  style={styles.joinButton}
+  onPress={() =>
+    onOpenGroup({
+      groupName: 'Mindfulness & Self-Care',
+      category: 'Self-Care',
+      description:
+        'Discover simple self-care habits and mindfulness practices together with others.',
+      guidelines:
+        'Share helpful experiences, respect different routines, and encourage positive self-care practices.',
+    })
+  }
+>
+  <Text style={styles.joinButtonText}>
+    Join
+  </Text>
+</Pressable>
 
           </View>
         </View>
@@ -224,11 +266,23 @@ const GroupsHomeScreen = ({
 
          
 
-            <Pressable style={styles.joinButton}>
-              <Text style={styles.joinButtonText}>
-                Join
-              </Text>
-            </Pressable>
+           <Pressable
+  style={styles.joinButton}
+  onPress={() =>
+    onOpenGroup({
+      groupName: 'You Are Not Alone',
+      category: 'Depression Support',
+      description:
+        'A welcoming space for people to connect, listen, and support one another.',
+      guidelines:
+        'Be kind and respectful. Avoid judgement and give others space to share their experiences safely.',
+    })
+  }
+>
+  <Text style={styles.joinButtonText}>
+    Join
+  </Text>
+</Pressable>
 
           </View>
         </View>
