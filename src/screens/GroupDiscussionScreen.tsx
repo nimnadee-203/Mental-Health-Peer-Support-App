@@ -11,8 +11,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 
-// ─── Config ───────────────────────────────────────────────────────────────────
-const API_BASE = 'http://localhost:3000/api';
+import { API_BASE } from '../config/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface Community {
@@ -85,12 +84,13 @@ export default function GroupDiscussionScreen({
 
   const fetchPosts = async () => {
     try {
-      const response = await fetch(`${API_BASE}/posts/group/${community._id}`);
+      const encodedGroupId = encodeURIComponent(community._id);
+      const response = await fetch(`${API_BASE}/posts/group/${encodedGroupId}`);
       if (!response.ok) throw new Error('Failed to fetch posts');
       const data = await response.json();
       setPosts(data);
     } catch (error) {
-      console.error(error);
+      console.error('Failed to fetch posts:', error);
     } finally {
       setIsLoading(false);
     }

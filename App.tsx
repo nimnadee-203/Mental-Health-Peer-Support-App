@@ -14,6 +14,7 @@ import GroupDiscussionScreen, {
 } from './src/screens/GroupDiscussionScreen';
 import PostDetailScreen from './src/screens/PostDetailScreen';
 import CreatePostScreen from './src/screens/CreatePostScreen';
+import EmergencySupportScreen from './src/screens/EmergencySupportScreen';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ResourcesScreenProps = {
@@ -98,6 +99,7 @@ function App() {
   const [selectedActivity, setSelectedActivity] = useState<
     'breathing' | 'mindfulness' | 'journaling'
   >('breathing');
+  const [isEmergencyOpen, setIsEmergencyOpen] = useState(false);
 
   // ── Groups Navigation ───────────────────────────────────────────────────────
   const [groupsView, setGroupsView] = useState<GroupsView>('home');
@@ -112,6 +114,7 @@ function App() {
     setActiveTab(tab);
     setIsArticleOpen(false);
     setIsActivityOpen(false);
+    setIsEmergencyOpen(false);
     // Reset groups sub-navigation when switching back to Groups tab
     if (tab === 'Groups') {
       setGroupsView('home');
@@ -132,6 +135,14 @@ function App() {
   ) => {
     setSelectedActivity(activity);
     setIsActivityOpen(true);
+  };
+
+  const handleOpenEmergencySupport = () => {
+    setIsEmergencyOpen(true);
+  };
+
+  const handleBackFromEmergency = () => {
+    setIsEmergencyOpen(false);
   };
 
   // ── Groups handlers ─────────────────────────────────────────────────────────
@@ -180,7 +191,7 @@ function App() {
       groupsView === 'postDetail' ||
       groupsView === 'createPost');
 
-  const hideBottomNav = isArticleOpen || isActivityOpen || isGroupDeepView;
+  const hideBottomNav = isArticleOpen || isActivityOpen || isEmergencyOpen || isGroupDeepView;
 
   // ── Screen renderer ─────────────────────────────────────────────────────────
   const screen = useMemo(() => {
@@ -210,6 +221,10 @@ function App() {
           }}
         />
       );
+    }
+
+    if (isEmergencyOpen) {
+      return <EmergencySupportScreen onBack={handleBackFromEmergency} />;
     }
 
     // Groups sub-navigation
@@ -274,6 +289,7 @@ function App() {
             savedResources={savedResources}
             onOpenArticle={handleOpenArticle}
             onOpenActivity={handleOpenActivity}
+            onOpenEmergencySupport={handleOpenEmergencySupport}
           />
         );
 
@@ -319,6 +335,7 @@ function App() {
     selectedArticle,
     isActivityOpen,
     selectedActivity,
+    isEmergencyOpen,
     groupsView,
     selectedCommunity,
     selectedPost,

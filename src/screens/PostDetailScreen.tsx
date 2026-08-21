@@ -15,8 +15,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import type { Post } from './GroupDiscussionScreen';
 
-// ─── Config ───────────────────────────────────────────────────────────────────
-const API_BASE = 'http://localhost:3000/api';
+import { API_BASE } from '../config/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface Comment {
@@ -61,7 +60,8 @@ export default function PostDetailScreen({ post, onBack }: PostDetailScreenProps
 
   const fetchComments = async () => {
     try {
-      const response = await fetch(`${API_BASE}/comments/post/${post._id}`);
+      const encodedPostId = encodeURIComponent(post._id);
+      const response = await fetch(`${API_BASE}/comments/post/${encodedPostId}`);
       if (!response.ok) throw new Error('Failed to fetch comments');
       const data = await response.json();
       setComments(data);
@@ -77,7 +77,8 @@ export default function PostDetailScreen({ post, onBack }: PostDetailScreenProps
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`${API_BASE}/comments/post/${post._id}`, {
+      const encodedPostId = encodeURIComponent(post._id);
+      const response = await fetch(`${API_BASE}/comments/post/${encodedPostId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

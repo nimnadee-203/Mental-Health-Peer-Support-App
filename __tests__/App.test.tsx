@@ -50,7 +50,12 @@ test('opens the article detail screen when the resources card is pressed', async
 
   await ReactTestRenderer.act(() => {
     resourceComponent = ReactTestRenderer.create(
-      <ResourcesScreen onOpenArticle={onOpenArticle} savedResources={[]} />,
+      <ResourcesScreen
+        onOpenArticle={onOpenArticle}
+        onOpenActivity={() => {}}
+        onOpenEmergencySupport={() => {}}
+        savedResources={[]}
+      />,
     );
   });
 
@@ -76,7 +81,12 @@ test('starts the breathing exercise flow from the resources screen', async () =>
   try {
     await ReactTestRenderer.act(() => {
       resourceComponent = ReactTestRenderer.create(
-        <ResourcesScreen onOpenArticle={() => {}} savedResources={[]} />,
+        <ResourcesScreen
+          onOpenArticle={() => {}}
+          onOpenActivity={() => {}}
+          onOpenEmergencySupport={() => {}}
+          savedResources={[]}
+        />,
       );
     });
 

@@ -1,4 +1,4 @@
-import React, {
+﻿import React, {
   useEffect,
   useRef,
   useState,
@@ -15,13 +15,14 @@ import {
 } from 'react-native';
 
 import Sound from 'react-native-sound';
-
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type ActivityType =
   | 'breathing'
   | 'mindfulness'
-  | 'journaling';
+  | 'journaling'
+  | 'digitalDetox'
+  | 'healthyRoutine';
 
 type ActivitiesScreenProps = {
   activity?: ActivityType;
@@ -64,6 +65,26 @@ const activities = [
     duration: 'Open-ended',
     icon: '✎',
     color: '#F2D9BC',
+  },
+
+  {
+    type: 'digitalDetox' as ActivityType,
+    title: 'Digital Detox Break',
+    description:
+      'Step away from your screen for a few minutes and reconnect with yourself.',
+    duration: '5 min',
+    icon: '📵',
+    color: '#E0D8F8',
+  },
+
+  {
+    type: 'healthyRoutine' as ActivityType,
+    title: 'Healthy Routine Check',
+    description:
+      'Check in with the small habits that support your wellbeing.',
+    duration: '2 min',
+    icon: '🌱',
+    color: '#E8F5C8',
   },
 ];
 
@@ -212,24 +233,300 @@ const mindfulnessSteps = [
    JOURNALING
 ========================================================= */
 
-const journalingPrompts = [
-  {
-    question:
-      'What’s on your mind right now?',
-    placeholder:
-      'Write whatever comes to mind...',
-  },
+type JournalMoodId =
+  | 'great'
+  | 'good'
+  | 'okay'
+  | 'low'
+  | 'stressed';
 
-  {
-    question:
-      'What is one thing you need today?',
-    placeholder: 'Write here...',
-  },
+type JournalFocusId =
+  | 'clear'
+  | 'gratitude'
+  | 'feelings'
+  | 'plan';
 
+type JournalMood = {
+  id: JournalMoodId;
+  emoji: string;
+  label: string;
+  color: string;
+  soft: string;
+};
+
+type JournalFocus = {
+  id: JournalFocusId;
+  emoji: string;
+  title: string;
+  color: string;
+  soft: string;
+  prompts: {
+    question: string;
+    placeholder: string;
+    suggestions: string[];
+  }[];
+};
+
+const journalMoods: JournalMood[] = [
   {
-    question:
-      'What is one small thing that made today a little better?',
-    placeholder: 'Write here...',
+    id: 'great',
+    emoji: '😄',
+    label: 'Great',
+    color: '#198F78',
+    soft: '#DDF7EC',
+  },
+  {
+    id: 'good',
+    emoji: '🙂',
+    label: 'Good',
+    color: '#42C79F',
+    soft: '#EAF9F4',
+  },
+  {
+    id: 'okay',
+    emoji: '😐',
+    label: 'Okay',
+    color: '#70A8D8',
+    soft: '#E8F3FC',
+  },
+  {
+    id: 'low',
+    emoji: '😔',
+    label: 'Low',
+    color: '#9B8AD8',
+    soft: '#F0ECFB',
+  },
+  {
+    id: 'stressed',
+    emoji: '😣',
+    label: 'Stressed',
+    color: '#D8896A',
+    soft: '#FCEEE8',
+  },
+];
+
+const journalFocuses: JournalFocus[] = [
+  {
+    id: 'clear',
+    emoji: '🌿',
+    title: 'Clear My Mind',
+    color: '#198F78',
+    soft: '#EAF9F4',
+    prompts: [
+      {
+        question:
+          "What's been taking up the most space in your mind lately?",
+        placeholder:
+          'Write whatever comes to mind...',
+        suggestions: [
+          "Something I've been thinking about is...",
+          'Right now, I wish...',
+          'What I really need today is...',
+        ],
+      },
+      {
+        question:
+          'Is there anything you can let go of for today?',
+        placeholder:
+          'It can be a worry, expectation, or pressure...',
+        suggestions: [
+          'I can release...',
+          "It's okay if I don't...",
+          'For today, I choose to...',
+        ],
+      },
+      {
+        question:
+          'What would help you feel a little lighter?',
+        placeholder:
+          'A small action, thought, or reminder...',
+        suggestions: [
+          'I might feel lighter if...',
+          'A small step I can take is...',
+          'I want to remind myself that...',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'gratitude',
+    emoji: '💛',
+    title: 'Practice Gratitude',
+    color: '#C9A227',
+    soft: '#FFF8E8',
+    prompts: [
+      {
+        question:
+          "What is one small thing you're grateful for today?",
+        placeholder:
+          'Even something tiny counts...',
+        suggestions: [
+          "Today I'm grateful for...",
+          'A simple joy was...',
+          'I appreciate...',
+        ],
+      },
+      {
+        question:
+          'Who is someone who made your day a little better?',
+        placeholder:
+          'A friend, family member, stranger, or yourself...',
+        suggestions: [
+          'Someone who helped me was...',
+          'I felt supported by...',
+          'I want to thank...',
+        ],
+      },
+      {
+        question:
+          'What is something simple that brought you joy?',
+        placeholder:
+          'A moment, sound, smell, or memory...',
+        suggestions: [
+          'I smiled when...',
+          'A small joy was...',
+          'I enjoyed...',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'feelings',
+    emoji: '💭',
+    title: 'Process My Feelings',
+    color: '#6B8FD8',
+    soft: '#EEF3FC',
+    prompts: [
+      {
+        question: 'What happened?',
+        placeholder:
+          'Describe the moment in your own words...',
+        suggestions: [
+          'Earlier today...',
+          'Something that affected me was...',
+          'I noticed that...',
+        ],
+      },
+      {
+        question:
+          'How did it make you feel?',
+        placeholder:
+          'Name the feelings without judging them...',
+        suggestions: [
+          'I felt...',
+          'Underneath that, I also felt...',
+          'My body felt...',
+        ],
+      },
+      {
+        question:
+          'What do you need right now?',
+        placeholder:
+          'Support, rest, space, kindness...',
+        suggestions: [
+          'Right now I need...',
+          'It would help if...',
+          'I can offer myself...',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'plan',
+    emoji: '🎯',
+    title: 'Plan Ahead',
+    color: '#42A8C7',
+    soft: '#E8F7FB',
+    prompts: [
+      {
+        question:
+          'What is one thing you want to accomplish?',
+        placeholder:
+          'Keep it realistic and kind...',
+        suggestions: [
+          'One thing I want to do is...',
+          'A small goal for me is...',
+          'I hope to finish...',
+        ],
+      },
+      {
+        question:
+          'What might make today easier?',
+        placeholder:
+          'A tool, habit, boundary, or support...',
+        suggestions: [
+          'Today might feel easier if...',
+          'I can prepare by...',
+          'I will ask for help with...',
+        ],
+      },
+      {
+        question:
+          'What is one thing you can look forward to?',
+        placeholder:
+          'Something upcoming, big or small...',
+        suggestions: [
+          "I'm looking forward to...",
+          'A bright spot later is...',
+          'I get to enjoy...',
+        ],
+      },
+    ],
+  },
+];
+
+const digitalDetoxChecklist = [
+  'Take a few slow breaths',
+  'Look around your surroundings',
+  'Stretch your shoulders',
+  'Drink some water',
+  'Notice how you feel without checking your phone',
+];
+
+const DETOX_DURATION_SECONDS = 5 * 60;
+
+const healthyRoutineItems = [
+  {
+    id: 'water',
+    emoji: '💧',
+    label: "I've had enough water",
+  },
+  {
+    id: 'meal',
+    emoji: '🍎',
+    label: "I've had a nourishing meal",
+  },
+  {
+    id: 'rest',
+    emoji: '😴',
+    label: "I've had enough rest",
+  },
+  {
+    id: 'move',
+    emoji: '🚶',
+    label: "I've moved or stretched my body",
+  },
+  {
+    id: 'screen',
+    emoji: '🌤️',
+    label:
+      "I've spent some time away from my screen",
+  },
+  {
+    id: 'kind',
+    emoji: '💛',
+    label:
+      "I've done something kind for myself",
+  },
+  {
+    id: 'connect',
+    emoji: '👥',
+    label: "I've connected with someone",
+  },
+  {
+    id: 'relax',
+    emoji: '🧘',
+    label: "I've taken a moment to relax",
   },
 ];
 
@@ -296,8 +593,16 @@ function ActivitiesScreen({
      JOURNALING STATE
   ======================================================= */
 
+  const [selectedMood, setSelectedMood] =
+    useState<JournalMoodId | null>(null);
+
+  const [selectedFocus, setSelectedFocus] =
+    useState<JournalFocusId | null>(null);
+
   const [journalAnswers, setJournalAnswers] =
     useState(['', '', '']);
+
+  const [tinyWin, setTinyWin] = useState('');
 
   const [journalingDone, setJournalingDone] =
     useState(false);
@@ -510,6 +815,83 @@ function ActivitiesScreen({
     );
   };
 
+  const insertJournalSuggestion = (
+    index: number,
+    suggestion: string,
+  ) => {
+    setJournalAnswers(current =>
+      current.map((item, itemIndex) => {
+        if (itemIndex !== index) {
+          return item;
+        }
+
+        const trimmed = item.trim();
+
+        if (!trimmed) {
+          return suggestion;
+        }
+
+        if (
+          trimmed.endsWith(suggestion) ||
+          trimmed.includes(suggestion)
+        ) {
+          return item;
+        }
+
+        const needsSpace = !trimmed.endsWith(' ');
+        return `${trimmed}${needsSpace ? ' ' : ''}${suggestion}`;
+      }),
+    );
+  };
+
+  const resetJournaling = () => {
+    setSelectedMood(null);
+    setSelectedFocus(null);
+    setJournalAnswers(['', '', '']);
+    setTinyWin('');
+    setJournalingDone(false);
+  };
+
+  const handleFocusSelect = (
+    focusId: JournalFocusId,
+  ) => {
+    setSelectedFocus(focusId);
+    setJournalAnswers(['', '', '']);
+  };
+
+  const activeJournalFocus =
+    journalFocuses.find(
+      focus => focus.id === selectedFocus,
+    ) ?? null;
+
+  const activeJournalMood =
+    journalMoods.find(
+      mood => mood.id === selectedMood,
+    ) ?? null;
+
+  const hasJournalResponse =
+    journalAnswers.some(
+      answer => answer.trim().length > 0,
+    ) || tinyWin.trim().length > 0;
+
+  const canFinishJournaling =
+    selectedMood !== null &&
+    selectedFocus !== null &&
+    hasJournalResponse;
+
+  const journalProgressSteps = [
+    selectedMood !== null,
+    selectedFocus !== null,
+    hasJournalResponse || journalingDone,
+  ];
+
+  const journalCompletedSteps =
+    journalProgressSteps.filter(Boolean)
+      .length;
+
+  const journalProgress =
+    journalCompletedSteps / 3;
+
   /* =======================================================
      RESET BREATHING
   ======================================================= */
@@ -648,7 +1030,7 @@ function ActivitiesScreen({
   };
 
   /* =======================================================
-     ALL ACTIVITIES PAGE
+     ALL ACTIVITIES
   ======================================================= */
 
   const renderAllActivities = () => {
@@ -659,6 +1041,12 @@ function ActivitiesScreen({
             styles.activitiesPageHeader
           }
         >
+          <View style={styles.heroIcon}>
+            <Text style={styles.heroIconText}>
+              ✦
+            </Text>
+          </View>
+
           <Text
             style={styles.activityTag}
           >
@@ -679,8 +1067,8 @@ function ActivitiesScreen({
             }
           >
             Choose an activity that feels
-            right for you right now.
-            There is no pressure to finish
+            right for you right now. There
+            is no pressure to finish
             everything.
           </Text>
         </View>
@@ -726,13 +1114,33 @@ function ActivitiesScreen({
                   styles.activityOptionContent
                 }
               >
-                <Text
+                <View
                   style={
-                    styles.activityOptionTitle
+                    styles.activityTitleRow
                   }
                 >
-                  {item.title}
-                </Text>
+                  <Text
+                    style={
+                      styles.activityOptionTitle
+                    }
+                  >
+                    {item.title}
+                  </Text>
+
+                  <View
+                    style={
+                      styles.durationBadge
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.durationText
+                      }
+                    >
+                      {item.duration}
+                    </Text>
+                  </View>
+                </View>
 
                 <Text
                   style={
@@ -742,27 +1150,27 @@ function ActivitiesScreen({
                   {item.description}
                 </Text>
 
-                <Text
+                <View
                   style={
-                    styles.activityOptionDuration
+                    styles.startActivityRow
                   }
                 >
-                  {item.duration}
-                </Text>
-              </View>
+                  <Text
+                    style={
+                      styles.startActivityText
+                    }
+                  >
+                    Start activity
+                  </Text>
 
-              <View
-                style={
-                  styles.activityOptionArrow
-                }
-              >
-                <Text
-                  style={
-                    styles.activityOptionArrowText
-                  }
-                >
-                  →
-                </Text>
+                  <Text
+                    style={
+                      styles.activityOptionArrowText
+                    }
+                  >
+                    →
+                  </Text>
+                </View>
               </View>
             </Pressable>
           ))}
@@ -882,9 +1290,9 @@ function ActivitiesScreen({
         <View
           style={styles.breathingHeader}
         >
-          <View>
+          <View style={{ flex: 1 }}>
             <Text
-              style={styles.activityTag}
+              style={styles.activityTagLeft}
             >
               BREATHING RESET
             </Text>
@@ -899,6 +1307,14 @@ function ActivitiesScreen({
           <View
             style={styles.timerBadge}
           >
+            <View
+              style={[
+                styles.statusDot,
+                isPaused &&
+                  styles.statusDotPaused,
+              ]}
+            />
+
             <Text
               style={
                 styles.timerBadgeText
@@ -972,13 +1388,19 @@ function ActivitiesScreen({
           </View>
         </View>
 
-        <Text
+        <View
           style={
-            styles.breathingMessage
+            styles.breathingMessageCard
           }
         >
-          {activeBreathingStep.message}
-        </Text>
+          <Text
+            style={
+              styles.breathingMessage
+            }
+          >
+            {activeBreathingStep.message}
+          </Text>
+        </View>
 
         <Text
           style={styles.activityTitle}
@@ -1203,7 +1625,9 @@ function ActivitiesScreen({
         >
           <View style={{ flex: 1 }}>
             <Text
-              style={styles.activityTag}
+              style={
+                styles.activityTagLeft
+              }
             >
               MINDFULNESS BREAK
             </Text>
@@ -1343,29 +1767,48 @@ function ActivitiesScreen({
             styles.selectionCounter
           }
         >
-          <Text
-            style={
-              styles.selectionCounterText
-            }
-          >
-            {selectedCount} of{' '}
-            {requiredCount} selected
-          </Text>
+          <View>
+            <Text
+              style={
+                styles.selectionCounterText
+              }
+            >
+              {selectedCount} of{' '}
+              {requiredCount} selected
+            </Text>
 
-          <Text
+            <Text
+              style={
+                styles.selectionSmallText
+              }
+            >
+              Select what feels true right
+              now
+            </Text>
+          </View>
+
+          <View
             style={[
-              styles.selectionHint,
+              styles.selectionStatus,
               selectionComplete &&
-                styles.selectionHintComplete,
+                styles.selectionStatusComplete,
             ]}
           >
-            {selectionComplete
-              ? '✓ Ready to continue'
-              : `Choose ${
-                  requiredCount -
-                  selectedCount
-                } more`}
-          </Text>
+            <Text
+              style={[
+                styles.selectionHint,
+                selectionComplete &&
+                  styles.selectionHintComplete,
+              ]}
+            >
+              {selectionComplete
+                ? '✓ Ready'
+                : `${
+                    requiredCount -
+                    selectedCount
+                  } left`}
+            </Text>
+          </View>
         </View>
 
         <View
@@ -1386,10 +1829,12 @@ function ActivitiesScreen({
                       option,
                     )
                   }
-                  style={[
+                  style={({ pressed }) => [
                     styles.mindfulnessOption,
                     isSelected &&
                       styles.mindfulnessOptionSelected,
+                    pressed &&
+                      styles.optionPressed,
                   ]}
                 >
                   <View
@@ -1515,8 +1960,7 @@ function ActivitiesScreen({
               ]}
             >
               {mindfulnessStepIndex ===
-              mindfulnessSteps.length -
-                1
+              mindfulnessSteps.length - 1
                 ? 'Complete ✓'
                 : 'Next →'}
             </Text>
@@ -1571,13 +2015,13 @@ function ActivitiesScreen({
           <Text
             style={styles.activityTag}
           >
-            REFLECTION SAVED
+            REFLECTION COMPLETE
           </Text>
 
           <Text
             style={styles.activityTitle}
           >
-            You made space for yourself.
+            You made space for yourself. 🌿
           </Text>
 
           <Text
@@ -1588,6 +2032,99 @@ function ActivitiesScreen({
             putting your thoughts into
             words is enough.
           </Text>
+
+          <View
+            style={
+              styles.journalSummaryCard
+            }
+          >
+            <Text
+              style={
+                styles.journalSummaryHeading
+              }
+            >
+              Your check-in
+            </Text>
+
+            <View
+              style={
+                styles.journalSummaryRow
+              }
+            >
+              <Text
+                style={
+                  styles.journalSummaryLabel
+                }
+              >
+                Mood
+              </Text>
+              <Text
+                style={
+                  styles.journalSummaryValue
+                }
+              >
+                {activeJournalMood
+                  ? `${activeJournalMood.emoji} ${activeJournalMood.label}`
+                  : '—'}
+              </Text>
+            </View>
+
+            <View
+              style={
+                styles.journalSummaryDivider
+              }
+            />
+
+            <View
+              style={
+                styles.journalSummaryRow
+              }
+            >
+              <Text
+                style={
+                  styles.journalSummaryLabel
+                }
+              >
+                Focus
+              </Text>
+              <Text
+                style={
+                  styles.journalSummaryValue
+                }
+              >
+                {activeJournalFocus
+                  ? `${activeJournalFocus.emoji} ${activeJournalFocus.title}`
+                  : '—'}
+              </Text>
+            </View>
+
+            <View
+              style={
+                styles.journalSummaryDivider
+              }
+            />
+
+            <View
+              style={
+                styles.journalSummaryRow
+              }
+            >
+              <Text
+                style={
+                  styles.journalSummaryLabel
+                }
+              >
+                Reflection
+              </Text>
+              <Text
+                style={
+                  styles.journalSummaryValue
+                }
+              >
+                Complete
+              </Text>
+            </View>
+          </View>
 
           <Pressable
             style={styles.primaryButton}
@@ -1601,80 +2138,441 @@ function ActivitiesScreen({
               Done
             </Text>
           </Pressable>
+
+          <Pressable
+            style={
+              styles.secondaryButton
+            }
+            onPress={resetJournaling}
+          >
+            <Text
+              style={
+                styles.secondaryButtonText
+              }
+            >
+              Write Again
+            </Text>
+          </Pressable>
         </>
       );
     }
 
     return (
       <>
-        <Text
-          style={styles.activityTag}
+        <View
+          style={styles.journalHeader}
         >
-          JOURNALING
-        </Text>
+          <View
+            style={styles.journalIcon}
+          >
+            <Text
+              style={
+                styles.journalIconText
+              }
+            >
+              ✎
+            </Text>
+          </View>
 
-        <Text
-          style={styles.activityTitle}
-        >
-          A moment for yourself
-        </Text>
+          <Text
+            style={styles.activityTag}
+          >
+            REFLECTION
+          </Text>
 
-        <Text
-          style={styles.activityDetail}
-        >
-          Take a few minutes to put your
-          thoughts into words. There’s no
-          right or wrong answer.
-        </Text>
+          <Text
+            style={
+              styles.journalProgressLabel
+            }
+          >
+            Step {Math.max(journalCompletedSteps, 1)} of 3
+          </Text>
 
-        {journalingPrompts.map(
-          (prompt, index) => (
+          <View
+            style={
+              styles.journalProgressTrack
+            }
+          >
             <View
-              key={prompt.question}
-              style={styles.promptCard}
+              style={[
+                styles.journalProgressFill,
+                {
+                  width: `${Math.max(
+                    journalProgress * 100,
+                    8,
+                  )}%`,
+                },
+              ]}
+            />
+          </View>
+
+          <Text
+            style={styles.activityTitle}
+          >
+            A moment for yourself
+          </Text>
+
+          <Text
+            style={styles.activityDetail}
+          >
+            Take a few minutes to check in,
+            choose a focus, and put your
+            thoughts into words. There's no
+            right or wrong answer.
+          </Text>
+        </View>
+
+        {/* Mood check-in */}
+        <View
+          style={styles.journalSection}
+        >
+          <Text
+            style={
+              styles.journalSectionTitle
+            }
+          >
+            How are you feeling right now?
+          </Text>
+
+          <View
+            style={styles.moodGrid}
+          >
+            {journalMoods.map(mood => {
+              const isSelected =
+                selectedMood === mood.id;
+
+              return (
+                <Pressable
+                  key={mood.id}
+                  onPress={() =>
+                    setSelectedMood(
+                      mood.id,
+                    )
+                  }
+                  style={[
+                    styles.moodChip,
+                    {
+                      backgroundColor:
+                        mood.soft,
+                    },
+                    isSelected && [
+                      styles.moodChipSelected,
+                      {
+                        borderColor:
+                          mood.color,
+                      },
+                    ],
+                  ]}
+                >
+                  <Text
+                    style={
+                      styles.moodEmoji
+                    }
+                  >
+                    {mood.emoji}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.moodLabel,
+                      isSelected && {
+                        color:
+                          mood.color,
+                      },
+                    ]}
+                  >
+                    {mood.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {selectedMood && (
+            <View
+              style={
+                styles.moodSupportCard
+              }
             >
               <Text
                 style={
-                  styles.promptQuestion
+                  styles.moodSupportText
                 }
               >
-                {prompt.question}
+                Thanks for checking in with
+                yourself. 🌿
               </Text>
-
-              <TextInput
-                multiline
-                value={
-                  journalAnswers[index]
-                }
-                onChangeText={value =>
-                  updateJournalAnswer(
-                    index,
-                    value,
-                  )
-                }
-                placeholder={
-                  prompt.placeholder
-                }
-                placeholderTextColor="#8D99A6"
-                style={styles.textInput}
-                textAlignVertical="top"
-              />
             </View>
-          ),
+          )}
+        </View>
+
+        {/* Reflection focus */}
+        <View
+          style={styles.journalSection}
+        >
+          <Text
+            style={
+              styles.journalSectionTitle
+            }
+          >
+            What would you like to focus
+            on?
+          </Text>
+
+          <View
+            style={styles.focusGrid}
+          >
+            {journalFocuses.map(focus => {
+              const isSelected =
+                selectedFocus ===
+                focus.id;
+
+              return (
+                <Pressable
+                  key={focus.id}
+                  onPress={() =>
+                    handleFocusSelect(
+                      focus.id,
+                    )
+                  }
+                  style={[
+                    styles.focusCard,
+                    {
+                      backgroundColor:
+                        focus.soft,
+                    },
+                    isSelected && [
+                      styles.focusCardSelected,
+                      {
+                        borderColor:
+                          focus.color,
+                      },
+                    ],
+                  ]}
+                >
+                  <Text
+                    style={
+                      styles.focusEmoji
+                    }
+                  >
+                    {focus.emoji}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.focusTitle,
+                      isSelected && {
+                        color:
+                          focus.color,
+                      },
+                    ]}
+                  >
+                    {focus.title}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Guided prompts */}
+        {activeJournalFocus && (
+          <View
+            style={styles.journalSection}
+          >
+            <Text
+              style={
+                styles.journalSectionTitle
+              }
+            >
+              Guided prompts
+            </Text>
+
+            <Text
+              style={
+                styles.journalSectionHint
+              }
+            >
+              Answer any that feel helpful.
+              One thoughtful response is
+              enough.
+            </Text>
+
+            {activeJournalFocus.prompts.map(
+              (prompt, index) => (
+                <View
+                  key={prompt.question}
+                  style={
+                    styles.promptCard
+                  }
+                >
+                  <View
+                    style={
+                      styles.promptNumber
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.promptNumberText
+                      }
+                    >
+                      {String(
+                        index + 1,
+                      ).padStart(2, '0')}
+                    </Text>
+                  </View>
+
+                  <View
+                    style={{ flex: 1 }}
+                  >
+                    <Text
+                      style={
+                        styles.promptQuestion
+                      }
+                    >
+                      {prompt.question}
+                    </Text>
+
+                    <TextInput
+                      multiline
+                      value={
+                        journalAnswers[
+                          index
+                        ]
+                      }
+                      onChangeText={value =>
+                        updateJournalAnswer(
+                          index,
+                          value,
+                        )
+                      }
+                      placeholder={
+                        prompt.placeholder
+                      }
+                      placeholderTextColor="#9AA8A8"
+                      style={
+                        styles.textInput
+                      }
+                      textAlignVertical="top"
+                    />
+
+                    <Text
+                      style={
+                        styles.inspirationLabel
+                      }
+                    >
+                      Need inspiration?
+                    </Text>
+
+                    <View
+                      style={
+                        styles.suggestionRow
+                      }
+                    >
+                      {prompt.suggestions.map(
+                        suggestion => (
+                          <Pressable
+                            key={
+                              suggestion
+                            }
+                            onPress={() =>
+                              insertJournalSuggestion(
+                                index,
+                                suggestion,
+                              )
+                            }
+                            style={
+                              styles.suggestionChip
+                            }
+                          >
+                            <Text
+                              style={
+                                styles.suggestionChipText
+                              }
+                            >
+                              {suggestion}
+                            </Text>
+                          </Pressable>
+                        ),
+                      )}
+                    </View>
+                  </View>
+                </View>
+              ),
+            )}
+          </View>
         )}
 
+        {/* Tiny win */}
+        {selectedFocus && (
+          <View
+            style={styles.tinyWinCard}
+          >
+            <Text
+              style={
+                styles.tinyWinTitle
+              }
+            >
+              🏆 What's one tiny win from
+              today?
+            </Text>
+
+            <Text
+              style={
+                styles.tinyWinSupport
+              }
+            >
+              It doesn't have to be a big
+              achievement.
+            </Text>
+
+            <TextInput
+              multiline
+              value={tinyWin}
+              onChangeText={setTinyWin}
+              placeholder="Even something small counts..."
+              placeholderTextColor="#9AA8A8"
+              style={styles.textInput}
+              textAlignVertical="top"
+            />
+          </View>
+        )}
+
+        {/* Privacy reminder */}
+        <View
+          style={styles.privacyCard}
+        >
+          <Text
+            style={styles.privacyTitle}
+          >
+            🔒 Your reflection is private
+          </Text>
+
+          <Text
+            style={styles.privacyText}
+          >
+            Take your time and write only
+            what you're comfortable sharing.
+          </Text>
+        </View>
+
         <Pressable
-          style={styles.primaryButton}
+          style={[
+            styles.primaryButton,
+            !canFinishJournaling &&
+              styles.primaryButtonDisabled,
+          ]}
+          disabled={!canFinishJournaling}
           onPress={() =>
             setJournalingDone(true)
           }
         >
           <Text
-            style={
-              styles.primaryButtonText
-            }
+            style={[
+              styles.primaryButtonText,
+              !canFinishJournaling &&
+                styles.primaryButtonTextDisabled,
+            ]}
           >
-            Save Reflection
+            ✨ Finish Reflection
           </Text>
         </Pressable>
 
@@ -1707,6 +2605,7 @@ function ActivitiesScreen({
         showsVerticalScrollIndicator={
           false
         }
+        keyboardShouldPersistTaps="handled"
       >
         <Pressable
           onPress={() => {
@@ -1719,10 +2618,24 @@ function ActivitiesScreen({
           }}
           style={styles.backButton}
         >
+          <View
+            style={
+              styles.backButtonCircle
+            }
+          >
+            <Text
+              style={
+                styles.backButtonArrow
+              }
+            >
+              ←
+            </Text>
+          </View>
+
           <Text
             style={styles.backButtonText}
           >
-            ← Back
+            Back
           </Text>
         </Pressable>
 
@@ -1753,40 +2666,114 @@ function ActivitiesScreen({
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#EAF9F4',
+    backgroundColor: '#EAF8F4',
   },
 
   content: {
     flexGrow: 1,
-    padding: 18,
-    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 28,
   },
+
+  /* =======================================================
+     BACK
+  ======================================================= */
 
   backButton: {
-    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginBottom: 14,
+    paddingVertical: 4,
+    paddingRight: 8,
   },
 
-  backButtonText: {
+  backButtonCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#D7EBE5',
+  },
+
+  backButtonArrow: {
     color: '#173B42',
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: '800',
   },
 
+  backButtonText: {
+    color: '#31545B',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+
+  /* =======================================================
+     MAIN CARD
+  ======================================================= */
+
   activityCard: {
+    width: '100%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 30,
-    padding: 24,
+    borderRadius: 28,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
     borderWidth: 1,
-    borderColor: '#CDEDE2',
-    alignItems: 'center',
-    shadowColor: '#2B8A78',
+    borderColor: '#D4ECE4',
+
+    shadowColor: '#377F72',
     shadowOffset: {
       width: 0,
       height: 8,
     },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    elevation: 4,
+    shadowOpacity: 0.09,
+    shadowRadius: 20,
+    elevation: 5,
+  },
+
+  /* =======================================================
+     GENERAL
+  ======================================================= */
+
+  activityTag: {
+    color: '#198F78',
+    fontSize: 10,
+    letterSpacing: 1.4,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    marginBottom: 7,
+    textAlign: 'center',
+  },
+
+  activityTagLeft: {
+    color: '#198F78',
+    fontSize: 10,
+    letterSpacing: 1.4,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    marginBottom: 5,
+  },
+
+  activityTitle: {
+    color: '#173B42',
+    fontSize: 23,
+    lineHeight: 29,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginBottom: 9,
+  },
+
+  activityDetail: {
+    color: '#65777D',
+    fontSize: 13.5,
+    lineHeight: 21,
+    textAlign: 'center',
+    marginBottom: 18,
   },
 
   /* =======================================================
@@ -1796,7 +2783,25 @@ const styles = StyleSheet.create({
   activitiesPageHeader: {
     width: '100%',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 22,
+  },
+
+  heroIcon: {
+    width: 62,
+    height: 62,
+    borderRadius: 21,
+    backgroundColor: '#DDF6EC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#C7ECDD',
+  },
+
+  heroIconText: {
+    color: '#28A883',
+    fontSize: 30,
+    fontWeight: '700',
   },
 
   activitiesPageTitle: {
@@ -1809,8 +2814,9 @@ const styles = StyleSheet.create({
   },
 
   activitiesPageDescription: {
-    color: '#60727A',
-    fontSize: 14,
+    maxWidth: 330,
+    color: '#66787D',
+    fontSize: 13.5,
     lineHeight: 21,
     textAlign: 'center',
   },
@@ -1823,69 +2829,91 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FCFA',
-    borderRadius: 18,
-    padding: 14,
-    marginBottom: 12,
+    backgroundColor: '#F9FCFB',
+    borderRadius: 19,
+    padding: 13,
+    marginBottom: 11,
     borderWidth: 1,
-    borderColor: '#D9EEE7',
+    borderColor: '#DCECE7',
   },
 
   activityOptionIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
+    width: 54,
+    height: 54,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
 
   activityOptionIconText: {
-    fontSize: 23,
+    fontSize: 24,
   },
 
   activityOptionContent: {
     flex: 1,
   },
 
-  activityOptionTitle: {
-    color: '#173B42',
-    fontSize: 16,
-    fontWeight: '900',
+  activityTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 4,
   },
 
-  activityOptionDescription: {
-    color: '#60727A',
-    fontSize: 12,
-    lineHeight: 17,
-    marginBottom: 5,
+  activityOptionTitle: {
+    flex: 1,
+    color: '#173B42',
+    fontSize: 15,
+    fontWeight: '900',
+    marginRight: 8,
   },
 
-  activityOptionDuration: {
+  durationBadge: {
+    backgroundColor: '#E7F7F1',
+    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+  },
+
+  durationText: {
     color: '#198F78',
-    fontSize: 11,
+    fontSize: 8.5,
     fontWeight: '900',
   },
 
-  activityOptionArrow: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
-    backgroundColor: '#E2F9EF',
+  activityOptionDescription: {
+    color: '#687A7F',
+    fontSize: 11.5,
+    lineHeight: 17,
+    marginBottom: 7,
+  },
+
+  startActivityRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 8,
+  },
+
+  startActivityText: {
+    color: '#198F78',
+    fontSize: 10.5,
+    fontWeight: '900',
+    marginRight: 4,
   },
 
   activityOptionArrowText: {
     color: '#198F78',
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '900',
   },
 
   cardPressed: {
-    opacity: 0.86,
+    opacity: 0.82,
+    transform: [
+      {
+        scale: 0.985,
+      },
+    ],
   },
 
   /* =======================================================
@@ -1897,53 +2925,59 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-
-  activityTag: {
-    color: '#198F78',
-    fontSize: 11,
-    letterSpacing: 1.2,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    marginBottom: 4,
-    textAlign: 'center',
+    marginBottom: 5,
   },
 
   cycleText: {
-    color: '#7A8992',
-    fontSize: 12,
+    color: '#7B8A90',
+    fontSize: 11,
     fontWeight: '700',
   },
 
   timerBadge: {
-    backgroundColor: '#E1F8F0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E6F8F2',
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 20,
+    marginTop: 2,
+  },
+
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#35B78E',
+    marginRight: 5,
+  },
+
+  statusDotPaused: {
+    backgroundColor: '#D49B55',
   },
 
   timerBadgeText: {
     color: '#198F78',
-    fontSize: 9,
+    fontSize: 8.5,
     fontWeight: '900',
-    letterSpacing: 0.7,
+    letterSpacing: 0.6,
   },
 
   breathingInstruction: {
-    color: '#667780',
-    fontSize: 13,
+    color: '#718087',
+    fontSize: 12.5,
     fontWeight: '600',
     textAlign: 'center',
     marginBottom: 8,
   },
 
   breathingVisual: {
-    width: 230,
-    height: 230,
+    width: 235,
+    height: 235,
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 8,
+    alignSelf: 'center',
+    marginVertical: 4,
   },
 
   breathingGlow: {
@@ -1951,7 +2985,7 @@ const styles = StyleSheet.create({
     width: 190,
     height: 190,
     borderRadius: 95,
-    opacity: 0.18,
+    opacity: 0.15,
   },
 
   breathingCircle: {
@@ -1960,38 +2994,117 @@ const styles = StyleSheet.create({
     borderRadius: 80,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 7,
+    borderWidth: 6,
     borderColor: '#FFFFFF',
+
     shadowColor: '#48B99A',
     shadowOffset: {
       width: 0,
       height: 8,
     },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.2,
     shadowRadius: 18,
     elevation: 7,
   },
 
   breathingLabel: {
     color: '#FFFFFF',
-    fontSize: 19,
+    fontSize: 17,
     fontWeight: '900',
-    letterSpacing: 1,
+    letterSpacing: 1.3,
   },
 
   countdown: {
     color: '#FFFFFF',
     fontSize: 42,
-    lineHeight: 48,
+    lineHeight: 47,
     fontWeight: '900',
-    marginTop: 2,
+    marginTop: 1,
+  },
+
+  breathingMessageCard: {
+    backgroundColor: '#F0FAF6',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 12,
   },
 
   breathingMessage: {
     color: '#198F78',
-    fontSize: 14,
+    fontSize: 12.5,
     fontWeight: '800',
-    marginBottom: 8,
+  },
+
+  phaseProgressBackground: {
+    width: '100%',
+    height: 7,
+    borderRadius: 6,
+    backgroundColor: '#E5EFEC',
+    overflow: 'hidden',
+    marginBottom: 13,
+  },
+
+  phaseProgressFill: {
+    height: '100%',
+    borderRadius: 6,
+  },
+
+  phaseLabels: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 18,
+  },
+
+  phaseItem: {
+    alignItems: 'center',
+  },
+
+  phaseDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#D7E5E1',
+    marginBottom: 5,
+  },
+
+  phaseDotActive: {
+    width: 11,
+    height: 11,
+    borderRadius: 5.5,
+    backgroundColor: '#28B58F',
+  },
+
+  phaseDotCompleted: {
+    backgroundColor: '#8BD9C2',
+  },
+
+  phaseLabel: {
+    color: '#8A999F',
+    fontSize: 7.5,
+    fontWeight: '800',
+  },
+
+  phaseLabelActive: {
+    color: '#198F78',
+  },
+
+  pauseButton: {
+    width: '100%',
+    backgroundColor: '#E1F8F0',
+    borderRadius: 14,
+    paddingVertical: 13,
+    alignItems: 'center',
+    marginBottom: 9,
+    borderWidth: 1,
+    borderColor: '#C6EBDD',
+  },
+
+  pauseButtonText: {
+    color: '#167E6A',
+    fontSize: 13,
+    fontWeight: '900',
   },
 
   /* =======================================================
@@ -2008,17 +3121,17 @@ const styles = StyleSheet.create({
 
   mindfulnessSubtitle: {
     color: '#173B42',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
   },
 
   musicButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F1F4F5',
-    borderRadius: 22,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    backgroundColor: '#F3F6F5',
+    borderRadius: 20,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
     borderWidth: 1,
     borderColor: '#DCE5E3',
   },
@@ -2029,13 +3142,13 @@ const styles = StyleSheet.create({
   },
 
   musicIcon: {
-    fontSize: 16,
+    fontSize: 15,
     marginRight: 5,
   },
 
   musicButtonText: {
     color: '#718087',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '900',
   },
 
@@ -2047,7 +3160,7 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 22,
+    marginBottom: 21,
   },
 
   mindfulnessProgressItem: {
@@ -2057,9 +3170,9 @@ const styles = StyleSheet.create({
   },
 
   mindfulnessProgressDot: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#EDF2F1',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2079,7 +3192,7 @@ const styles = StyleSheet.create({
 
   mindfulnessProgressNumber: {
     color: '#8B999F',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '900',
   },
 
@@ -2104,19 +3217,21 @@ const styles = StyleSheet.create({
     borderRadius: 38,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 9,
+    alignSelf: 'center',
   },
 
   mindfulnessEmoji: {
-    fontSize: 36,
+    fontSize: 34,
   },
 
   stepCounter: {
     color: '#198F78',
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '900',
-    letterSpacing: 1,
+    letterSpacing: 1.1,
     marginBottom: 7,
+    textAlign: 'center',
   },
 
   selectionCounter: {
@@ -2125,7 +3240,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: '#F0FBF7',
-    borderRadius: 12,
+    borderRadius: 13,
     paddingHorizontal: 13,
     paddingVertical: 10,
     marginBottom: 12,
@@ -2139,10 +3254,27 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
+  selectionSmallText: {
+    color: '#8A9A9A',
+    fontSize: 9.5,
+    marginTop: 2,
+  },
+
+  selectionStatus: {
+    backgroundColor: '#FFF4F0',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+
+  selectionStatusComplete: {
+    backgroundColor: '#DDF7EC',
+  },
+
   selectionHint: {
-    color: '#9A7777',
-    fontSize: 11,
-    fontWeight: '700',
+    color: '#A17777',
+    fontSize: 9.5,
+    fontWeight: '800',
   },
 
   selectionHintComplete: {
@@ -2151,30 +3283,34 @@ const styles = StyleSheet.create({
 
   optionsContainer: {
     width: '100%',
-    marginBottom: 12,
+    marginBottom: 11,
   },
 
   mindfulnessOption: {
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FBFA',
+    backgroundColor: '#FAFCFB',
     borderRadius: 14,
-    paddingHorizontal: 13,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
     borderWidth: 1,
     borderColor: '#E0EBE7',
-    marginBottom: 8,
+    marginBottom: 7,
   },
 
   mindfulnessOptionSelected: {
-    backgroundColor: '#E2F9EF',
+    backgroundColor: '#E5F9F0',
     borderColor: '#42C79F',
   },
 
+  optionPressed: {
+    opacity: 0.8,
+  },
+
   optionCheck: {
-    width: 23,
-    height: 23,
+    width: 22,
+    height: 22,
     borderRadius: 7,
     borderWidth: 2,
     borderColor: '#CBD9D5',
@@ -2191,14 +3327,14 @@ const styles = StyleSheet.create({
 
   optionCheckText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '900',
   },
 
   mindfulnessOptionText: {
     flex: 1,
     color: '#40575E',
-    fontSize: 13,
+    fontSize: 12.5,
     lineHeight: 18,
     fontWeight: '700',
   },
@@ -2225,21 +3361,21 @@ const styles = StyleSheet.create({
   },
 
   musicInfoIcon: {
-    fontSize: 24,
+    fontSize: 23,
     marginRight: 10,
   },
 
   musicInfoTitle: {
     color: '#775C20',
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '900',
     marginBottom: 2,
   },
 
   musicInfoText: {
     color: '#8A7545',
-    fontSize: 11,
-    lineHeight: 16,
+    fontSize: 10.5,
+    lineHeight: 15,
   },
 
   /* =======================================================
@@ -2249,16 +3385,16 @@ const styles = StyleSheet.create({
   navigationRow: {
     width: '100%',
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 4,
-    marginBottom: 10,
+    gap: 9,
+    marginTop: 3,
+    marginBottom: 9,
   },
 
   previousButton: {
     flex: 1,
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
-    paddingVertical: 14,
+    paddingVertical: 13,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#D1E1DC',
@@ -2271,7 +3407,7 @@ const styles = StyleSheet.create({
 
   previousButtonText: {
     color: '#31545B',
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '900',
   },
 
@@ -2283,17 +3419,27 @@ const styles = StyleSheet.create({
     flex: 1.4,
     backgroundColor: '#42C79F',
     borderRadius: 14,
-    paddingVertical: 14,
+    paddingVertical: 13,
     alignItems: 'center',
+    shadowColor: '#35B18D',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 7,
+    elevation: 2,
   },
 
   nextMindfulnessButtonDisabled: {
     backgroundColor: '#DDE9E5',
+    shadowOpacity: 0,
+    elevation: 0,
   },
 
   nextMindfulnessButtonText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '900',
   },
 
@@ -2302,117 +3448,378 @@ const styles = StyleSheet.create({
   },
 
   exitMindfulnessButton: {
+    alignSelf: 'center',
     paddingVertical: 8,
+    paddingHorizontal: 15,
   },
 
   exitMindfulnessText: {
     color: '#829096',
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
   },
 
   /* =======================================================
-     SHARED
+     JOURNALING
   ======================================================= */
 
-  activityTitle: {
-    color: '#173B42',
-    fontSize: 24,
-    lineHeight: 30,
-    fontWeight: '900',
-    textAlign: 'center',
-    marginBottom: 10,
+  journalHeader: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 8,
   },
 
-  activityDetail: {
+  journalIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: 18,
+    backgroundColor: '#F5E5D0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 13,
+  },
+
+  journalIconText: {
+    color: '#9C7147',
+    fontSize: 27,
+    fontWeight: '700',
+  },
+
+  journalProgressLabel: {
     color: '#60727A',
-    fontSize: 14,
-    lineHeight: 22,
-    textAlign: 'center',
-    marginBottom: 18,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    marginBottom: 8,
   },
 
-  phaseProgressBackground: {
+  journalProgressTrack: {
     width: '100%',
     height: 7,
-    borderRadius: 5,
-    backgroundColor: '#E2EFEB',
+    borderRadius: 999,
+    backgroundColor: '#DCEDE7',
     overflow: 'hidden',
     marginBottom: 14,
   },
 
-  phaseProgressFill: {
+  journalProgressFill: {
     height: '100%',
-    borderRadius: 5,
+    borderRadius: 999,
+    backgroundColor: '#42C79F',
   },
 
-  phaseLabels: {
+  journalSection: {
+    width: '100%',
+    marginBottom: 14,
+  },
+
+  journalSectionTitle: {
+    color: '#173B42',
+    fontSize: 14.5,
+    fontWeight: '900',
+    marginBottom: 10,
+    lineHeight: 20,
+  },
+
+  journalSectionHint: {
+    color: '#60727A',
+    fontSize: 11.5,
+    fontWeight: '600',
+    lineHeight: 16,
+    marginBottom: 12,
+    marginTop: -4,
+  },
+
+  moodGrid: {
     width: '100%',
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
+    flexWrap: 'wrap',
+    gap: 8,
   },
 
-  phaseItem: {
+  moodChip: {
+    width: '30.5%',
+    minWidth: 92,
+    flexGrow: 1,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
   },
 
-  phaseDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    backgroundColor: '#D8E7E3',
-    marginBottom: 5,
+  moodChipSelected: {
+    borderWidth: 2,
+    shadowColor: '#173B42',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
 
-  phaseDotActive: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#28B58F',
+  moodEmoji: {
+    fontSize: 22,
+    marginBottom: 4,
   },
 
-  phaseDotCompleted: {
-    backgroundColor: '#8BD9C2',
-  },
-
-  phaseLabel: {
-    color: '#8A999F',
-    fontSize: 8,
+  moodLabel: {
+    color: '#31545B',
+    fontSize: 11.5,
     fontWeight: '800',
   },
 
-  phaseLabelActive: {
-    color: '#198F78',
-  },
-
-  pauseButton: {
-    width: '100%',
-    backgroundColor: '#DDF8EF',
+  moodSupportCard: {
+    marginTop: 10,
+    backgroundColor: '#EAF9F4',
     borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginBottom: 10,
+    paddingVertical: 11,
+    paddingHorizontal: 13,
     borderWidth: 1,
-    borderColor: '#BCEBDB',
+    borderColor: '#C8EFE2',
   },
 
-  pauseButtonText: {
-    color: '#167E6A',
-    fontSize: 14,
+  moodSupportText: {
+    color: '#198F78',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 17,
+    textAlign: 'center',
+  },
+
+  focusGrid: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 9,
+  },
+
+  focusCard: {
+    width: '47.5%',
+    flexGrow: 1,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+    minHeight: 88,
+    justifyContent: 'center',
+  },
+
+  focusCardSelected: {
+    borderWidth: 2,
+    shadowColor: '#173B42',
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+
+  focusEmoji: {
+    fontSize: 22,
+    marginBottom: 6,
+  },
+
+  focusTitle: {
+    color: '#173B42',
+    fontSize: 12.5,
+    fontWeight: '900',
+    lineHeight: 17,
+  },
+
+  promptCard: {
+    width: '100%',
+    flexDirection: 'row',
+    backgroundColor: '#F7FCFA',
+    borderRadius: 17,
+    padding: 13,
+    borderWidth: 1,
+    borderColor: '#DCEDE7',
+    marginBottom: 11,
+  },
+
+  promptNumber: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: '#DDF5EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+
+  promptNumberText: {
+    color: '#198F78',
+    fontSize: 11,
     fontWeight: '900',
   },
 
+  promptQuestion: {
+    color: '#173B42',
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: '800',
+    marginBottom: 9,
+  },
+
+  textInput: {
+    minHeight: 88,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D7E5E1',
+    paddingHorizontal: 11,
+    paddingVertical: 10,
+    color: '#173B42',
+    fontSize: 13,
+    lineHeight: 19,
+  },
+
+  inspirationLabel: {
+    color: '#829096',
+    fontSize: 10.5,
+    fontWeight: '700',
+    marginTop: 10,
+    marginBottom: 7,
+  },
+
+  suggestionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+
+  suggestionChip: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#D7E5E1',
+  },
+
+  suggestionChipText: {
+    color: '#31545B',
+    fontSize: 10.5,
+    fontWeight: '700',
+  },
+
+  tinyWinCard: {
+    width: '100%',
+    backgroundColor: '#FFF8E8',
+    borderRadius: 17,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#F5E3B6',
+    marginBottom: 12,
+  },
+
+  tinyWinTitle: {
+    color: '#775C20',
+    fontSize: 14,
+    fontWeight: '900',
+    lineHeight: 20,
+    marginBottom: 5,
+  },
+
+  tinyWinSupport: {
+    color: '#8A7545',
+    fontSize: 11.5,
+    fontWeight: '600',
+    lineHeight: 16,
+    marginBottom: 10,
+  },
+
+  privacyCard: {
+    width: '100%',
+    backgroundColor: '#EEF3FC',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#D5E2F5',
+    marginBottom: 16,
+  },
+
+  privacyTitle: {
+    color: '#3D5A80',
+    fontSize: 12.5,
+    fontWeight: '900',
+    marginBottom: 4,
+  },
+
+  privacyText: {
+    color: '#60727A',
+    fontSize: 11.5,
+    fontWeight: '600',
+    lineHeight: 16,
+  },
+
+  journalSummaryCard: {
+    width: '100%',
+    backgroundColor: '#F7FCFA',
+    borderRadius: 17,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#DCEDE7',
+    marginBottom: 17,
+  },
+
+  journalSummaryHeading: {
+    color: '#198F78',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+    marginBottom: 12,
+  },
+
+  journalSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 10,
+  },
+
+  journalSummaryDivider: {
+    height: 1,
+    backgroundColor: '#E0EDE8',
+    marginVertical: 10,
+  },
+
+  journalSummaryLabel: {
+    color: '#60727A',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  journalSummaryValue: {
+    color: '#173B42',
+    fontSize: 12.5,
+    fontWeight: '900',
+    flexShrink: 1,
+    textAlign: 'right',
+  },
+
+  /* =======================================================
+     SUCCESS
+  ======================================================= */
+
   successIconWrap: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 78,
+    height: 78,
+    borderRadius: 39,
     backgroundColor: '#C9F5DF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 15,
     borderWidth: 5,
     borderColor: '#E8FFF4',
+    alignSelf: 'center',
   },
 
   successIcon: {
@@ -2426,30 +3833,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#E7FAF3',
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 18,
+    borderRadius: 17,
+    padding: 15,
+    marginBottom: 17,
     borderWidth: 1,
     borderColor: '#C8EFE2',
   },
 
   completedEmoji: {
-    fontSize: 32,
+    fontSize: 30,
     marginRight: 12,
   },
 
   completedTitle: {
     color: '#176E5D',
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '900',
     marginBottom: 3,
   },
 
   completedText: {
     color: '#6B7E83',
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '600',
+    lineHeight: 16,
   },
+
+  /* =======================================================
+     BUTTONS
+  ======================================================= */
 
   primaryButton: {
     width: '100%',
@@ -2457,21 +3869,32 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 9,
+
     shadowColor: '#24A882',
     shadowOffset: {
       width: 0,
       height: 4,
     },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.18,
     shadowRadius: 8,
     elevation: 3,
   },
 
   primaryButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '900',
+  },
+
+  primaryButtonDisabled: {
+    backgroundColor: '#DDE9E5',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+
+  primaryButtonTextDisabled: {
+    color: '#9AA9A4',
   },
 
   secondaryButton: {
@@ -2481,42 +3904,13 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#CFE0DC',
+    borderColor: '#D1E0DC',
   },
 
   secondaryButtonText: {
     color: '#31545B',
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '800',
-  },
-
-  promptCard: {
-    width: '100%',
-    backgroundColor: '#F5FCF9',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#D9EEE7',
-    marginBottom: 12,
-  },
-
-  promptQuestion: {
-    color: '#173B42',
-    fontSize: 15,
-    fontWeight: '800',
-    marginBottom: 10,
-  },
-
-  textInput: {
-    minHeight: 90,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#D4E4E0',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: '#173B42',
-    fontSize: 14,
   },
 });
 

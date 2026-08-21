@@ -5,8 +5,13 @@
  * Uses the same string groupIds as defined in App.tsx COMMUNITIES array.
  */
 require('dotenv').config();
+const dns = require('dns');
 const mongoose = require('mongoose');
 const Post = require('./models/Post');
+
+try {
+  dns.setServers(['8.8.8.8', '8.8.4.4']);
+} catch (e) {}
 
 const MONGO_URI = process.env.MONGODB_URI;
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,8 +17,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import type { Community } from './GroupDiscussionScreen';
 
-// ─── Config ───────────────────────────────────────────────────────────────────
-const API_BASE = 'http://localhost:3000/api';
+import { API_BASE } from '../config/api';
 
 const TOPICS = [
   'General',
@@ -61,7 +61,8 @@ export default function CreatePostScreen({
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`${API_BASE}/posts/group/${community._id}`, {
+      const encodedGroupId = encodeURIComponent(community._id);
+      const response = await fetch(`${API_BASE}/posts/group/${encodedGroupId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -75,14 +76,19 @@ export default function CreatePostScreen({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create post');
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || 'Failed to create post');
       }
 
       onPostCreated();
-    } catch (error) {
-      console.error(error);
-      // Fallback: Just return even if it fails for the demo
-      onPostCreated();
+    } catch (error: any) {
+      console.error('Post creation error:', error);
+      Alert.alert(
+        'Could not post',
+        error?.message ||
+          'Something went wrong while submitting your post. Please check your connection and try again.',
+        [{ text: 'OK' }],
+      );
     } finally {
       setIsSubmitting(false);
     }
