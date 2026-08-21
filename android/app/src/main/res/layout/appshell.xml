@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/appshell"
+    android:layout_width="392.32dp"
+    android:layout_height="1841.25dp"
+    android:background="#FFFFFF" />

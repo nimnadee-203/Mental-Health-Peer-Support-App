@@ -18,6 +18,13 @@ import GroupsHomeScreen from './src/screens/Groups/GroupsHomeScreen';
 import CreateGroupScreen from './src/screens/Groups/CreateGroupScreen';
 import GroupDetailsScreen from './src/screens/Groups/GroupDetailsScreen';
 
+import GroupDiscussionScreen, {
+  Community,
+  Post,
+} from './src/screens/GroupDiscussionScreen';
+import CreatePostScreen from './src/screens/CreatePostScreen';
+import PostDetailScreen from './src/screens/PostDetailScreen';
+
 type ActivityType =
   | 'breathing'
   | 'mindfulness'
@@ -47,9 +54,54 @@ type Group = {
   emoji: string;
 };
 
+/*
+ * Mock Community for Group Discussion
+ */
+const MOCK_COMMUNITY: Community = {
+  _id: 'mock_mindfulness',
+  name: 'Mindfulness & Healthy Habits',
+  category: 'Mindfulness',
+  themeColor: '#D4C9F5',
+  memberCount: 154,
+  guidelines: [
+    'Be kind and respectful.',
+    'All posts here are anonymous.',
+    'This is peer support — not professional advice.',
+  ],
+  isJoined: true,
+};
+
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
 
+  /*
+   * Group Discussion navigation
+   *
+   * null = normal application navigation
+   */
+  const [currentScreen, setCurrentScreen] = useState<
+    'discussion' | 'create' | 'postDetail' | null
+  >(null);
+
+  const [selectedPost, setSelectedPost] =
+    useState<Post | null>(null);
+
+  const navigateToDiscussion = () => {
+    setCurrentScreen('discussion');
+  };
+
+  const navigateToCreate = () => {
+    setCurrentScreen('create');
+  };
+
+  const navigateToPostDetail = (post: Post) => {
+    setSelectedPost(post);
+    setCurrentScreen('postDetail');
+  };
+
+  /*
+   * Main application navigation
+   */
   const [activeTab, setActiveTab] = useState<
     'Home' | 'Resources' | 'Groups' | 'Messages' | 'Profile'
   >('Home');
@@ -90,6 +142,12 @@ function App() {
       | 'Profile'
   ) => {
     setActiveTab(tab);
+
+    /*
+     * Close every secondary screen when changing tabs
+     */
+    setCurrentScreen(null);
+    setSelectedPost(null);
 
     setIsArticleOpen(false);
     setIsActivityOpen(false);
@@ -134,8 +192,53 @@ function App() {
 
   const screen = useMemo(() => {
     /*
-     * Emergency Support Screen
+     * ==========================================
+     * GROUP DISCUSSION SCREENS
+     * ==========================================
      */
+
+    if (currentScreen === 'discussion') {
+      return (
+        <GroupDiscussionScreen
+          community={MOCK_COMMUNITY}
+          onBack={() => {
+            setCurrentScreen(null);
+            setActiveTab('Groups');
+          }}
+          onCreatePost={navigateToCreate}
+          onPostPress={navigateToPostDetail}
+        />
+      );
+    }
+
+    if (currentScreen === 'create') {
+      return (
+        <CreatePostScreen
+          community={MOCK_COMMUNITY}
+          onBack={navigateToDiscussion}
+          onPostCreated={navigateToDiscussion}
+        />
+      );
+    }
+
+    if (
+      currentScreen === 'postDetail' &&
+      selectedPost
+    ) {
+      return (
+        <PostDetailScreen
+          post={selectedPost}
+          onBack={navigateToDiscussion}
+        />
+      );
+    }
+
+    /*
+     * ==========================================
+     * EMERGENCY SUPPORT
+     * ==========================================
+     */
+
     if (isEmergencyOpen) {
       return (
         <EmergencySupportScreen
@@ -145,9 +248,15 @@ function App() {
     }
 
     /*
-     * Resource Article Screen
+     * ==========================================
+     * RESOURCE ARTICLE
+     * ==========================================
      */
-    if (isArticleOpen && selectedArticle) {
+
+    if (
+      isArticleOpen &&
+      selectedArticle
+    ) {
       return (
         <ResourceArticleScreen
           article={selectedArticle}
@@ -161,8 +270,11 @@ function App() {
     }
 
     /*
-     * Activities Screen
+     * ==========================================
+     * ACTIVITIES
+     * ==========================================
      */
+
     if (isActivityOpen) {
       return (
         <ActivitiesScreen
@@ -179,8 +291,11 @@ function App() {
     }
 
     /*
-     * Group Details Screen
+     * ==========================================
+     * GROUP DETAILS
+     * ==========================================
      */
+
     if (selectedGroup) {
       return (
         <GroupDetailsScreen
@@ -191,17 +306,21 @@ function App() {
           emoji={selectedGroup.emoji}
           onJoin={() => {
             setJoinedGroups(current => {
-              const alreadyJoined = current.some(
-                group =>
-                  group.groupName ===
-                  selectedGroup.groupName
-              );
+              const alreadyJoined =
+                current.some(
+                  group =>
+                    group.groupName ===
+                    selectedGroup.groupName
+                );
 
               if (alreadyJoined) {
                 return current;
               }
 
-              return [...current, selectedGroup];
+              return [
+                ...current,
+                selectedGroup,
+              ];
             });
           }}
           onBack={() => {
@@ -213,8 +332,11 @@ function App() {
     }
 
     /*
-     * Create Group Screen
+     * ==========================================
+     * CREATE GROUP
+     * ==========================================
      */
+
     if (isCreateGroupOpen) {
       return (
         <CreateGroupScreen
@@ -227,8 +349,11 @@ function App() {
     }
 
     /*
-     * Main Tabs
+     * ==========================================
+     * MAIN TABS
+     * ==========================================
      */
+
     switch (activeTab) {
       case 'Resources':
         return (
@@ -256,7 +381,8 @@ function App() {
               setJoinedGroups(current =>
                 current.filter(
                   group =>
-                    group.groupName !== groupName
+                    group.groupName !==
+                    groupName
                 )
               );
             }}
@@ -272,15 +398,7 @@ function App() {
               justifyContent: 'center',
               alignItems: 'center',
             }}
-          >
-            <StatusBar
-              barStyle={
-                isDarkMode
-                  ? 'light-content'
-                  : 'dark-content'
-              }
-            />
-          </View>
+          />
         );
 
       case 'Profile':
@@ -292,15 +410,7 @@ function App() {
               justifyContent: 'center',
               alignItems: 'center',
             }}
-          >
-            <StatusBar
-              barStyle={
-                isDarkMode
-                  ? 'light-content'
-                  : 'dark-content'
-              }
-            />
-          </View>
+          />
         );
 
       case 'Home':
@@ -308,6 +418,8 @@ function App() {
         return <HomeScreen />;
     }
   }, [
+    currentScreen,
+    selectedPost,
     activeTab,
     isDarkMode,
     isArticleOpen,
@@ -333,14 +445,16 @@ function App() {
 
       {screen}
 
-      {/* Bottom navigation should NOT appear on
-          Article, Activity, Emergency, Create Group
-          or Group Details screens */}
+      {/*
+       * Bottom navigation is hidden while the user
+       * is inside a secondary screen.
+       */}
       {!isArticleOpen &&
         !isActivityOpen &&
         !isEmergencyOpen &&
         !isCreateGroupOpen &&
-        !selectedGroup && (
+        !selectedGroup &&
+        !currentScreen && (
           <BottomNavigation
             activeTab={activeTab}
             onChangeTab={changeTab}
