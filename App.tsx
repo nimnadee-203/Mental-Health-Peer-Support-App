@@ -203,6 +203,7 @@ function App() {
       return (
         <ActivitiesScreen
           activity={selectedActivity}
+          onSelectActivity={setSelectedActivity}
           onBack={() => {
             setIsActivityOpen(false);
             setActiveTab('Resources');
