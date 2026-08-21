@@ -3,8 +3,13 @@
  * Run once: node src/seed.js
  */
 require('dotenv').config();
+const dns = require('dns');
 const mongoose = require('mongoose');
 const Community = require('./models/Community');
+
+try {
+  dns.setServers(['8.8.8.8', '8.8.4.4']);
+} catch (e) {}
 
 const MONGO_URI = process.env.MONGODB_URI;
 
