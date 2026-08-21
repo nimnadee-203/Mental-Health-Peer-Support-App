@@ -22,13 +22,16 @@ import GroupDiscussionScreen, {
   Community,
   Post,
 } from './src/screens/GroupDiscussionScreen';
+
 import CreatePostScreen from './src/screens/CreatePostScreen';
 import PostDetailScreen from './src/screens/PostDetailScreen';
 
 type ActivityType =
   | 'breathing'
   | 'mindfulness'
-  | 'journaling';
+  | 'journaling'
+  | 'digitalDetox'
+  | 'healthyRoutine';
 
 type ResourcesScreenProps = {
   onOpenArticle: (article: ResourceArticle) => void;
@@ -54,39 +57,47 @@ type Group = {
   emoji: string;
 };
 
-/*
- * Mock Community for Group Discussion
- */
-const MOCK_COMMUNITY: Community = {
-  _id: 'mock_mindfulness',
-  name: 'Mindfulness & Healthy Habits',
-  category: 'Mindfulness',
-  themeColor: '#D4C9F5',
-  memberCount: 154,
-  guidelines: [
-    'Be kind and respectful.',
-    'All posts here are anonymous.',
-    'This is peer support — not professional advice.',
-  ],
-  isJoined: true,
-};
-
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
 
   /*
-   * Group Discussion navigation
-   *
-   * null = normal application navigation
+   * ==========================================
+   * GROUP DISCUSSION STATE
+   * ==========================================
    */
-  const [currentScreen, setCurrentScreen] = useState<
-    'discussion' | 'create' | 'postDetail' | null
-  >(null);
+
+  const [currentScreen, setCurrentScreen] =
+    useState<
+      'discussion' | 'create' | 'postDetail' | null
+    >(null);
 
   const [selectedPost, setSelectedPost] =
     useState<Post | null>(null);
 
+  /*
+   * The actual group selected by the user.
+   */
+  const [selectedGroup, setSelectedGroup] =
+    useState<Group | null>(null);
+
+  /*
+   * Community used by GroupDiscussionScreen.
+   */
+  const [selectedCommunity, setSelectedCommunity] =
+    useState<Community | null>(null);
+
+  /*
+   * ==========================================
+   * GROUP DISCUSSION NAVIGATION
+   * ==========================================
+   */
+
   const navigateToDiscussion = () => {
+    if (!selectedCommunity) {
+      return;
+    }
+
+    setSelectedPost(null);
     setCurrentScreen('discussion');
   };
 
@@ -100,8 +111,11 @@ function App() {
   };
 
   /*
-   * Main application navigation
+   * ==========================================
+   * MAIN NAVIGATION
+   * ==========================================
    */
+
   const [activeTab, setActiveTab] = useState<
     'Home' | 'Resources' | 'Groups' | 'Messages' | 'Profile'
   >('Home');
@@ -124,14 +138,17 @@ function App() {
   const [isCreateGroupOpen, setIsCreateGroupOpen] =
     useState(false);
 
-  const [selectedGroup, setSelectedGroup] =
-    useState<Group | null>(null);
-
   const [joinedGroups, setJoinedGroups] =
     useState<Group[]>([]);
 
   const [selectedActivity, setSelectedActivity] =
     useState<ActivityType>('breathing');
+
+  /*
+   * ==========================================
+   * CHANGE MAIN TAB
+   * ==========================================
+   */
 
   const changeTab = (
     tab:
@@ -144,11 +161,15 @@ function App() {
     setActiveTab(tab);
 
     /*
-     * Close every secondary screen when changing tabs
+     * Close Group Discussion screens
      */
     setCurrentScreen(null);
     setSelectedPost(null);
+    setSelectedCommunity(null);
 
+    /*
+     * Close other secondary screens
+     */
     setIsArticleOpen(false);
     setIsActivityOpen(false);
     setIsEmergencyOpen(false);
@@ -157,6 +178,12 @@ function App() {
     setSelectedArticle(null);
     setSelectedGroup(null);
   };
+
+  /*
+   * ==========================================
+   * RESOURCE FUNCTIONS
+   * ==========================================
+   */
 
   const handleOpenArticle = (
     article: ResourceArticle
@@ -190,19 +217,52 @@ function App() {
     setActiveTab('Resources');
   };
 
+  /*
+   * ==========================================
+   * OPEN REAL GROUP DISCUSSION
+   * ==========================================
+   */
+
+const openGroupDiscussion = (group: Group) => {
+  const community: Community = {
+    _id: group.groupName,
+    name: group.groupName,
+    category: group.category,
+    memberCount: 0,
+    isJoined: true,
+    emoji: group.emoji,
+    bgColor: '#EEF4FF',
+    description: group.description,
+    memberAvatarColors: [],
+  };
+
+  setSelectedGroup(group);
+  setSelectedCommunity(community);
+  setCurrentScreen('discussion');
+};
+  /*
+   * ==========================================
+   * SCREEN RENDERING
+   * ==========================================
+   */
+
   const screen = useMemo(() => {
     /*
      * ==========================================
-     * GROUP DISCUSSION SCREENS
+     * GROUP DISCUSSION
      * ==========================================
      */
 
-    if (currentScreen === 'discussion') {
+    if (
+      currentScreen === 'discussion' &&
+      selectedCommunity
+    ) {
       return (
         <GroupDiscussionScreen
-          community={MOCK_COMMUNITY}
+          community={selectedCommunity}
           onBack={() => {
             setCurrentScreen(null);
+            setSelectedPost(null);
             setActiveTab('Groups');
           }}
           onCreatePost={navigateToCreate}
@@ -211,15 +271,34 @@ function App() {
       );
     }
 
-    if (currentScreen === 'create') {
+    /*
+     * ==========================================
+     * CREATE POST
+     * ==========================================
+     */
+
+    if (
+      currentScreen === 'create' &&
+      selectedCommunity
+    ) {
       return (
         <CreatePostScreen
-          community={MOCK_COMMUNITY}
-          onBack={navigateToDiscussion}
-          onPostCreated={navigateToDiscussion}
+          community={selectedCommunity}
+          onBack={() => {
+            setCurrentScreen('discussion');
+          }}
+          onPostCreated={() => {
+            setCurrentScreen('discussion');
+          }}
         />
       );
     }
+
+    /*
+     * ==========================================
+     * POST DETAIL
+     * ==========================================
+     */
 
     if (
       currentScreen === 'postDetail' &&
@@ -228,7 +307,10 @@ function App() {
       return (
         <PostDetailScreen
           post={selectedPost}
-          onBack={navigateToDiscussion}
+          onBack={() => {
+            setSelectedPost(null);
+            setCurrentScreen('discussion');
+          }}
         />
       );
     }
@@ -322,6 +404,12 @@ function App() {
                 selectedGroup,
               ];
             });
+
+            /*
+             * After joining, open the actual
+             * discussion community.
+             */
+            openGroupDiscussion(selectedGroup);
           }}
           onBack={() => {
             setSelectedGroup(null);
@@ -355,6 +443,17 @@ function App() {
      */
 
     switch (activeTab) {
+      /*
+       * HOME
+       */
+
+      case 'Home':
+        return <HomeScreen />;
+
+      /*
+       * RESOURCES
+       */
+
       case 'Resources':
         return (
           <ResourcesScreen
@@ -366,6 +465,10 @@ function App() {
             }
           />
         );
+
+      /*
+       * GROUPS
+       */
 
       case 'Groups':
         return (
@@ -389,6 +492,10 @@ function App() {
           />
         );
 
+      /*
+       * MESSAGES
+       */
+
       case 'Messages':
         return (
           <View
@@ -400,6 +507,10 @@ function App() {
             }}
           />
         );
+
+      /*
+       * PROFILE
+       */
 
       case 'Profile':
         return (
@@ -413,13 +524,13 @@ function App() {
           />
         );
 
-      case 'Home':
       default:
         return <HomeScreen />;
     }
   }, [
     currentScreen,
     selectedPost,
+    selectedCommunity,
     activeTab,
     isDarkMode,
     isArticleOpen,
@@ -432,6 +543,12 @@ function App() {
     selectedGroup,
     joinedGroups,
   ]);
+
+  /*
+   * ==========================================
+   * APP
+   * ==========================================
+   */
 
   return (
     <SafeAreaProvider>
@@ -446,9 +563,10 @@ function App() {
       {screen}
 
       {/*
-       * Bottom navigation is hidden while the user
-       * is inside a secondary screen.
+       * Bottom navigation appears only on
+       * the main screens.
        */}
+
       {!isArticleOpen &&
         !isActivityOpen &&
         !isEmergencyOpen &&

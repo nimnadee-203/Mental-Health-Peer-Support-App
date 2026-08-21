@@ -21,13 +21,7 @@ type GroupsHomeScreenProps = {
 
   onCreateGroup: () => void;
 
-  onOpenGroup: (group: {
-    groupName: string;
-    category: string;
-    description: string;
-    guidelines: string;
-    emoji: string;
-  }) => void;
+  onOpenGroup: (group: Group) => void;
 
   onLeaveGroup: (groupName: string) => void;
 };
@@ -38,18 +32,61 @@ const GroupsHomeScreen = ({
   joinedGroups,
   onLeaveGroup,
 }: GroupsHomeScreenProps) => {
+  const allGroups: Group[] = [
+    {
+      groupName: 'Managing Academic Stress',
+      category: 'Academic Pressure',
+      description:
+        'A supportive space to share experiences and learn ways to manage academic pressure.',
+      guidelines:
+        'Be respectful, supportive, and avoid judging others. Do not share personal information outside the group.',
+      emoji: '📚',
+    },
+    {
+      groupName: 'Calm Minds Community',
+      category: 'Stress & Anxiety',
+      description:
+        'A safe community to share feelings, coping strategies, and everyday experiences.',
+      guidelines:
+        'Be respectful and supportive. Listen to others without judgement and keep shared experiences private.',
+      emoji: '🧘',
+    },
+    {
+      groupName: 'Mindfulness & Self-Care',
+      category: 'Self-Care',
+      description:
+        'Discover simple self-care habits and mindfulness practices together with others.',
+      guidelines:
+        'Share helpful experiences, respect different routines, and encourage positive self-care practices.',
+      emoji: '🌿',
+    },
+    {
+      groupName: 'You Are Not Alone',
+      category: 'Depression Support',
+      description:
+        'A welcoming space for people to connect, listen, and support one another.',
+      guidelines:
+        'Be kind and respectful. Avoid judgement and give others space to share their experiences safely.',
+      emoji: '💙',
+    },
+  ];
+
   return (
     <View style={styles.container}>
 
       {/* Header */}
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Find Your Community</Text>
+        <Text style={styles.title}>
+          Find Your Community
+        </Text>
 
         <Pressable
           style={styles.createButton}
           onPress={onCreateGroup}
         >
-          <Text style={styles.createButtonText}>+ Create</Text>
+          <Text style={styles.createButtonText}>
+            + Create
+          </Text>
         </Pressable>
       </View>
 
@@ -71,7 +108,12 @@ const GroupsHomeScreen = ({
         style={styles.categoryScroll}
         contentContainerStyle={styles.categoryContainer}
       >
-        <Text style={[styles.categoryTab, styles.activeCategory]}>
+        <Text
+          style={[
+            styles.categoryTab,
+            styles.activeCategory,
+          ]}
+        >
           All
         </Text>
 
@@ -100,6 +142,7 @@ const GroupsHomeScreen = ({
       >
 
         {/* ================= MY COMMUNITIES ================= */}
+
         {joinedGroups.length > 0 && (
           <>
             <Text style={styles.sectionTitle}>
@@ -107,8 +150,7 @@ const GroupsHomeScreen = ({
             </Text>
 
             <View style={styles.myCommunitiesGrid}>
-
-              {joinedGroups.map((group) => (
+              {joinedGroups.map(group => (
                 <View
                   key={group.groupName}
                   style={styles.myCommunityCard}
@@ -116,7 +158,9 @@ const GroupsHomeScreen = ({
 
                   {/* Emoji */}
                   <View style={styles.smallGroupImage}>
-                    <Text style={styles.smallGroupImageText}>
+                    <Text
+                      style={styles.smallGroupImageText}
+                    >
                       {group.emoji}
                     </Text>
                   </View>
@@ -140,28 +184,40 @@ const GroupsHomeScreen = ({
                   {/* Buttons */}
                   <View style={styles.myCommunityBottom}>
 
-                   <View style={styles.smallOpenButton}>
-  <Text style={styles.smallOpenButtonText}>
-    Open
-  </Text>
-</View>
+                    {/* FIXED: Open is now clickable */}
+                    <Pressable
+                      style={styles.smallOpenButton}
+                      onPress={() =>
+                        onOpenGroup(group)
+                      }
+                    >
+                      <Text
+                        style={styles.smallOpenButtonText}
+                      >
+                        Open
+                      </Text>
+                    </Pressable>
 
                     <Pressable
                       style={styles.smallLeaveButton}
                       onPress={() =>
-                        onLeaveGroup(group.groupName)
+                        onLeaveGroup(
+                          group.groupName
+                        )
                       }
                     >
-                      <Text style={styles.smallLeaveButtonText}>
+                      <Text
+                        style={
+                          styles.smallLeaveButtonText
+                        }
+                      >
                         Leave
                       </Text>
                     </Pressable>
 
                   </View>
-
                 </View>
               ))}
-
             </View>
           </>
         )}
@@ -172,254 +228,85 @@ const GroupsHomeScreen = ({
           ALL COMMUNITIES
         </Text>
 
-        {/* Group 1 */}
-        <View style={styles.groupCard}>
-          <View style={styles.groupTop}>
+        {allGroups.map(group => {
+          const isMember = joinedGroups.some(
+            joinedGroup =>
+              joinedGroup.groupName ===
+              group.groupName
+          );
 
-            <View style={styles.groupImage}>
-              <Text style={styles.groupImageText}>📚</Text>
-            </View>
+          return (
+            <View
+              key={group.groupName}
+              style={styles.groupCard}
+            >
+              <View style={styles.groupTop}>
 
-            <View style={styles.groupInfo}>
-              <Text style={styles.groupCategory}>
-                ACADEMIC PRESSURE
-              </Text>
+                <View style={styles.groupImage}>
+                  <Text
+                    style={styles.groupImageText}
+                  >
+                    {group.emoji}
+                  </Text>
+                </View>
 
-              <Text style={styles.groupTitle}>
-                Managing Academic Stress
-              </Text>
-            </View>
+                <View style={styles.groupInfo}>
+                  <Text style={styles.groupCategory}>
+                    {group.category.toUpperCase()}
+                  </Text>
 
-          </View>
+                  <Text style={styles.groupTitle}>
+                    {group.groupName}
+                  </Text>
+                </View>
 
-          <Text style={styles.groupDescription}>
-            A supportive space to share experiences and learn ways
-            to manage academic pressure.
-          </Text>
-
-          <View style={styles.groupBottom}>
-
-            {joinedGroups.some(
-              group =>
-                group.groupName === 'Managing Academic Stress'
-            ) ? (
-              <View style={styles.memberBadge}>
-                <Text style={styles.memberBadgeText}>
-                  ✓ Member
-                </Text>
               </View>
-            ) : (
-              <Pressable
-                style={styles.joinButton}
-                onPress={() =>
-                  onOpenGroup({
-                    groupName: 'Managing Academic Stress',
-                    category: 'Academic Pressure',
-                    description:
-                      'A supportive space to share experiences and learn ways to manage academic pressure.',
-                    guidelines:
-                      'Be respectful, supportive, and avoid judging others. Do not share personal information outside the group.',
-                    emoji: '📚',
-                  })
-                }
-              >
-                <Text style={styles.joinButtonText}>
-                  Join
-                </Text>
-              </Pressable>
-            )}
 
-          </View>
-        </View>
-
-        {/* Group 2 */}
-        <View style={styles.groupCard}>
-          <View style={styles.groupTop}>
-
-            <View style={styles.groupImage}>
-              <Text style={styles.groupImageText}>🧘</Text>
-            </View>
-
-            <View style={styles.groupInfo}>
-              <Text style={styles.groupCategory}>
-                STRESS & ANXIETY
+              <Text style={styles.groupDescription}>
+                {group.description}
               </Text>
 
-              <Text style={styles.groupTitle}>
-                Calm Minds Community
-              </Text>
-            </View>
+              <View style={styles.groupBottom}>
 
-          </View>
+                {isMember ? (
+                  <Pressable
+                    style={styles.openGroupButton}
+                    onPress={() =>
+                      onOpenGroup(group)
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.openGroupButtonText
+                      }
+                    >
+                      Open
+                    </Text>
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    style={styles.joinButton}
+                    onPress={() =>
+                      onOpenGroup(group)
+                    }
+                  >
+                    <Text style={styles.joinButtonText}>
+                      Join
+                    </Text>
+                  </Pressable>
+                )}
 
-          <Text style={styles.groupDescription}>
-            A safe community to share feelings, coping strategies,
-            and everyday experiences.
-          </Text>
-
-          <View style={styles.groupBottom}>
-
-            {joinedGroups.some(
-              group =>
-                group.groupName === 'Calm Minds Community'
-            ) ? (
-              <View style={styles.memberBadge}>
-                <Text style={styles.memberBadgeText}>
-                  ✓ Member
-                </Text>
               </View>
-            ) : (
-              <Pressable
-                style={styles.joinButton}
-                onPress={() =>
-                  onOpenGroup({
-                    groupName: 'Calm Minds Community',
-                    category: 'Stress & Anxiety',
-                    description:
-                      'A safe community to share feelings, coping strategies, and everyday experiences.',
-                    guidelines:
-                      'Be respectful and supportive. Listen to others without judgement and keep shared experiences private.',
-                    emoji: '🧘',
-                  })
-                }
-              >
-                <Text style={styles.joinButtonText}>
-                  Join
-                </Text>
-              </Pressable>
-            )}
-
-          </View>
-        </View>
-
-        {/* Group 3 */}
-        <View style={styles.groupCard}>
-          <View style={styles.groupTop}>
-
-            <View style={styles.groupImage}>
-              <Text style={styles.groupImageText}>🌿</Text>
             </View>
-
-            <View style={styles.groupInfo}>
-              <Text style={styles.groupCategory}>
-                SELF-CARE
-              </Text>
-
-              <Text style={styles.groupTitle}>
-                Mindfulness & Self-Care
-              </Text>
-            </View>
-
-          </View>
-
-          <Text style={styles.groupDescription}>
-            Discover simple self-care habits and mindfulness
-            practices together with others.
-          </Text>
-
-          <View style={styles.groupBottom}>
-
-            {joinedGroups.some(
-              group =>
-                group.groupName === 'Mindfulness & Self-Care'
-            ) ? (
-              <View style={styles.memberBadge}>
-                <Text style={styles.memberBadgeText}>
-                  ✓ Member
-                </Text>
-              </View>
-            ) : (
-              <Pressable
-                style={styles.joinButton}
-                onPress={() =>
-                  onOpenGroup({
-                    groupName: 'Mindfulness & Self-Care',
-                    category: 'Self-Care',
-                    description:
-                      'Discover simple self-care habits and mindfulness practices together with others.',
-                    guidelines:
-                      'Share helpful experiences, respect different routines, and encourage positive self-care practices.',
-                    emoji: '🌿',
-                  })
-                }
-              >
-                <Text style={styles.joinButtonText}>
-                  Join
-                </Text>
-              </Pressable>
-            )}
-
-          </View>
-        </View>
-
-        {/* Group 4 */}
-        <View style={styles.groupCard}>
-          <View style={styles.groupTop}>
-
-            <View style={styles.groupImage}>
-              <Text style={styles.groupImageText}>💙</Text>
-            </View>
-
-            <View style={styles.groupInfo}>
-              <Text style={styles.groupCategory}>
-                DEPRESSION SUPPORT
-              </Text>
-
-              <Text style={styles.groupTitle}>
-                You Are Not Alone
-              </Text>
-            </View>
-
-          </View>
-
-          <Text style={styles.groupDescription}>
-            A welcoming space for people to connect, listen,
-            and support one another.
-          </Text>
-
-          <View style={styles.groupBottom}>
-
-            {joinedGroups.some(
-              group =>
-                group.groupName === 'You Are Not Alone'
-            ) ? (
-              <View style={styles.memberBadge}>
-                <Text style={styles.memberBadgeText}>
-                  ✓ Member
-                </Text>
-              </View>
-            ) : (
-              <Pressable
-                style={styles.joinButton}
-                onPress={() =>
-                  onOpenGroup({
-                    groupName: 'You Are Not Alone',
-                    category: 'Depression Support',
-                    description:
-                      'A welcoming space for people to connect, listen, and support one another.',
-                    guidelines:
-                      'Be kind and respectful. Avoid judgement and give others space to share their experiences safely.',
-                    emoji: '💙',
-                  })
-                }
-              >
-                <Text style={styles.joinButtonText}>
-                  Join
-                </Text>
-              </Pressable>
-            )}
-
-          </View>
-        </View>
+          );
+        })}
 
       </ScrollView>
-
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -537,20 +424,20 @@ const styles = StyleSheet.create({
     borderColor: '#E8ECF2',
   },
 
- smallGroupImage: {
-  width: 46,
-  height: 46,
-  borderRadius: 12,
-  backgroundColor: '#EEF4FF',
-  alignItems: 'center',
-  justifyContent: 'center',
-  alignSelf: 'flex-start',
-  marginBottom: 8,
-},
+  smallGroupImage: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    backgroundColor: '#EEF4FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
 
-smallGroupImageText: {
-  fontSize: 24,
-},
+  smallGroupImageText: {
+    fontSize: 24,
+  },
 
   myCommunityCategory: {
     fontSize: 8,
@@ -574,31 +461,31 @@ smallGroupImageText: {
     gap: 6,
   },
 
-smallOpenButton: {
-  backgroundColor: '#d0d9eb',
-  paddingHorizontal: 20,
-  paddingVertical: 7,
-  borderRadius: 9,
-},
+  smallOpenButton: {
+    backgroundColor: '#d0d9eb',
+    paddingHorizontal: 20,
+    paddingVertical: 7,
+    borderRadius: 9,
+  },
 
-smallOpenButtonText: {
-  color: '#2673FF',
-  fontSize: 13,
-  fontWeight: '700',
-},
+  smallOpenButtonText: {
+    color: '#2673FF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
 
-smallLeaveButton: {
-  backgroundColor: '#f0c4c4',
-  paddingHorizontal: 20,
-  paddingVertical: 7,
-  borderRadius: 9,
-},
+  smallLeaveButton: {
+    backgroundColor: '#f0c4c4',
+    paddingHorizontal: 20,
+    paddingVertical: 7,
+    borderRadius: 9,
+  },
 
-smallLeaveButtonText: {
-  color: '#D64545',
-  fontSize: 13,
-  fontWeight: '700',
-},
+  smallLeaveButtonText: {
+    color: '#D64545',
+    fontSize: 13,
+    fontWeight: '700',
+  },
 
   /* ================= ALL COMMUNITIES ================= */
 
@@ -711,7 +598,6 @@ smallLeaveButtonText: {
     fontSize: 12,
     fontWeight: '700',
   },
-
 });
 
 export default GroupsHomeScreen;

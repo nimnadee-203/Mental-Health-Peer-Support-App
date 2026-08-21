@@ -14,7 +14,7 @@ router.get('/post/:postId', async (req, res) => {
     const comments = await Comment.find({ postId }).sort({ createdAt: 1 });
     res.json(comments);
   } catch (err) {
-    console.error(err);
+    console.error('Error fetching comments:', err);
     res.status(500).json({ error: 'Failed to fetch comments' });
   }
 });
@@ -28,6 +28,10 @@ router.post('/post/:postId', async (req, res) => {
     const { postId } = req.params;
     const { content, isAnonymous } = req.body;
 
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: 'Comment content is required' });
+    }
+
     const post = await Post.findById(postId);
     if (!post) {
       return res.status(404).json({ error: 'Post not found' });
@@ -35,18 +39,20 @@ router.post('/post/:postId', async (req, res) => {
 
     const comment = new Comment({
       postId,
-      content,
+      content: content.trim(),
       authorName: isAnonymous !== false ? 'Anonymous Member' : 'Member',
+      likes: 0,
     });
 
     await comment.save();
 
     // Increment comment count on the post
-    post.commentsCount += 1;
+    post.commentsCount = (post.commentsCount || 0) + 1;
     await post.save();
 
     res.status(201).json(comment);
   } catch (err) {
+    console.error('Error creating comment:', err);
     res.status(400).json({ error: err.message });
   }
 });
@@ -65,6 +71,7 @@ router.post('/:commentId/like', async (req, res) => {
     if (!comment) return res.status(404).json({ error: 'Comment not found' });
     res.json(comment);
   } catch (err) {
+    console.error('Error liking comment:', err);
     res.status(500).json({ error: 'Failed to like comment' });
   }
 });

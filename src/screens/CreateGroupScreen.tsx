@@ -14,9 +14,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 
-// ─── Config ───────────────────────────────────────────────────────────────────
-// Physical Android device → your PC's LAN IP (from ipconfig).
-const API_BASE = 'http://192.168.8.158:3000/api';
+import { API_BASE } from '../config/api';
 const MAX_DESC = 300;
 
 // ─── Constants ────────────────────────────────────────────────────────────────

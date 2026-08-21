@@ -13,7 +13,7 @@ router.get('/group/:groupId', async (req, res) => {
     const posts = await Post.find({ groupId }).sort({ createdAt: -1 });
     res.json(posts);
   } catch (err) {
-    console.error(err);
+    console.error('Error fetching posts:', err);
     res.status(500).json({ error: 'Failed to fetch posts' });
   }
 });
@@ -27,21 +27,25 @@ router.post('/group/:groupId', async (req, res) => {
     const { groupId } = req.params;
     const { content, topic, contentNote, isAnonymous } = req.body;
 
-    // Community validation removed since we are in isolation mode
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: 'Post content is required' });
+    }
+
     const post = new Post({
       groupId,
-      content,
-      topic,
+      content: content.trim(),
+      topic: topic || 'General',
       contentNote: contentNote || 'None',
-      isAnonymous,
+      isAnonymous: Boolean(isAnonymous),
       authorName: isAnonymous ? 'Anonymous Member' : 'Member',
-      likes: Math.floor(Math.random() * 20), // Seed with random likes for realistic UI
-      commentsCount: Math.floor(Math.random() * 10), // Seed with random comments count
+      likes: 0,
+      commentsCount: 0,
     });
 
     await post.save();
     res.status(201).json(post);
   } catch (err) {
+    console.error('Error creating post:', err);
     res.status(400).json({ error: err.message });
   }
 });
@@ -60,6 +64,7 @@ router.post('/:postId/like', async (req, res) => {
     if (!post) return res.status(404).json({ error: 'Post not found' });
     res.json(post);
   } catch (err) {
+    console.error('Error liking post:', err);
     res.status(500).json({ error: 'Failed to like post' });
   }
 });

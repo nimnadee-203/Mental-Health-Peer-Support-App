@@ -18,7 +18,9 @@ import {
 type ActivityType =
   | 'breathing'
   | 'mindfulness'
-  | 'journaling';
+  | 'journaling'
+  | 'digitalDetox'
+  | 'healthyRoutine';
 
 type ResourceFilter =
   | 'All'
