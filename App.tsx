@@ -39,6 +39,14 @@ const ResourcesScreen =
   require('./src/screens/ResourcesScreen')
     .default as React.ComponentType<ResourcesScreenProps>;
 
+type Group = {
+  groupName: string;
+  category: string;
+  description: string;
+  guidelines: string;
+  emoji: string;
+};
+
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
 
@@ -64,12 +72,11 @@ function App() {
   const [isCreateGroupOpen, setIsCreateGroupOpen] =
     useState(false);
 
-  const [selectedGroup, setSelectedGroup] = useState<{
-    groupName: string;
-    category: string;
-    description: string;
-    guidelines: string;
-  } | null>(null);
+  const [selectedGroup, setSelectedGroup] =
+    useState<Group | null>(null);
+
+  const [joinedGroups, setJoinedGroups] =
+    useState<Group[]>([]);
 
   const [selectedActivity, setSelectedActivity] =
     useState<ActivityType>('breathing');
@@ -88,6 +95,7 @@ function App() {
     setIsActivityOpen(false);
     setIsEmergencyOpen(false);
     setIsCreateGroupOpen(false);
+
     setSelectedArticle(null);
     setSelectedGroup(null);
   };
@@ -180,6 +188,22 @@ function App() {
           category={selectedGroup.category}
           description={selectedGroup.description}
           guidelines={selectedGroup.guidelines}
+          emoji={selectedGroup.emoji}
+          onJoin={() => {
+            setJoinedGroups(current => {
+              const alreadyJoined = current.some(
+                group =>
+                  group.groupName ===
+                  selectedGroup.groupName
+              );
+
+              if (alreadyJoined) {
+                return current;
+              }
+
+              return [...current, selectedGroup];
+            });
+          }}
           onBack={() => {
             setSelectedGroup(null);
             setActiveTab('Groups');
@@ -212,18 +236,29 @@ function App() {
             savedResources={savedResources}
             onOpenArticle={handleOpenArticle}
             onOpenActivity={handleOpenActivity}
-            onOpenEmergencySupport={handleOpenEmergency}
+            onOpenEmergencySupport={
+              handleOpenEmergency
+            }
           />
         );
 
       case 'Groups':
         return (
           <GroupsHomeScreen
+            joinedGroups={joinedGroups}
             onCreateGroup={() => {
               setIsCreateGroupOpen(true);
             }}
             onOpenGroup={group => {
               setSelectedGroup(group);
+            }}
+            onLeaveGroup={groupName => {
+              setJoinedGroups(current =>
+                current.filter(
+                  group =>
+                    group.groupName !== groupName
+                )
+              );
             }}
           />
         );
@@ -283,6 +318,7 @@ function App() {
     isEmergencyOpen,
     isCreateGroupOpen,
     selectedGroup,
+    joinedGroups,
   ]);
 
   return (
