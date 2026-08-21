@@ -20,8 +20,9 @@ import EmergencySupportScreen from './src/screens/EmergencySupportScreen';
 type ResourcesScreenProps = {
   onOpenArticle: (article: ResourceArticle) => void;
   onOpenActivity: (
-    activity: 'breathing' | 'mindfulness' | 'journaling'
+    activity?: 'breathing' | 'mindfulness' | 'journaling' | 'digitalDetox' | 'healthyRoutine'
   ) => void;
+  onOpenEmergencySupport: () => void;
   savedResources?: string[];
 };
 
@@ -97,7 +98,7 @@ function App() {
   const [savedResources, setSavedResources] = useState<string[]>([]);
   const [isActivityOpen, setIsActivityOpen] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState<
-    'breathing' | 'mindfulness' | 'journaling'
+    'breathing' | 'mindfulness' | 'journaling' | 'digitalDetox' | 'healthyRoutine'
   >('breathing');
   const [isEmergencyOpen, setIsEmergencyOpen] = useState(false);
 
@@ -131,9 +132,9 @@ function App() {
   };
 
   const handleOpenActivity = (
-    activity: 'breathing' | 'mindfulness' | 'journaling'
+    activity?: 'breathing' | 'mindfulness' | 'journaling' | 'digitalDetox' | 'healthyRoutine'
   ) => {
-    setSelectedActivity(activity);
+    if (activity) setSelectedActivity(activity);
     setIsActivityOpen(true);
   };
 
