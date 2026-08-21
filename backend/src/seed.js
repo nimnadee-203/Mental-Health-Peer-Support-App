@@ -1,90 +1,122 @@
 /**
- * seed.js — Populate MongoDB with the 7 communities from the Figma design.
- * Run once: node src/seed.js
+ * seed.js — Populate MongoDB with sample posts for each community.
+ * Run once: npm run seed
+ *
+ * Uses the same string groupIds as defined in App.tsx COMMUNITIES array.
  */
 require('dotenv').config();
 const mongoose = require('mongoose');
-const Community = require('./models/Community');
+const Post = require('./models/Post');
 
 const MONGO_URI = process.env.MONGODB_URI;
 
-const SEED_DATA = [
+// ── These IDs must match the _id values in App.tsx COMMUNITIES ───────────────
+const SEED_POSTS = [
+  // Managing Academic Stress
   {
-    name: 'Managing Academic Stress',
-    category: 'Academic Pressure',
-    emoji: '📚',
-    bgColor: '#FDDCB5',
-    description:
-      'Share experiences and discover ways to manage academic pressure together.',
-    memberCount: 128,
-    memberAvatarColors: ['#C5DFF8', '#F9D4E0', '#C8EDD5'],
-    isJoined: false,
+    groupId: 'academic_stress',
+    content:
+      "I've been feeling overwhelmed with assignments lately. Does anyone have small ways they manage academic stress? Even little things help.",
+    topic: 'Study & Focus',
+    contentNote: 'Academic pressure',
+    isAnonymous: true,
+    authorName: 'Anonymous Member',
+    likes: 12,
+    commentsCount: 6,
   },
   {
-    name: 'Mindfulness & Healthy Habits',
-    category: 'Mindfulness',
-    emoji: '🧘',
-    bgColor: '#D4C9F5',
-    description:
-      'A supportive community focused on building healthier everyday habits.',
-    memberCount: 96,
-    memberAvatarColors: ['#FDDCB5', '#C5DFF8', '#F9D4E0'],
-    isJoined: false,
+    groupId: 'academic_stress',
+    content:
+      'Does anyone have a good routine for taking breaks while studying? I struggle to step away even when I know I need to.',
+    topic: 'Breaks & Rest',
+    contentNote: 'None',
+    isAnonymous: true,
+    authorName: 'Anonymous Member',
+    likes: 9,
+    commentsCount: 4,
   },
   {
-    name: 'Anxiety Support Circle',
-    category: 'Stress & Anxiety',
-    emoji: '🌊',
-    bgColor: '#C5DFF8',
-    description:
-      'A safe space for people to share experiences and support one another.',
-    memberCount: 154,
-    memberAvatarColors: ['#C8EDD5', '#D4C9F5', '#FDDCB5'],
-    isJoined: false,
+    groupId: 'academic_stress',
+    content:
+      'Something that helped me this week — journaling three things I noticed during the day (not even grateful for, just noticed). Surprisingly grounding.',
+    topic: 'Sharing',
+    contentNote: 'None',
+    isAnonymous: true,
+    authorName: 'Anonymous Member',
+    likes: 18,
+    commentsCount: 7,
+  },
+
+  // Calm Minds Community
+  {
+    groupId: 'calm_minds',
+    content:
+      'Anxiety hit me hard this morning before my presentation. I tried the 5-4-3-2-1 grounding technique and it actually helped. Sharing in case it helps someone else.',
+    topic: 'Sharing',
+    contentNote: 'Anxiety / stress',
+    isAnonymous: true,
+    authorName: 'Anonymous Member',
+    likes: 22,
+    commentsCount: 8,
   },
   {
-    name: 'Grief & Loss',
-    category: 'General Wellbeing',
-    emoji: '🕊️',
-    bgColor: '#F9D4E0',
-    description:
-      'Gentle, supportive conversations about loss, grief, and healing at your pace.',
-    memberCount: 112,
-    memberAvatarColors: ['#C5DFF8', '#C8EDD5', '#FDDCB5'],
-    isJoined: false,
+    groupId: 'calm_minds',
+    content:
+      'What are some things you do when anxiety makes it hard to sleep? Looking for practical tips, not just "breathe deeply".',
+    topic: 'Asking for support',
+    contentNote: 'Anxiety / stress',
+    isAnonymous: true,
+    authorName: 'Anonymous Member',
+    likes: 15,
+    commentsCount: 11,
+  },
+
+  // Mindfulness & Self-Care
+  {
+    groupId: 'mindfulness',
+    content:
+      'Started a 10-minute morning walk this week. No phone, no music — just walking. It sounds small but it genuinely shifted my mood every day.',
+    topic: 'Sharing',
+    contentNote: 'None',
+    isAnonymous: true,
+    authorName: 'Anonymous Member',
+    likes: 31,
+    commentsCount: 5,
   },
   {
-    name: 'Recovery & Growth',
-    category: 'General Wellbeing',
-    emoji: '🌱',
-    bgColor: '#C8EDD5',
-    description:
-      'Celebrating progress together — big milestones and small everyday wins.',
-    memberCount: 87,
-    memberAvatarColors: ['#F9D4E0', '#D4C9F5', '#C5DFF8'],
-    isJoined: false,
+    groupId: 'mindfulness',
+    content:
+      'What self-care habits actually stuck for you long term? I keep starting things and dropping them after a week.',
+    topic: 'General',
+    contentNote: 'None',
+    isAnonymous: true,
+    authorName: 'Anonymous Member',
+    likes: 19,
+    commentsCount: 13,
+  },
+
+  // You Are Not Alone
+  {
+    groupId: 'not_alone',
+    content:
+      'Today was heavy. I just needed to say that out loud somewhere. Thank you for this space existing.',
+    topic: 'General',
+    contentNote: 'Sensitive topic',
+    isAnonymous: true,
+    authorName: 'Anonymous Member',
+    likes: 47,
+    commentsCount: 14,
   },
   {
-    name: 'Relationships & Connection',
-    category: 'Relationships',
-    emoji: '🤝',
-    bgColor: '#F9D4E0',
-    description:
-      'A space to talk about friendship, connection, and the challenges they bring.',
-    memberCount: 73,
-    memberAvatarColors: ['#FDDCB5', '#C8EDD5', '#C5DFF8'],
-    isJoined: false,
-  },
-  {
-    name: 'Emotional Wellbeing',
-    category: 'General Wellbeing',
-    emoji: '💛',
-    bgColor: '#FDDCB5',
-    description:
-      "Share what's on your mind and find support from people who understand.",
-    memberCount: 141,
-    memberAvatarColors: ['#F9D4E0', '#C5DFF8', '#D4C9F5'],
-    isJoined: false,
+    groupId: 'not_alone',
+    content:
+      "Reached out to a friend today for the first time in weeks. They didn't make it weird. Small win but it means a lot.",
+    topic: 'Sharing',
+    contentNote: 'None',
+    isAnonymous: true,
+    authorName: 'Anonymous Member',
+    likes: 38,
+    commentsCount: 9,
   },
 ];
 
@@ -93,14 +125,19 @@ async function seed() {
     await mongoose.connect(MONGO_URI);
     console.log('✅  Connected to MongoDB Atlas');
 
-    // Clear existing
-    const deleted = await Community.deleteMany({});
-    console.log(`🗑️   Cleared ${deleted.deletedCount} existing communities`);
+    // Clear existing posts
+    const deleted = await Post.deleteMany({});
+    console.log(`🗑️   Cleared ${deleted.deletedCount} existing posts`);
 
-    // Insert fresh seed data
-    const inserted = await Community.insertMany(SEED_DATA);
-    console.log(`🌱  Seeded ${inserted.length} communities:`);
-    inserted.forEach(c => console.log(`   • ${c.name} [${c.category}]`));
+    // Insert seed posts
+    const inserted = await Post.insertMany(SEED_POSTS);
+    console.log(`🌱  Seeded ${inserted.length} posts across communities:`);
+
+    const groups = [...new Set(SEED_POSTS.map(p => p.groupId))];
+    groups.forEach(g => {
+      const count = inserted.filter(p => p.groupId === g).length;
+      console.log(`   • ${g}: ${count} posts`);
+    });
   } catch (err) {
     console.error('❌  Seed error:', err.message);
   } finally {
