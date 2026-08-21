@@ -1,5 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, {
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+
 import {
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -7,15 +13,63 @@ import {
   TextInput,
   View,
 } from 'react-native';
+
 import Sound from 'react-native-sound';
+
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-type ActivityType = 'breathing' | 'mindfulness' | 'journaling';
+type ActivityType =
+  | 'breathing'
+  | 'mindfulness'
+  | 'journaling';
 
 type ActivitiesScreenProps = {
   activity?: ActivityType;
   onBack: () => void;
+  onSelectActivity: (
+    activity: ActivityType,
+  ) => void;
 };
+
+/* =========================================================
+   ACTIVITY DATA
+========================================================= */
+
+const activities = [
+  {
+    type: 'breathing' as ActivityType,
+    title: 'Breathing Exercise',
+    description:
+      'Slow your breathing and create a little space to relax.',
+    duration: '5 min',
+    icon: '❋',
+    color: '#C9E8D3',
+  },
+
+  {
+    type: 'mindfulness' as ActivityType,
+    title: 'Mindfulness Break',
+    description:
+      'Use your senses to reconnect with the present moment.',
+    duration: '3 min',
+    icon: '✦',
+    color: '#D8E6FC',
+  },
+
+  {
+    type: 'journaling' as ActivityType,
+    title: 'Journaling',
+    description:
+      'Put your thoughts into words with a few gentle prompts.',
+    duration: 'Open-ended',
+    icon: '✎',
+    color: '#F2D9BC',
+  },
+];
+
+/* =========================================================
+   BREATHING
+========================================================= */
 
 const breathingSequence = [
   {
@@ -28,6 +82,7 @@ const breathingSequence = [
     color: '#7ED6A5',
     message: 'Slow and steady 🌿',
   },
+
   {
     label: 'HOLD',
     title: 'Hold softly',
@@ -38,6 +93,7 @@ const breathingSequence = [
     color: '#70C9D8',
     message: 'You’re doing well 💙',
   },
+
   {
     label: 'EXHALE',
     title: 'Breathe out slowly',
@@ -48,6 +104,7 @@ const breathingSequence = [
     color: '#8EAFE8',
     message: 'Let it all out ✨',
   },
+
   {
     label: 'REST',
     title: 'Relax for a moment',
@@ -59,6 +116,10 @@ const breathingSequence = [
     message: 'Just be here 🌸',
   },
 ];
+
+/* =========================================================
+   MINDFULNESS
+========================================================= */
 
 const mindfulnessSteps = [
   {
@@ -78,6 +139,7 @@ const mindfulnessSteps = [
       '🎨 Something with an interesting shape',
     ],
   },
+
   {
     number: 4,
     title: 'Things you can feel',
@@ -94,6 +156,7 @@ const mindfulnessSteps = [
       '💗 Your breathing',
     ],
   },
+
   {
     number: 3,
     title: 'Things you can hear',
@@ -111,6 +174,7 @@ const mindfulnessSteps = [
       '🔊 A sound coming from far away',
     ],
   },
+
   {
     number: 2,
     title: 'Things you can smell',
@@ -127,6 +191,7 @@ const mindfulnessSteps = [
       '🍃 Something fresh',
     ],
   },
+
   {
     number: 1,
     title: 'Thing you appreciate',
@@ -143,80 +208,129 @@ const mindfulnessSteps = [
   },
 ];
 
+/* =========================================================
+   JOURNALING
+========================================================= */
+
 const journalingPrompts = [
   {
-    question: 'What’s on your mind right now?',
-    placeholder: 'Write whatever comes to mind...',
+    question:
+      'What’s on your mind right now?',
+    placeholder:
+      'Write whatever comes to mind...',
   },
+
   {
-    question: 'What is one thing you need today?',
+    question:
+      'What is one thing you need today?',
     placeholder: 'Write here...',
   },
+
   {
-    question: 'What is one small thing that made today a little better?',
+    question:
+      'What is one small thing that made today a little better?',
     placeholder: 'Write here...',
   },
 ];
 
+/* =========================================================
+   COMPONENT
+========================================================= */
+
 function ActivitiesScreen({
   activity,
   onBack,
+  onSelectActivity,
 }: ActivitiesScreenProps) {
-  /* -------------------------------------------------------
+  /* =======================================================
      BREATHING STATE
-  ------------------------------------------------------- */
+  ======================================================= */
 
-  const [breathingStepIndex, setBreathingStepIndex] = useState(0);
-  const [breathingDone, setBreathingDone] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(
-    breathingSequence[0].duration,
-  );
-  const [breathingCycle, setBreathingCycle] = useState(1);
+  const [
+    breathingStepIndex,
+    setBreathingStepIndex,
+  ] = useState(0);
 
-  /* -------------------------------------------------------
-     MINDFULNESS STATE
-  ------------------------------------------------------- */
+  const [breathingDone, setBreathingDone] =
+    useState(false);
 
-  const [mindfulnessStepIndex, setMindfulnessStepIndex] = useState(0);
-  const [mindfulnessDone, setMindfulnessDone] = useState(false);
+  const [isPaused, setIsPaused] =
+    useState(false);
 
-  const [mindfulnessSelections, setMindfulnessSelections] =
-    useState<string[][]>(
-      mindfulnessSteps.map(() => []),
+  const [timeLeft, setTimeLeft] =
+    useState(
+      breathingSequence[0].duration,
     );
 
-  const [musicEnabled, setMusicEnabled] = useState(false);
+  const [breathingCycle, setBreathingCycle] =
+    useState(1);
 
-  /* -------------------------------------------------------
+  /* =======================================================
+     MINDFULNESS STATE
+  ======================================================= */
+
+  const [
+    mindfulnessStepIndex,
+    setMindfulnessStepIndex,
+  ] = useState(0);
+
+  const [
+    mindfulnessDone,
+    setMindfulnessDone,
+  ] = useState(false);
+
+  const [
+    mindfulnessSelections,
+    setMindfulnessSelections,
+  ] = useState<string[][]>(
+    mindfulnessSteps.map(() => []),
+  );
+
+  const [musicEnabled, setMusicEnabled] =
+    useState(false);
+
+  const [soundLoaded, setSoundLoaded] =
+    useState(false);
+
+  /* =======================================================
      JOURNALING STATE
-  ------------------------------------------------------- */
+  ======================================================= */
 
-  const [journalAnswers, setJournalAnswers] = useState([
-    '',
-    '',
-    '',
-  ]);
+  const [journalAnswers, setJournalAnswers] =
+    useState(['', '', '']);
 
-  const [journalingDone, setJournalingDone] = useState(false);
+  const [journalingDone, setJournalingDone] =
+    useState(false);
 
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef =
+    useRef<ReturnType<
+      typeof setInterval
+    > | null>(null);
 
-  /* -------------------------------------------------------
+  /* =======================================================
      MUSIC
-  ------------------------------------------------------- */
+  ======================================================= */
 
-  const soundRef = useRef<Sound | null>(null);
+  const soundRef =
+    useRef<Sound | null>(null);
 
   useEffect(() => {
     Sound.setCategory('Playback');
 
+    const calmMusicUri =
+      Image.resolveAssetSource(
+        require('../assets/audio/calm.mp3'),
+      ).uri;
+
     const sound = new Sound(
-      'calm.mp3',
-      Sound.MAIN_BUNDLE,
+      calmMusicUri,
+      undefined,
       error => {
         if (error) {
-          console.log('Failed to load calm music:', error);
+          console.log(
+            'Failed to load calm music:',
+            error,
+          );
           return;
         }
 
@@ -224,10 +338,14 @@ function ActivitiesScreen({
         sound.setVolume(0.35);
 
         soundRef.current = sound;
+
+        setSoundLoaded(true);
       },
     );
 
     return () => {
+      setSoundLoaded(false);
+
       if (soundRef.current) {
         soundRef.current.stop();
         soundRef.current.release();
@@ -237,40 +355,58 @@ function ActivitiesScreen({
   }, []);
 
   useEffect(() => {
-    if (!soundRef.current) {
+    const sound = soundRef.current;
+
+    if (!soundLoaded || !sound) {
       return;
     }
 
-    if (musicEnabled && activity === 'mindfulness') {
-      soundRef.current.play(success => {
+    if (
+      musicEnabled &&
+      activity === 'mindfulness'
+    ) {
+      sound.play(success => {
         if (!success) {
-          console.log('Music playback failed');
+          console.log(
+            'Music playback failed',
+          );
         }
       });
     } else {
-      soundRef.current.stop();
+      sound.stop();
     }
-  }, [musicEnabled, activity]);
+  }, [
+    musicEnabled,
+    activity,
+    soundLoaded,
+  ]);
 
   useEffect(() => {
-    if (activity !== 'mindfulness' && musicEnabled) {
+    if (
+      activity !== 'mindfulness' &&
+      musicEnabled
+    ) {
       setMusicEnabled(false);
     }
   }, [activity, musicEnabled]);
 
-  /* -------------------------------------------------------
+  /* =======================================================
      ACTIVE STEPS
-  ------------------------------------------------------- */
+  ======================================================= */
 
   const activeBreathingStep =
-    breathingSequence[breathingStepIndex];
+    breathingSequence[
+      breathingStepIndex
+    ];
 
   const activeMindfulnessStep =
-    mindfulnessSteps[mindfulnessStepIndex];
+    mindfulnessSteps[
+      mindfulnessStepIndex
+    ];
 
-  /* -------------------------------------------------------
+  /* =======================================================
      BREATHING TIMER
-  ------------------------------------------------------- */
+  ======================================================= */
 
   useEffect(() => {
     if (
@@ -281,19 +417,22 @@ function ActivitiesScreen({
       return;
     }
 
-    timerRef.current = setInterval(() => {
-      setTimeLeft(current => {
-        if (current <= 1) {
-          return 0;
-        }
+    timerRef.current =
+      setInterval(() => {
+        setTimeLeft(current => {
+          if (current <= 1) {
+            return 0;
+          }
 
-        return current - 1;
-      });
-    }, 1000);
+          return current - 1;
+        });
+      }, 1000);
 
     return () => {
       if (timerRef.current) {
-        clearInterval(timerRef.current);
+        clearInterval(
+          timerRef.current,
+        );
       }
     };
   }, [
@@ -322,18 +461,27 @@ function ActivitiesScreen({
         return;
       }
 
-      setBreathingCycle(current => current + 1);
+      setBreathingCycle(
+        current => current + 1,
+      );
+
       setBreathingStepIndex(0);
-      setTimeLeft(breathingSequence[0].duration);
+
+      setTimeLeft(
+        breathingSequence[0].duration,
+      );
 
       return;
     }
 
-    const nextIndex = breathingStepIndex + 1;
+    const nextIndex =
+      breathingStepIndex + 1;
 
     setBreathingStepIndex(nextIndex);
+
     setTimeLeft(
-      breathingSequence[nextIndex].duration,
+      breathingSequence[nextIndex]
+        .duration,
     );
   }, [
     activity,
@@ -344,74 +492,97 @@ function ActivitiesScreen({
     timeLeft,
   ]);
 
-  /* -------------------------------------------------------
+  /* =======================================================
      JOURNAL UPDATE
-  ------------------------------------------------------- */
+  ======================================================= */
 
   const updateJournalAnswer = (
     index: number,
     value: string,
   ) => {
     setJournalAnswers(current =>
-      current.map((item, itemIndex) =>
-        itemIndex === index ? value : item,
+      current.map(
+        (item, itemIndex) =>
+          itemIndex === index
+            ? value
+            : item,
       ),
     );
   };
 
-  /* -------------------------------------------------------
+  /* =======================================================
      RESET BREATHING
-  ------------------------------------------------------- */
+  ======================================================= */
 
   const resetBreathing = () => {
     setBreathingStepIndex(0);
     setBreathingDone(false);
     setIsPaused(false);
+
     setTimeLeft(
       breathingSequence[0].duration,
     );
+
     setBreathingCycle(1);
   };
 
-  /* -------------------------------------------------------
-     MINDFULNESS SELECTION
-  ------------------------------------------------------- */
+  /* =======================================================
+     MINDFULNESS
+  ======================================================= */
 
   const toggleMindfulnessOption = (
     option: string,
   ) => {
-    setMindfulnessSelections(current => {
-      const currentSelections =
-        current[mindfulnessStepIndex];
+    setMindfulnessSelections(
+      current => {
+        const currentSelections =
+          current[
+            mindfulnessStepIndex
+          ];
 
-      const isSelected =
-        currentSelections.includes(option);
+        const isSelected =
+          currentSelections.includes(
+            option,
+          );
 
-      const required =
-        activeMindfulnessStep.number;
+        const required =
+          activeMindfulnessStep.number;
 
-      if (isSelected) {
-        return current.map((items, index) =>
-          index === mindfulnessStepIndex
-            ? items.filter(item => item !== option)
-            : items,
+        if (isSelected) {
+          return current.map(
+            (items, index) =>
+              index ===
+              mindfulnessStepIndex
+                ? items.filter(
+                    item =>
+                      item !== option,
+                  )
+                : items,
+          );
+        }
+
+        if (
+          currentSelections.length >=
+          required
+        ) {
+          return current;
+        }
+
+        return current.map(
+          (items, index) =>
+            index ===
+            mindfulnessStepIndex
+              ? [...items, option]
+              : items,
         );
-      }
-
-      if (currentSelections.length >= required) {
-        return current;
-      }
-
-      return current.map((items, index) =>
-        index === mindfulnessStepIndex
-          ? [...items, option]
-          : items,
-      );
-    });
+      },
+    );
   };
 
   const currentSelections =
-    mindfulnessSelections[mindfulnessStepIndex] || [];
+    mindfulnessSelections[
+      mindfulnessStepIndex
+    ] || [];
 
   const canContinueMindfulness =
     currentSelections.length ===
@@ -443,7 +614,9 @@ function ActivitiesScreen({
   };
 
   const previousMindfulnessStep = () => {
-    if (mindfulnessStepIndex === 0) {
+    if (
+      mindfulnessStepIndex === 0
+    ) {
       return;
     }
 
@@ -460,64 +633,210 @@ function ActivitiesScreen({
     setMindfulnessStepIndex(0);
     setMindfulnessDone(false);
     setMusicEnabled(false);
+
     setMindfulnessSelections(
-      mindfulnessSteps.map(() => []),
+      mindfulnessSteps.map(
+        () => [],
+      ),
     );
   };
 
-  /* -------------------------------------------------------
-     MUSIC TOGGLE
-  ------------------------------------------------------- */
-
   const toggleMusic = () => {
-    const newValue = !musicEnabled;
-
-    setMusicEnabled(newValue);
-
-    if (!newValue && soundRef.current) {
-      soundRef.current.stop();
-    }
+    setMusicEnabled(
+      current => !current,
+    );
   };
 
-  /* -------------------------------------------------------
+  /* =======================================================
+     ALL ACTIVITIES PAGE
+  ======================================================= */
+
+  const renderAllActivities = () => {
+    return (
+      <>
+        <View
+          style={
+            styles.activitiesPageHeader
+          }
+        >
+          <Text
+            style={styles.activityTag}
+          >
+            WELLBEING ACTIVITIES
+          </Text>
+
+          <Text
+            style={
+              styles.activitiesPageTitle
+            }
+          >
+            Take a moment for yourself
+          </Text>
+
+          <Text
+            style={
+              styles.activitiesPageDescription
+            }
+          >
+            Choose an activity that feels
+            right for you right now.
+            There is no pressure to finish
+            everything.
+          </Text>
+        </View>
+
+        <View
+          style={styles.activitiesList}
+        >
+          {activities.map(item => (
+            <Pressable
+              key={item.type}
+              testID={`${item.type}-activity-option`}
+              style={({ pressed }) => [
+                styles.activityOptionCard,
+                pressed &&
+                  styles.cardPressed,
+              ]}
+              onPress={() =>
+                onSelectActivity(
+                  item.type,
+                )
+              }
+            >
+              <View
+                style={[
+                  styles.activityOptionIcon,
+                  {
+                    backgroundColor:
+                      item.color,
+                  },
+                ]}
+              >
+                <Text
+                  style={
+                    styles.activityOptionIconText
+                  }
+                >
+                  {item.icon}
+                </Text>
+              </View>
+
+              <View
+                style={
+                  styles.activityOptionContent
+                }
+              >
+                <Text
+                  style={
+                    styles.activityOptionTitle
+                  }
+                >
+                  {item.title}
+                </Text>
+
+                <Text
+                  style={
+                    styles.activityOptionDescription
+                  }
+                >
+                  {item.description}
+                </Text>
+
+                <Text
+                  style={
+                    styles.activityOptionDuration
+                  }
+                >
+                  {item.duration}
+                </Text>
+              </View>
+
+              <View
+                style={
+                  styles.activityOptionArrow
+                }
+              >
+                <Text
+                  style={
+                    styles.activityOptionArrowText
+                  }
+                >
+                  →
+                </Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      </>
+    );
+  };
+
+  /* =======================================================
      BREATHING UI
-  ------------------------------------------------------- */
+  ======================================================= */
 
   const renderBreathing = () => {
     if (breathingDone) {
       return (
         <>
-          <View style={styles.successIconWrap}>
-            <Text style={styles.successIcon}>✓</Text>
+          <View
+            style={
+              styles.successIconWrap
+            }
+          >
+            <Text
+              style={styles.successIcon}
+            >
+              ✓
+            </Text>
           </View>
 
-          <Text style={styles.activityTag}>
+          <Text
+            style={styles.activityTag}
+          >
             BREATHING COMPLETE
           </Text>
 
-          <Text style={styles.activityTitle}>
+          <Text
+            style={styles.activityTitle}
+          >
             You made space to breathe.
           </Text>
 
-          <Text style={styles.activityDetail}>
-            You completed 3 breathing cycles. Take a
-            moment to notice how your body and mind feel
-            now.
+          <Text
+            style={styles.activityDetail}
+          >
+            You completed 3 breathing
+            cycles. Take a moment to
+            notice how your body and mind
+            feel now.
           </Text>
 
-          <View style={styles.completedCard}>
-            <Text style={styles.completedEmoji}>
+          <View
+            style={styles.completedCard}
+          >
+            <Text
+              style={styles.completedEmoji}
+            >
               🌿
             </Text>
 
             <View style={{ flex: 1 }}>
-              <Text style={styles.completedTitle}>
+              <Text
+                style={
+                  styles.completedTitle
+                }
+              >
                 3 cycles completed
               </Text>
 
-              <Text style={styles.completedText}>
-                Nice work taking a few minutes for
-                yourself.
+              <Text
+                style={
+                  styles.completedText
+                }
+              >
+                Nice work taking a few
+                minutes for yourself.
               </Text>
             </View>
           </View>
@@ -526,16 +845,26 @@ function ActivitiesScreen({
             style={styles.primaryButton}
             onPress={onBack}
           >
-            <Text style={styles.primaryButtonText}>
-              Back to Resources
+            <Text
+              style={
+                styles.primaryButtonText
+              }
+            >
+              Back to Activities
             </Text>
           </Pressable>
 
           <Pressable
-            style={styles.secondaryButton}
+            style={
+              styles.secondaryButton
+            }
             onPress={resetBreathing}
           >
-            <Text style={styles.secondaryButtonText}>
+            <Text
+              style={
+                styles.secondaryButtonText
+              }
+            >
               Try Again
             </Text>
           </Pressable>
@@ -544,34 +873,56 @@ function ActivitiesScreen({
     }
 
     const progress =
-      (activeBreathingStep.duration - timeLeft) /
+      (activeBreathingStep.duration -
+        timeLeft) /
       activeBreathingStep.duration;
 
     return (
       <>
-        <View style={styles.breathingHeader}>
+        <View
+          style={styles.breathingHeader}
+        >
           <View>
-            <Text style={styles.activityTag}>
+            <Text
+              style={styles.activityTag}
+            >
               BREATHING RESET
             </Text>
 
-            <Text style={styles.cycleText}>
+            <Text
+              style={styles.cycleText}
+            >
               Cycle {breathingCycle} of 3
             </Text>
           </View>
 
-          <View style={styles.timerBadge}>
-            <Text style={styles.timerBadgeText}>
-              {isPaused ? 'PAUSED' : 'ACTIVE'}
+          <View
+            style={styles.timerBadge}
+          >
+            <Text
+              style={
+                styles.timerBadgeText
+              }
+            >
+              {isPaused
+                ? 'PAUSED'
+                : 'ACTIVE'}
             </Text>
           </View>
         </View>
 
-        <Text style={styles.breathingInstruction}>
-          Follow the circle and breathe with it
+        <Text
+          style={
+            styles.breathingInstruction
+          }
+        >
+          Follow the circle and breathe
+          with it
         </Text>
 
-        <View style={styles.breathingVisual}>
+        <View
+          style={styles.breathingVisual}
+        >
           <View
             style={[
               styles.breathingGlow,
@@ -603,29 +954,49 @@ function ActivitiesScreen({
               },
             ]}
           >
-            <Text style={styles.breathingLabel}>
+            <Text
+              style={
+                styles.breathingLabel
+              }
+            >
               {activeBreathingStep.label}
             </Text>
 
-            <Text style={styles.countdown}>
-              {isPaused ? 'Ⅱ' : timeLeft}
+            <Text
+              style={styles.countdown}
+            >
+              {isPaused
+                ? 'Ⅱ'
+                : timeLeft}
             </Text>
           </View>
         </View>
 
-        <Text style={styles.breathingMessage}>
+        <Text
+          style={
+            styles.breathingMessage
+          }
+        >
           {activeBreathingStep.message}
         </Text>
 
-        <Text style={styles.activityTitle}>
+        <Text
+          style={styles.activityTitle}
+        >
           {activeBreathingStep.title}
         </Text>
 
-        <Text style={styles.activityDetail}>
+        <Text
+          style={styles.activityDetail}
+        >
           {activeBreathingStep.detail}
         </Text>
 
-        <View style={styles.phaseProgressBackground}>
+        <View
+          style={
+            styles.phaseProgressBackground
+          }
+        >
           <View
             style={[
               styles.phaseProgressFill,
@@ -641,7 +1012,9 @@ function ActivitiesScreen({
           />
         </View>
 
-        <View style={styles.phaseLabels}>
+        <View
+          style={styles.phaseLabels}
+        >
           {breathingSequence.map(
             (step, index) => (
               <View
@@ -678,10 +1051,16 @@ function ActivitiesScreen({
         <Pressable
           style={styles.pauseButton}
           onPress={() =>
-            setIsPaused(current => !current)
+            setIsPaused(
+              current => !current,
+            )
           }
         >
-          <Text style={styles.pauseButtonText}>
+          <Text
+            style={
+              styles.pauseButtonText
+            }
+          >
             {isPaused
               ? '▶  Resume Breathing'
               : 'Ⅱ  Pause'}
@@ -689,10 +1068,16 @@ function ActivitiesScreen({
         </Pressable>
 
         <Pressable
-          style={styles.secondaryButton}
+          style={
+            styles.secondaryButton
+          }
           onPress={onBack}
         >
-          <Text style={styles.secondaryButtonText}>
+          <Text
+            style={
+              styles.secondaryButtonText
+            }
+          >
             Stop Activity
           </Text>
         </Pressable>
@@ -700,46 +1085,71 @@ function ActivitiesScreen({
     );
   };
 
-  /* -------------------------------------------------------
+  /* =======================================================
      MINDFULNESS UI
-  ------------------------------------------------------- */
+  ======================================================= */
 
   const renderMindfulness = () => {
     if (mindfulnessDone) {
       return (
         <>
-          <View style={styles.successIconWrap}>
-            <Text style={styles.successIcon}>
+          <View
+            style={
+              styles.successIconWrap
+            }
+          >
+            <Text
+              style={styles.successIcon}
+            >
               ✓
             </Text>
           </View>
 
-          <Text style={styles.activityTag}>
+          <Text
+            style={styles.activityTag}
+          >
             GROUNDING COMPLETE
           </Text>
 
-          <Text style={styles.activityTitle}>
+          <Text
+            style={styles.activityTitle}
+          >
             You’re back in the moment. 🌿
           </Text>
 
-          <Text style={styles.activityDetail}>
-            You noticed the world around you and
-            gave yourself a few quiet moments to
-            reconnect.
+          <Text
+            style={styles.activityDetail}
+          >
+            You noticed the world around
+            you and gave yourself a few
+            quiet moments to reconnect.
           </Text>
 
-          <View style={styles.completedCard}>
-            <Text style={styles.completedEmoji}>
+          <View
+            style={styles.completedCard}
+          >
+            <Text
+              style={styles.completedEmoji}
+            >
               ✨
             </Text>
 
             <View style={{ flex: 1 }}>
-              <Text style={styles.completedTitle}>
+              <Text
+                style={
+                  styles.completedTitle
+                }
+              >
                 5-4-3-2-1 completed
               </Text>
 
-              <Text style={styles.completedText}>
-                You took a mindful pause for yourself.
+              <Text
+                style={
+                  styles.completedText
+                }
+              >
+                You took a mindful pause
+                for yourself.
               </Text>
             </View>
           </View>
@@ -748,16 +1158,26 @@ function ActivitiesScreen({
             style={styles.primaryButton}
             onPress={onBack}
           >
-            <Text style={styles.primaryButtonText}>
+            <Text
+              style={
+                styles.primaryButtonText
+              }
+            >
               Done
             </Text>
           </Pressable>
 
           <Pressable
-            style={styles.secondaryButton}
+            style={
+              styles.secondaryButton
+            }
             onPress={resetMindfulness}
           >
-            <Text style={styles.secondaryButtonText}>
+            <Text
+              style={
+                styles.secondaryButtonText
+              }
+            >
               Try Again
             </Text>
           </Pressable>
@@ -776,13 +1196,23 @@ function ActivitiesScreen({
 
     return (
       <>
-        <View style={styles.mindfulnessHeader}>
+        <View
+          style={
+            styles.mindfulnessHeader
+          }
+        >
           <View style={{ flex: 1 }}>
-            <Text style={styles.activityTag}>
+            <Text
+              style={styles.activityTag}
+            >
               MINDFULNESS BREAK
             </Text>
 
-            <Text style={styles.mindfulnessSubtitle}>
+            <Text
+              style={
+                styles.mindfulnessSubtitle
+              }
+            >
               5-4-3-2-1 Grounding
             </Text>
           </View>
@@ -795,8 +1225,12 @@ function ActivitiesScreen({
             ]}
             onPress={toggleMusic}
           >
-            <Text style={styles.musicIcon}>
-              {musicEnabled ? '🎵' : '🔇'}
+            <Text
+              style={styles.musicIcon}
+            >
+              {musicEnabled
+                ? '🎵'
+                : '🔇'}
             </Text>
 
             <Text
@@ -806,17 +1240,25 @@ function ActivitiesScreen({
                   styles.musicButtonTextActive,
               ]}
             >
-              {musicEnabled ? 'ON' : 'OFF'}
+              {musicEnabled
+                ? 'ON'
+                : 'OFF'}
             </Text>
           </Pressable>
         </View>
 
-        <View style={styles.mindfulnessProgress}>
+        <View
+          style={
+            styles.mindfulnessProgress
+          }
+        >
           {mindfulnessSteps.map(
             (step, index) => (
               <View
                 key={step.number}
-                style={styles.mindfulnessProgressItem}
+                style={
+                  styles.mindfulnessProgressItem
+                }
               >
                 <View
                   style={[
@@ -842,7 +1284,8 @@ function ActivitiesScreen({
                 </View>
 
                 {index <
-                  mindfulnessSteps.length - 1 && (
+                  mindfulnessSteps.length -
+                    1 && (
                   <View
                     style={[
                       styles.mindfulnessProgressLine,
@@ -866,28 +1309,47 @@ function ActivitiesScreen({
             },
           ]}
         >
-          <Text style={styles.mindfulnessEmoji}>
+          <Text
+            style={
+              styles.mindfulnessEmoji
+            }
+          >
             {activeMindfulnessStep.emoji}
           </Text>
         </View>
 
-        <Text style={styles.stepCounter}>
-          STEP {mindfulnessStepIndex + 1} OF 5
+        <Text
+          style={styles.stepCounter}
+        >
+          STEP {mindfulnessStepIndex + 1}{' '}
+          OF 5
         </Text>
 
-        <Text style={styles.activityTitle}>
+        <Text
+          style={styles.activityTitle}
+        >
           {activeMindfulnessStep.number}{' '}
           {activeMindfulnessStep.title}
         </Text>
 
-        <Text style={styles.activityDetail}>
+        <Text
+          style={styles.activityDetail}
+        >
           {activeMindfulnessStep.instruction}
         </Text>
 
-        <View style={styles.selectionCounter}>
-          <Text style={styles.selectionCounterText}>
-            {selectedCount} of {requiredCount}{' '}
-            selected
+        <View
+          style={
+            styles.selectionCounter
+          }
+        >
+          <Text
+            style={
+              styles.selectionCounterText
+            }
+          >
+            {selectedCount} of{' '}
+            {requiredCount} selected
           </Text>
 
           <Text
@@ -906,7 +1368,9 @@ function ActivitiesScreen({
           </Text>
         </View>
 
-        <View style={styles.optionsContainer}>
+        <View
+          style={styles.optionsContainer}
+        >
           {activeMindfulnessStep.options.map(
             option => {
               const isSelected =
@@ -961,39 +1425,68 @@ function ActivitiesScreen({
           )}
         </View>
 
-        {musicEnabled && (
-          <View style={styles.musicInfoCard}>
-            <Text style={styles.musicInfoIcon}>
-              🎵
-            </Text>
-
-            <View style={{ flex: 1 }}>
-              <Text style={styles.musicInfoTitle}>
-                Calm music is playing
+        {musicEnabled &&
+          soundLoaded && (
+            <View
+              style={
+                styles.musicInfoCard
+              }
+            >
+              <Text
+                style={
+                  styles.musicInfoIcon
+                }
+              >
+                🎵
               </Text>
 
-              <Text style={styles.musicInfoText}>
-                Let the gentle background sound help
-                you stay present.
-              </Text>
+              <View
+                style={{ flex: 1 }}
+              >
+                <Text
+                  style={
+                    styles.musicInfoTitle
+                  }
+                >
+                  Calm music is playing
+                </Text>
+
+                <Text
+                  style={
+                    styles.musicInfoText
+                  }
+                >
+                  Let the gentle background
+                  sound help you stay
+                  present.
+                </Text>
+              </View>
             </View>
-          </View>
-        )}
+          )}
 
-        <View style={styles.navigationRow}>
+        <View
+          style={styles.navigationRow}
+        >
           <Pressable
             style={[
               styles.previousButton,
-              mindfulnessStepIndex === 0 &&
+              mindfulnessStepIndex ===
+                0 &&
                 styles.previousButtonDisabled,
             ]}
-            onPress={previousMindfulnessStep}
-            disabled={mindfulnessStepIndex === 0}
+            onPress={
+              previousMindfulnessStep
+            }
+            disabled={
+              mindfulnessStepIndex ===
+              0
+            }
           >
             <Text
               style={[
                 styles.previousButtonText,
-                mindfulnessStepIndex === 0 &&
+                mindfulnessStepIndex ===
+                  0 &&
                   styles.previousButtonTextDisabled,
               ]}
             >
@@ -1007,8 +1500,12 @@ function ActivitiesScreen({
               !selectionComplete &&
                 styles.nextMindfulnessButtonDisabled,
             ]}
-            onPress={nextMindfulnessStep}
-            disabled={!selectionComplete}
+            onPress={
+              nextMindfulnessStep
+            }
+            disabled={
+              !selectionComplete
+            }
           >
             <Text
               style={[
@@ -1018,7 +1515,8 @@ function ActivitiesScreen({
               ]}
             >
               {mindfulnessStepIndex ===
-              mindfulnessSteps.length - 1
+              mindfulnessSteps.length -
+                1
                 ? 'Complete ✓'
                 : 'Next →'}
             </Text>
@@ -1026,7 +1524,9 @@ function ActivitiesScreen({
         </View>
 
         <Pressable
-          style={styles.exitMindfulnessButton}
+          style={
+            styles.exitMindfulnessButton
+          }
           onPress={() => {
             if (soundRef.current) {
               soundRef.current.stop();
@@ -1036,7 +1536,11 @@ function ActivitiesScreen({
             onBack();
           }}
         >
-          <Text style={styles.exitMindfulnessText}>
+          <Text
+            style={
+              styles.exitMindfulnessText
+            }
+          >
             Exit Activity
           </Text>
         </Pressable>
@@ -1044,39 +1548,56 @@ function ActivitiesScreen({
     );
   };
 
-  /* -------------------------------------------------------
+  /* =======================================================
      JOURNALING UI
-  ------------------------------------------------------- */
+  ======================================================= */
 
   const renderJournaling = () => {
     if (journalingDone) {
       return (
         <>
-          <View style={styles.successIconWrap}>
-            <Text style={styles.successIcon}>
+          <View
+            style={
+              styles.successIconWrap
+            }
+          >
+            <Text
+              style={styles.successIcon}
+            >
               ✓
             </Text>
           </View>
 
-          <Text style={styles.activityTag}>
+          <Text
+            style={styles.activityTag}
+          >
             REFLECTION SAVED
           </Text>
 
-          <Text style={styles.activityTitle}>
+          <Text
+            style={styles.activityTitle}
+          >
             You made space for yourself.
           </Text>
 
-          <Text style={styles.activityDetail}>
-            You don't need to solve everything today.
-            Sometimes putting your thoughts into words
-            is enough.
+          <Text
+            style={styles.activityDetail}
+          >
+            You don't need to solve
+            everything today. Sometimes
+            putting your thoughts into
+            words is enough.
           </Text>
 
           <Pressable
             style={styles.primaryButton}
             onPress={onBack}
           >
-            <Text style={styles.primaryButtonText}>
+            <Text
+              style={
+                styles.primaryButtonText
+              }
+            >
               Done
             </Text>
           </Pressable>
@@ -1086,17 +1607,24 @@ function ActivitiesScreen({
 
     return (
       <>
-        <Text style={styles.activityTag}>
+        <Text
+          style={styles.activityTag}
+        >
           JOURNALING
         </Text>
 
-        <Text style={styles.activityTitle}>
+        <Text
+          style={styles.activityTitle}
+        >
           A moment for yourself
         </Text>
 
-        <Text style={styles.activityDetail}>
-          Take a few minutes to put your thoughts into
-          words. There’s no right or wrong answer.
+        <Text
+          style={styles.activityDetail}
+        >
+          Take a few minutes to put your
+          thoughts into words. There’s no
+          right or wrong answer.
         </Text>
 
         {journalingPrompts.map(
@@ -1105,20 +1633,28 @@ function ActivitiesScreen({
               key={prompt.question}
               style={styles.promptCard}
             >
-              <Text style={styles.promptQuestion}>
+              <Text
+                style={
+                  styles.promptQuestion
+                }
+              >
                 {prompt.question}
               </Text>
 
               <TextInput
                 multiline
-                value={journalAnswers[index]}
+                value={
+                  journalAnswers[index]
+                }
                 onChangeText={value =>
                   updateJournalAnswer(
                     index,
                     value,
                   )
                 }
-                placeholder={prompt.placeholder}
+                placeholder={
+                  prompt.placeholder
+                }
                 placeholderTextColor="#8D99A6"
                 style={styles.textInput}
                 textAlignVertical="top"
@@ -1133,7 +1669,11 @@ function ActivitiesScreen({
             setJournalingDone(true)
           }
         >
-          <Text style={styles.primaryButtonText}>
+          <Text
+            style={
+              styles.primaryButtonText
+            }
+          >
             Save Reflection
           </Text>
         </Pressable>
@@ -1142,7 +1682,11 @@ function ActivitiesScreen({
           style={styles.secondaryButton}
           onPress={onBack}
         >
-          <Text style={styles.secondaryButtonText}>
+          <Text
+            style={
+              styles.secondaryButtonText
+            }
+          >
             Exit
           </Text>
         </Pressable>
@@ -1150,11 +1694,19 @@ function ActivitiesScreen({
     );
   };
 
+  /* =======================================================
+     MAIN UI
+  ======================================================= */
+
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
+        contentContainerStyle={
+          styles.content
+        }
+        showsVerticalScrollIndicator={
+          false
+        }
       >
         <Pressable
           onPress={() => {
@@ -1167,25 +1719,36 @@ function ActivitiesScreen({
           }}
           style={styles.backButton}
         >
-          <Text style={styles.backButtonText}>
+          <Text
+            style={styles.backButtonText}
+          >
             ← Back
           </Text>
         </Pressable>
 
         <View style={styles.activityCard}>
+          {!activity &&
+            renderAllActivities()}
+
           {activity === 'breathing' &&
             renderBreathing()}
 
-          {activity === 'mindfulness' &&
+          {activity ===
+            'mindfulness' &&
             renderMindfulness()}
 
-          {activity === 'journaling' &&
+          {activity ===
+            'journaling' &&
             renderJournaling()}
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+/* =========================================================
+   STYLES
+========================================================= */
 
 const styles = StyleSheet.create({
   screen: {
@@ -1226,7 +1789,108 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
 
-  /* BREATHING */
+  /* =======================================================
+     ALL ACTIVITIES
+  ======================================================= */
+
+  activitiesPageHeader: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+
+  activitiesPageTitle: {
+    color: '#173B42',
+    fontSize: 25,
+    lineHeight: 31,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+
+  activitiesPageDescription: {
+    color: '#60727A',
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: 'center',
+  },
+
+  activitiesList: {
+    width: '100%',
+  },
+
+  activityOptionCard: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FCFA',
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#D9EEE7',
+  },
+
+  activityOptionIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+
+  activityOptionIconText: {
+    fontSize: 23,
+  },
+
+  activityOptionContent: {
+    flex: 1,
+  },
+
+  activityOptionTitle: {
+    color: '#173B42',
+    fontSize: 16,
+    fontWeight: '900',
+    marginBottom: 4,
+  },
+
+  activityOptionDescription: {
+    color: '#60727A',
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 5,
+  },
+
+  activityOptionDuration: {
+    color: '#198F78',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+
+  activityOptionArrow: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    backgroundColor: '#E2F9EF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+
+  activityOptionArrowText: {
+    color: '#198F78',
+    fontSize: 18,
+    fontWeight: '900',
+  },
+
+  cardPressed: {
+    opacity: 0.86,
+  },
+
+  /* =======================================================
+     BREATHING
+  ======================================================= */
 
   breathingHeader: {
     width: '100%',
@@ -1330,7 +1994,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
-  /* MINDFULNESS */
+  /* =======================================================
+     MINDFULNESS
+  ======================================================= */
 
   mindfulnessHeader: {
     width: '100%',
@@ -1542,7 +2208,9 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
-  /* MUSIC */
+  /* =======================================================
+     MUSIC
+  ======================================================= */
 
   musicInfoCard: {
     width: '100%',
@@ -1574,7 +2242,9 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 
-  /* NAVIGATION */
+  /* =======================================================
+     NAVIGATION
+  ======================================================= */
 
   navigationRow: {
     width: '100%',
@@ -1641,7 +2311,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  /* SHARED */
+  /* =======================================================
+     SHARED
+  ======================================================= */
 
   activityTitle: {
     color: '#173B42',
