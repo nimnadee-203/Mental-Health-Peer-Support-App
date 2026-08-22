@@ -1,4 +1,4 @@
-﻿import React, {
+import React, {
   useEffect,
   useRef,
   useState,
@@ -630,7 +630,7 @@ function ActivitiesScreen({
     const sound = new Sound(
       calmMusicUri,
       undefined,
-      error => {
+      (error: any) => {
         if (error) {
           console.log(
             'Failed to load calm music:',
@@ -670,7 +670,7 @@ function ActivitiesScreen({
       musicEnabled &&
       activity === 'mindfulness'
     ) {
-      sound.play(success => {
+      sound.play((success: any) => {
         if (!success) {
           console.log(
             'Music playback failed',
