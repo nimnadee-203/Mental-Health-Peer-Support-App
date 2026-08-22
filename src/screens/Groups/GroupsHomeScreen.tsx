@@ -14,12 +14,18 @@ interface GroupsHomeScreenProps {
   communities: Community[];
   joinedIds: string[];
   onGroupPress: (community: Community) => void;
+  onCreateGroup: () => void;
 }
 
 const CATEGORIES = ['All', 'Stress & Anxiety', 'Academic Pressure', 'Depression', 'Self-Care'];
 
 // ─── Component ────────────────────────────────────────────────────────────────
-const GroupsHomeScreen = ({ communities, joinedIds, onGroupPress }: GroupsHomeScreenProps) => {
+const GroupsHomeScreen = ({
+  communities,
+  joinedIds,
+  onGroupPress,
+  onCreateGroup,
+}: GroupsHomeScreenProps) => {
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -42,9 +48,12 @@ const GroupsHomeScreen = ({ communities, joinedIds, onGroupPress }: GroupsHomeSc
       {/* Header */}
       <View style={styles.headerRow}>
         <Text style={styles.title}>Find Your Community</Text>
-        <Pressable style={styles.createButton}>
-          <Text style={styles.createButtonText}>+ Create</Text>
-        </Pressable>
+        <Pressable
+  style={styles.createButton}
+  onPress={onCreateGroup}
+>
+  <Text style={styles.createButtonText}>+ Create</Text>
+</Pressable>
       </View>
 
       <Text style={styles.subtitle}>
@@ -341,7 +350,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1.5,
     borderColor: '#D1D5DB',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#2673FF',
   },
   joinBadgeJoined: {
     borderColor: '#2673FF',
@@ -350,7 +359,7 @@ const styles = StyleSheet.create({
   joinBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#6B7280',
+    color: '#ffffff',
   },
   joinBadgeTextJoined: {
     color: '#2673FF',

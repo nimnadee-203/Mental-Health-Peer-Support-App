@@ -14,6 +14,7 @@ import GroupDiscussionScreen, {
 } from './src/screens/GroupDiscussionScreen';
 import PostDetailScreen from './src/screens/PostDetailScreen';
 import CreatePostScreen from './src/screens/CreatePostScreen';
+import CreateGroupScreen from './src/screens/Groups/CreateGroupScreen';
 import EmergencySupportScreen from './src/screens/EmergencySupportScreen';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -29,7 +30,7 @@ type ResourcesScreenProps = {
 const ResourcesScreen =
   require('./src/screens/ResourcesScreen').default as React.ComponentType<ResourcesScreenProps>;
 
-type GroupsView = 'home' | 'detail' | 'discussion' | 'postDetail' | 'createPost';
+type GroupsView = 'home' | 'detail' | 'discussion' | 'postDetail' | 'createPost'| 'createGroup';
 
 // ─── Community Data ───────────────────────────────────────────────────────────
 const COMMUNITIES: Community[] = [
@@ -272,14 +273,23 @@ function App() {
         );
       }
 
+      if (groupsView === 'createGroup') {
+  return (
+    <CreateGroupScreen
+      onBack={handleBackToHome}
+    />
+  );
+}
+
       // Default: Groups home
-      return (
-        <GroupsHomeScreen
-          communities={COMMUNITIES}
-          joinedIds={joinedGroupIds}
-          onGroupPress={handleGroupPress}
-        />
-      );
+    return (
+  <GroupsHomeScreen
+    communities={COMMUNITIES}
+    joinedIds={joinedGroupIds}
+    onGroupPress={handleGroupPress}
+    onCreateGroup={() => setGroupsView('createGroup')}
+  />
+);
     }
 
     // Main tabs

@@ -231,6 +231,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 2,
     borderColor: '#D1D5DB',
+    backgroundColor: '#2673FF',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -241,7 +242,7 @@ const styles = StyleSheet.create({
   joinButtonText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#6B7280',
+    color: '#ffffff',
   },
   joinButtonTextJoined: {
     color: '#2673FF',
