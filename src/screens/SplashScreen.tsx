@@ -2,11 +2,11 @@ import React, { useEffect, useRef } from 'react';
 import {
   Animated,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type SplashScreenProps = {
   onFinish: () => void;
