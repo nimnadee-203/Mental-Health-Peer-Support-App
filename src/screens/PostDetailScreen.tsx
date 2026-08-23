@@ -16,6 +16,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import type { Post } from './GroupDiscussionScreen';
 
 import { API_BASE } from '../config/api';
+import ReportModal from '../components/ReportModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface Comment {
@@ -30,6 +31,7 @@ export interface Comment {
 interface PostDetailScreenProps {
   post: Post;
   onBack: () => void;
+  onOpenEmergencySupport?: () => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -41,18 +43,33 @@ function timeAgo(dateString: string) {
   if (diffInSeconds < 60) return 'Just now';
   const diffInMinutes = Math.floor(diffInSeconds / 60);
   if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-  const diffInHours = Math.floor(diffInMinutes / 60);
+  const diffInHours = Math.floor(diffInSeconds / 60);
   if (diffInHours < 24) return `${diffInHours}h ago`;
   const diffInDays = Math.floor(diffInHours / 24);
   return `${diffInDays}d ago`;
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function PostDetailScreen({ post, onBack }: PostDetailScreenProps) {
+export default function PostDetailScreen({
+  post,
+  onBack,
+  onOpenEmergencySupport,
+}: PostDetailScreenProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Reporting and moderation state
+  const [reportingTarget, setReportingTarget] = useState<{
+    type: 'Post' | 'Comment';
+    id: string;
+    authorName: string;
+    content: string;
+  } | null>(null);
+  const [isPostHidden, setIsPostHidden] = useState(false);
+  const [hiddenCommentIds, setHiddenCommentIds] = useState<string[]>([]);
+  const [blockedAuthors, setBlockedAuthors] = useState<string[]>([]);
 
   useEffect(() => {
     fetchComments();
@@ -124,6 +141,32 @@ export default function PostDetailScreen({ post, onBack }: PostDetailScreenProps
     }
   };
 
+  const handleReportAction = (
+    action: 'hide' | 'block' | 'none',
+    target: { type: 'Post' | 'Comment'; id: string; authorName: string }
+  ) => {
+    if (action === 'hide') {
+      if (target.type === 'Post') {
+        setIsPostHidden(true);
+      } else {
+        setHiddenCommentIds(prev => [...prev, target.id]);
+      }
+    } else if (action === 'block') {
+      if (target.type === 'Post') {
+        setIsPostHidden(true);
+      } else {
+        setHiddenCommentIds(prev => [...prev, target.id]);
+      }
+      if (target.authorName && !blockedAuthors.includes(target.authorName)) {
+        setBlockedAuthors(prev => [...prev, target.authorName]);
+      }
+    }
+  };
+
+  const unhideComment = (commentId: string) => {
+    setHiddenCommentIds(prev => prev.filter(id => id !== commentId));
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
@@ -145,35 +188,61 @@ export default function PostDetailScreen({ post, onBack }: PostDetailScreenProps
           keyboardShouldPersistTaps="handled">
           
           {/* THE HERO POST */}
-          <View style={styles.heroPost}>
-            <View style={styles.postHeader}>
-              <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarEmoji}>🙂</Text>
-              </View>
-              <View style={styles.postMetaInfo}>
-                <Text style={styles.authorName}>{post.authorName}</Text>
-                <Text style={styles.timeAgo}>{timeAgo(post.createdAt)}</Text>
-              </View>
-              <View style={styles.topicBadge}>
-                <Text style={styles.topicBadgeText}>{post.topic}</Text>
-              </View>
+          {isPostHidden ? (
+            <View style={styles.hiddenHeroPost}>
+              <Text style={styles.hiddenPostEmoji}>🙈</Text>
+              <Text style={styles.hiddenHeroText}>You hid this post.</Text>
+              <Pressable
+                style={styles.unhideHeroButton}
+                onPress={() => setIsPostHidden(false)}>
+                <Text style={styles.unhideHeroButtonText}>Undo</Text>
+              </Pressable>
             </View>
+          ) : (
+            <View style={styles.heroPost}>
+              <View style={styles.postHeader}>
+                <View style={styles.avatarPlaceholder}>
+                  <Text style={styles.avatarEmoji}>🙂</Text>
+                </View>
+                <View style={styles.postMetaInfo}>
+                  <Text style={styles.authorName}>{post.authorName}</Text>
+                  <Text style={styles.timeAgo}>{timeAgo(post.createdAt)}</Text>
+                </View>
+                <View style={styles.topicBadge}>
+                  <Text style={styles.topicBadgeText}>{post.topic}</Text>
+                </View>
+              </View>
 
-            <View style={styles.postContentContainer}>
-              <Text style={styles.postContent}>{post.content}</Text>
-            </View>
+              <View style={styles.postContentContainer}>
+                <Text style={styles.postContent}>{post.content}</Text>
+              </View>
 
-            <View style={styles.postActions}>
-              <View style={styles.actionButtonStatic}>
-                <Text style={styles.actionEmoji}>💛</Text>
-                <Text style={styles.actionCount}>{post.likes}</Text>
-              </View>
-              <View style={styles.actionButtonStatic}>
-                <Text style={styles.actionEmoji}>🤝</Text>
-                <Text style={styles.actionCount}>{post.commentsCount + comments.length}</Text>
+              <View style={styles.postActions}>
+                <View style={styles.actionButtonStatic}>
+                  <Text style={styles.actionEmoji}>💛</Text>
+                  <Text style={styles.actionCount}>{post.likes}</Text>
+                </View>
+                <View style={styles.actionButtonStatic}>
+                  <Text style={styles.actionEmoji}>🤝</Text>
+                  <Text style={styles.actionCount}>{post.commentsCount + comments.length}</Text>
+                </View>
+                <View style={styles.flexSpacer} />
+                <Pressable
+                  style={styles.reportIconButton}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  onPress={() =>
+                    setReportingTarget({
+                      type: 'Post',
+                      id: post._id,
+                      authorName: post.authorName,
+                      content: post.content,
+                    })
+                  }>
+                  <Text style={styles.reportIcon}>🚩</Text>
+                </Pressable>
               </View>
             </View>
-          </View>
+          )}
 
           {/* DIVIDER */}
           <View style={styles.divider} />
@@ -189,28 +258,60 @@ export default function PostDetailScreen({ post, onBack }: PostDetailScreenProps
                 <Text style={styles.emptyStateText}>Be the first to share your thoughts!</Text>
               </View>
             ) : (
-              comments.map(comment => (
-                <View key={comment._id} style={styles.commentCard}>
-                  <View style={styles.commentHeader}>
-                    <View style={[styles.avatarPlaceholder, styles.smallAvatar]}>
-                      <Text style={styles.smallAvatarEmoji}>🙂</Text>
+              comments
+                .filter(comment => !blockedAuthors.includes(comment.authorName))
+                .map(comment => {
+                  if (hiddenCommentIds.includes(comment._id)) {
+                    return (
+                      <View key={comment._id} style={styles.hiddenCommentCard}>
+                        <Text style={styles.hiddenCommentText}>🙈 Comment hidden</Text>
+                        <Pressable
+                          style={styles.unhideCommentButton}
+                          onPress={() => unhideComment(comment._id)}>
+                          <Text style={styles.unhideCommentText}>Undo</Text>
+                        </Pressable>
+                      </View>
+                    );
+                  }
+
+                  return (
+                    <View key={comment._id} style={styles.commentCard}>
+                      <View style={styles.commentHeader}>
+                        <View style={[styles.avatarPlaceholder, styles.smallAvatar]}>
+                          <Text style={styles.smallAvatarEmoji}>🙂</Text>
+                        </View>
+                        <View style={styles.postMetaInfo}>
+                          <Text style={styles.commentAuthor}>{comment.authorName}</Text>
+                          <Text style={styles.timeAgo}>{timeAgo(comment.createdAt)}</Text>
+                        </View>
+                        <Pressable
+                          style={styles.commentReportBtn}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          onPress={() =>
+                            setReportingTarget({
+                              type: 'Comment',
+                              id: comment._id,
+                              authorName: comment.authorName,
+                              content: comment.content,
+                            })
+                          }>
+                          <Text style={styles.commentReportIcon}>🚩</Text>
+                        </Pressable>
+                      </View>
+                      
+                      <Text style={styles.commentContent}>{comment.content}</Text>
+                      
+                      <View style={styles.commentActions}>
+                        <Pressable
+                          style={styles.likeButton}
+                          onPress={() => handleLikeComment(comment._id)}>
+                          <Text style={styles.actionEmoji}>💛</Text>
+                          <Text style={styles.likeCountText}>{comment.likes}</Text>
+                        </Pressable>
+                      </View>
                     </View>
-                    <View style={styles.postMetaInfo}>
-                      <Text style={styles.commentAuthor}>{comment.authorName}</Text>
-                      <Text style={styles.timeAgo}>{timeAgo(comment.createdAt)}</Text>
-                    </View>
-                  </View>
-                  
-                  <Text style={styles.commentContent}>{comment.content}</Text>
-                  
-                  <View style={styles.commentActions}>
-                    <Pressable style={styles.likeButton} onPress={() => handleLikeComment(comment._id)}>
-                      <Text style={styles.actionEmoji}>💛</Text>
-                      <Text style={styles.likeCountText}>{comment.likes}</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              ))
+                  );
+                })
             )}
           </View>
 
@@ -238,6 +339,21 @@ export default function PostDetailScreen({ post, onBack }: PostDetailScreenProps
             )}
           </Pressable>
         </View>
+
+        {/* REPORT MODAL */}
+        {reportingTarget && (
+          <ReportModal
+            visible={!!reportingTarget}
+            targetType={reportingTarget.type}
+            targetId={reportingTarget.id}
+            targetAuthorName={reportingTarget.authorName}
+            targetContentSnippet={reportingTarget.content}
+            groupId={post.groupId}
+            onClose={() => setReportingTarget(null)}
+            onReportSuccess={(action) => handleReportAction(action, reportingTarget)}
+            onOpenEmergencySupport={onOpenEmergencySupport}
+          />
+        )}
 
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -498,5 +614,91 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: '700',
     marginLeft: -2,
+  },
+  flexSpacer: {
+    flex: 1,
+  },
+  reportIconButton: {
+    padding: 6,
+  },
+  reportIcon: {
+    fontSize: 14,
+    opacity: 0.6,
+  },
+  hiddenHeroPost: {
+    backgroundColor: '#F8F8FC',
+    borderWidth: 1.5,
+    borderColor: '#E8E8F0',
+    borderRadius: 14,
+    padding: 16,
+    margin: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  hiddenPostEmoji: {
+    fontSize: 16,
+    marginRight: 6,
+  },
+  hiddenHeroText: {
+    flex: 1,
+    fontFamily: 'Nunito',
+    fontWeight: '600',
+    fontSize: 13,
+    color: '#8A8A9E',
+  },
+  unhideHeroButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D4C9F5',
+    borderRadius: 8,
+  },
+  unhideHeroButtonText: {
+    fontFamily: 'Nunito',
+    fontWeight: '700',
+    fontSize: 12,
+    color: '#7C67D6',
+  },
+  hiddenCommentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8F8FC',
+    borderWidth: 1,
+    borderColor: '#E8E8F0',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 16,
+  },
+  hiddenCommentText: {
+    fontFamily: 'Nunito',
+    fontWeight: '600',
+    fontSize: 12,
+    color: '#8A8A9E',
+  },
+  unhideCommentButton: {
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D4C9F5',
+    borderRadius: 6,
+  },
+  unhideCommentText: {
+    fontFamily: 'Nunito',
+    fontWeight: '700',
+    fontSize: 11,
+    color: '#7C67D6',
+  },
+  commentReportBtn: {
+    padding: 4,
+    marginLeft: 8,
+  },
+  commentReportIcon: {
+    fontSize: 12,
+    opacity: 0.5,
   },
 });

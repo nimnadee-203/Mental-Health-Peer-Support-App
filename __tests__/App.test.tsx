@@ -54,6 +54,7 @@ test('opens the article detail screen when the resources card is pressed', async
         onOpenArticle={onOpenArticle}
         onOpenActivity={() => {}}
         onOpenEmergencySupport={() => {}}
+        onOpenCreateResource={() => {}}
         savedResources={[]}
       />,
     );
@@ -85,6 +86,7 @@ test('starts the breathing exercise flow from the resources screen', async () =>
           onOpenArticle={() => {}}
           onOpenActivity={() => {}}
           onOpenEmergencySupport={() => {}}
+          onOpenCreateResource={() => {}}
           savedResources={[]}
         />,
       );

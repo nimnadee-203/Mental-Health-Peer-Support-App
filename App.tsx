@@ -414,6 +414,7 @@ function App() {
             onBack={handleBackToDetail}
             onCreatePost={handleCreatePost}
             onPostPress={handlePostPress}
+            onOpenEmergencySupport={handleOpenEmergencySupport}
           />
         );
       }
@@ -429,6 +430,7 @@ function App() {
             onBack={
               handleBackToDiscussion
             }
+            onOpenEmergencySupport={handleOpenEmergencySupport}
           />
         );
       }
