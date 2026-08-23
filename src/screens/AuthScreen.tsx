@@ -185,6 +185,14 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                 {isSignup ? 'Log In' : 'Create Account'}
               </Text>
             </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              style={styles.guestButton}
+              onPress={onAuthenticated}
+            >
+              <Text style={styles.guestButtonText}>Continue as Guest →</Text>
+            </Pressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -283,11 +291,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   footer: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    flexWrap: 'wrap',
-    gap: 6,
+    gap: 12,
     paddingTop: 28,
   },
   footerText: {
@@ -299,6 +306,18 @@ const styles = StyleSheet.create({
     color: '#2563EB',
     fontSize: 14,
     fontWeight: '900',
+  },
+  guestButton: {
+    marginTop: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#EFF6FF',
+  },
+  guestButtonText: {
+    color: '#2563EB',
+    fontSize: 14,
+    fontWeight: '800',
   },
 });
 
