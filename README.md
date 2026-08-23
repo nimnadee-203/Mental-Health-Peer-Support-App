@@ -18,6 +18,20 @@ npm start
 yarn start
 ```
 
+## API setup
+
+The mobile app talks to a local Express API for sign up and log in.
+
+```sh
+cd server
+npm install
+copy .env.example .env
+npm run dev
+```
+
+Put your real MongoDB connection string in `server/.env`. If your password contains
+`@`, encode it as `%40` in the URI.
+
 ## Step 2: Build and run your app
 
 With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:

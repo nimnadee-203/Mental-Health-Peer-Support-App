@@ -4,7 +4,13 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import BottomNavigation from './src/components/BottomNavigation';
 
+import AuthScreen from './src/screens/AuthScreen';
 import HomeScreen from './src/screens/HomeScreen';
+import OnboardingScreen from './src/screens/OnboardingScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
+import SplashScreen from './src/screens/SplashScreen';
+import WelcomeScreen from './src/screens/WelcomeScreen';
+
 import ResourcesScreen from './src/screens/ResourcesScreen';
 import ResourceArticleScreen from './src/screens/ResourceArticleScreen';
 import ActivitiesScreen from './src/screens/ActivitiesScreen';
@@ -25,6 +31,14 @@ import CreateGroupScreen from './src/screens/Groups/CreateGroupScreen';
 import EmergencySupportScreen from './src/screens/EmergencySupportScreen';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+type AppScreen =
+  | 'splash'
+  | 'welcome'
+  | 'auth'
+  | 'onboarding'
+  | 'home'
+  | 'profile';
 
 type ResourcesScreenProps = {
   onOpenArticle: (article: ResourceArticle) => void;
@@ -129,6 +143,7 @@ const COMMUNITIES: Community[] = [
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
+  const [activeScreen, setActiveScreen] = useState<AppScreen>('splash');
 
   // ── Tab Navigation ─────────────────────────────────────────────────────────
 
@@ -591,15 +606,40 @@ function App() {
         }
       />
 
-      {screen}
-
-      {!hideBottomNav && (
-        <BottomNavigation
-          activeTab={activeTab}
-          onChangeTab={changeTab}
+      {activeScreen === 'splash' ? (
+        <SplashScreen
+          onFinish={() => setActiveScreen('welcome')}
         />
+      ) : activeScreen === 'welcome' ? (
+        <WelcomeScreen
+          onGetStarted={() => setActiveScreen('auth')}
+        />
+      ) : activeScreen === 'auth' ? (
+        <AuthScreen
+          onAuthenticated={() => setActiveScreen('onboarding')}
+        />
+      ) : activeScreen === 'onboarding' ? (
+        <OnboardingScreen
+          onComplete={() => setActiveScreen('home')}
+          onSkip={() => setActiveScreen('home')}
+        />
+      ) : activeScreen === 'profile' ? (
+        <ProfileScreen
+          onBack={() => setActiveScreen('home')}
+        />
+      ) : (
+        <>
+          {screen}
+
+          {!hideBottomNav && (
+            <BottomNavigation
+              activeTab={activeTab}
+              onChangeTab={changeTab}
+            />
+          )}
+        </>
       )}
-    </SafeAreaProvider>
+      </SafeAreaProvider>
   );
 }
 
