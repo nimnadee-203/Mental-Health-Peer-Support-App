@@ -1,5 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text } from 'react-native';
+import ReactTestRenderer from 'react-test-renderer';
 
 type Props = {
   title: string;
@@ -15,3 +16,11 @@ const Button = ({ title, onPress }: Props) => {
 };
 
 export default Button;
+
+test('renders the custom button title', () => {
+  const component = ReactTestRenderer.create(
+    <Button title="Continue" onPress={() => {}} />,
+  );
+
+  expect(component.root.findByType(Text).props.children).toBe('Continue');
+});
