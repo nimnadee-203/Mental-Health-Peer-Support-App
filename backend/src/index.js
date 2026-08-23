@@ -14,6 +14,7 @@ try {
 const postsRouter = require('./routes/posts');
 const commentsRouter = require('./routes/comments');
 const communitiesRouter = require('./routes/communities');
+const reportsRouter = require('./routes/reports');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,6 +28,7 @@ app.use(express.json());
 app.use('/api/posts', postsRouter);
 app.use('/api/comments', commentsRouter);
 app.use('/api/communities', communitiesRouter);
+app.use('/api/reports', reportsRouter);
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date() }));
 
