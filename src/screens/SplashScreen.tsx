@@ -1,12 +1,15 @@
 import React, { useEffect, useRef } from 'react';
 import {
   Animated,
+  Image,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import AppLogo from '../assets/app-logo.png';
 
 type SplashScreenProps = {
   onFinish: () => void;
@@ -42,7 +45,11 @@ function SplashScreen({ onFinish }: SplashScreenProps) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Pressable accessibilityRole="button" style={styles.touchArea} onPress={onFinish}>
+      <Pressable
+        accessibilityRole="button"
+        style={styles.touchArea}
+        onPress={onFinish}
+      >
         <Animated.View
           style={[
             styles.content,
@@ -53,14 +60,16 @@ function SplashScreen({ onFinish }: SplashScreenProps) {
           ]}
         >
           <View style={styles.logoContainer}>
-            <View style={styles.logoBadge}>
-              <Text style={styles.logoText}>M</Text>
-            </View>
             <View style={styles.logoPulseRing} />
+
+            <Image source={AppLogo} style={styles.appLogo} />
           </View>
 
           <Text style={styles.appName}>Peer Support</Text>
-          <Text style={styles.tagline}>You do not have to carry it alone</Text>
+
+          <Text style={styles.tagline}>
+            You do not have to carry it alone
+          </Text>
         </Animated.View>
 
         <View style={styles.footer}>
@@ -76,6 +85,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1E293B',
   },
+
   touchArea: {
     flex: 1,
     alignItems: 'center',
@@ -83,44 +93,38 @@ const styles = StyleSheet.create({
     paddingVertical: 48,
     paddingHorizontal: 24,
   },
+
   content: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   logoContainer: {
     position: 'relative',
+    width: 140,
+    height: 140,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 28,
   },
-  logoBadge: {
-    width: 88,
-    height: 88,
-    borderRadius: 28,
-    backgroundColor: '#2563EB',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 8,
-    shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
+
+  appLogo: {
+    width: 115,
+    height: 115,
+    resizeMode: 'contain',
     zIndex: 2,
   },
-  logoText: {
-    color: '#FFFFFF',
-    fontSize: 44,
-    fontWeight: '900',
-  },
+
   logoPulseRing: {
     position: 'absolute',
-    width: 112,
-    height: 112,
-    borderRadius: 36,
+    width: 135,
+    height: 135,
+    borderRadius: 42,
     borderWidth: 2,
     borderColor: 'rgba(37, 99, 235, 0.35)',
   },
+
   appName: {
     color: '#F8FAFC',
     fontSize: 32,
@@ -129,6 +133,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textAlign: 'center',
   },
+
   tagline: {
     color: '#94A3B8',
     fontSize: 16,
@@ -136,9 +141,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 20,
   },
+
   footer: {
     alignItems: 'center',
   },
+
   hintText: {
     color: '#64748B',
     fontSize: 13,
