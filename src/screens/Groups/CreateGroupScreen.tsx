@@ -7,6 +7,8 @@ import {
   ScrollView,
   Pressable,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 
 type CreateGroupScreenProps = {
@@ -22,7 +24,24 @@ const CreateGroupScreen = ({
   const [category, setCategory] = useState('');
   const [showCategories, setShowCategories] = useState(false);
   const [selectedEmoji, setSelectedEmoji] = useState('🌱');
-  const emojis = ['🌱', '🧠', '💙', '🌸', '🌻', '🌿'];
+  const emojis = [
+  '🌱',
+  '💙',
+  '🧠',
+  '🧘',
+  '🌸',
+  '🌻',
+  '🌿',
+  '🤝',
+  '💬',
+  '❤️',
+  '🫶',
+  '☀️',
+  '🌈',
+  '✨',
+  '💗',
+  '🍃',
+];
   const [selectedBgColor, setSelectedBgColor] = useState('#C8EDD5');
   const bgColors = [
   '#C8EDD5',
@@ -31,13 +50,22 @@ const CreateGroupScreen = ({
   '#FFF3C4',
   '#D4C9F5',
   '#FADADD',
+  '#D9F0F0',
+  '#E6DFF5',
+  '#FFE5CC',
+  '#DDEBF7',
+  '#E8F5E9',
+  '#FCE4EC',
 ];
 
-  const categories = [
-  'Stress & Anxiety',
+const categories = [
+  'General Wellbeing',
+  'Relationships',
+  'Mindfulness',
   'Academic Pressure',
-  'Depression',
+  'Stress & Anxiety',
   'Self-Care',
+  'Depression',
 ];
 
 const handleCreateGroup = async () => {
@@ -101,23 +129,30 @@ const handleCreateGroup = async () => {
   }
 };
 
-  return (
-    <View style={styles.container}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
-      >
+return (
+  <KeyboardAvoidingView
+    style={styles.container}
+    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+  >
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+    >
 
-{/* Back Button */}
-<Pressable
-  style={styles.backButton}
-  onPress={onBack}
->
-  <Text style={styles.backButtonText}> Back</Text>
-</Pressable>
+{/* Header */}
+<View style={styles.headerRow}>
+  <Pressable
+    style={styles.backButton}
+    onPress={onBack}
+  >
+    <Text style={styles.backButtonText}>◀</Text>
+  </Pressable>
 
-        {/* Header */}
-        <Text style={styles.title}>Create Support Group</Text>
+  <Text style={styles.title}> Create Support Group</Text>
+</View>
 
         <Text style={styles.subtitle}>
           Create a safe space for people to connect and support each other.
@@ -223,15 +258,15 @@ const handleCreateGroup = async () => {
         {/* Guidelines */}
         <Text style={styles.label}>Group Guidelines</Text>
 
-        <TextInput
-          style={styles.textArea}
-          placeholder="Add some guidelines for group members..."
-          placeholderTextColor="#8A94A6"
-          multiline
-          textAlignVertical="top"
-          value={guidelines}
-          onChangeText={setGuidelines}
-        />
+       <TextInput
+  style={styles.guidelinesInput}
+  placeholder="Add some guidelines for group members..."
+  placeholderTextColor="#8A94A6"
+  multiline
+  textAlignVertical="top"
+  value={guidelines}
+  onChangeText={setGuidelines}
+/>
 
         {/* Create Button */}
         <Pressable style={styles.createButton}onPress={handleCreateGroup}>
@@ -241,7 +276,7 @@ const handleCreateGroup = async () => {
         </Pressable>
 
       </ScrollView>
-    </View>
+     </KeyboardAvoidingView>
   );
 };
 
@@ -258,21 +293,30 @@ const styles = StyleSheet.create({
   },
 
 backButton: {
-  alignSelf: 'flex-start',
-  backgroundColor: '#EEF4FF',
-  paddingHorizontal: 12,
-  paddingVertical: 7,
-  borderRadius: 10,
-  marginBottom: 16,
+  top: -8,
+  width: 44,
+  height: 44,
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginRight: 2,
+},
+
+headerRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 8,
 },
 
 backButtonText: {
-  fontSize: 13,
-  fontWeight: '600',
-  color: '#2673FF',
+  fontSize: 40,
+  color: '#1F2937',
+  fontWeight: '500',
+  textAlign: 'center',
+  includeFontPadding: false,
 },
 
   title: {
+     flex: 1,
     fontSize: 24,
     fontWeight: '700',
     color: '#1F2937',
@@ -423,6 +467,19 @@ colorOption: {
 selectedColorOption: {
   borderColor: '#2673FF',
   borderWidth: 3,
+},
+
+guidelinesInput: {
+  minHeight: 150,
+  borderWidth: 1,
+  borderColor: '#E1E5EB',
+  borderRadius: 12,
+  paddingHorizontal: 16,
+  paddingTop: 14,
+  paddingBottom: 14,
+  backgroundColor: '#F8F9FB',
+  fontSize: 14,
+  color: '#1F2937',
 },
 
 });

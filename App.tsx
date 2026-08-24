@@ -69,79 +69,7 @@ type GroupsView =
 
 // ─── Community Data ───────────────────────────────────────────────────────────
 
-const COMMUNITIES: Community[] = [
-  {
-    _id: 'academic_stress',
-    name: 'Managing Academic Stress',
-    category: 'Academic Pressure',
-    emoji: '📚',
-    bgColor: '#FFF3E0',
-    description:
-      'Share experiences and discover ways to manage academic pressure together.',
-    memberCount: 128,
-    memberAvatarColors: [
-      '#FFB3BA',
-      '#FFDFBA',
-      '#FFFFBA',
-    ],
-    isJoined: false,
-    guidelines: 'Be respectful to others.\nDo not share personal information.\nSupport others with kindness.',
-  },
 
-  {
-    _id: 'calm_minds',
-    name: 'Calm Minds Community',
-    category: 'Stress & Anxiety',
-    emoji: '🧘',
-    bgColor: '#E8F5E9',
-    description:
-      'A safe community to share feelings, coping strategies, and everyday experiences.',
-    memberCount: 94,
-    memberAvatarColors: [
-      '#C8EDD5',
-      '#C5DFF8',
-      '#D4C9F5',
-    ],
-    isJoined: false,
-    guidelines: 'Be respectful to others.\nDo not share personal information.\nSupport others with kindness.',
-  },
-
-  {
-    _id: 'mindfulness',
-    name: 'Mindfulness & Self-Care',
-    category: 'Self-Care',
-    emoji: '🌿',
-    bgColor: '#F3E5F5',
-    description:
-      'Discover simple self-care habits and mindfulness practices together with others.',
-    memberCount: 76,
-    memberAvatarColors: [
-      '#D4C9F5',
-      '#C5DFF8',
-      '#FFB3BA',
-    ],
-    isJoined: false,
-    guidelines: 'Be respectful to others.\nDo not share personal information.\nSupport others with kindness.',
-  },
-
-  {
-    _id: 'not_alone',
-    name: 'You Are Not Alone',
-    category: 'Depression Support',
-    emoji: '💙',
-    bgColor: '#E3F2FD',
-    description:
-      'A welcoming space for people to connect, listen, and support one another.',
-    memberCount: 203,
-    memberAvatarColors: [
-      '#C5DFF8',
-      '#D4C9F5',
-      '#C8EDD5',
-    ],
-    isJoined: false,
-    guidelines: 'Be respectful to others.\nDo not share personal information.\nSupport others with kindness.',
-  },
-];
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
@@ -193,8 +121,7 @@ function App() {
   const [groupsView, setGroupsView] =
     useState<GroupsView>('home');
 
-  const [communities, setCommunities] =
-    useState<Community[]>(COMMUNITIES);
+const [communities, setCommunities] = useState<Community[]>([]);
 
   const [selectedCommunity, setSelectedCommunity] =
     useState<Community | null>(null);

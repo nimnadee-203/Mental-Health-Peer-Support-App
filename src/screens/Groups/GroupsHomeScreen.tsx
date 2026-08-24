@@ -16,8 +16,17 @@ interface GroupsHomeScreenProps {
   onGroupPress: (community: Community) => void;
   onCreateGroup: () => void;
 }
+const CATEGORIES = [
+  'All',
+  'General Wellbeing',
+  'Relationships',
+  'Mindfulness',
+  'Academic Pressure',
+  'Stress & Anxiety',
+  'Self-Care',
+  'Depression',
+];
 
-const CATEGORIES = ['All', 'Stress & Anxiety', 'Academic Pressure', 'Depression', 'Self-Care'];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const GroupsHomeScreen = ({
