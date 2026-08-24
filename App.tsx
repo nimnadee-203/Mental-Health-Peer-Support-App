@@ -49,7 +49,7 @@ type ResourcesScreenProps = {
       | 'mindfulness'
       | 'journaling'
       | 'digitalDetox'
-      | 'healthyRoutine'
+      | 'healthyRoutine',
   ) => void;
 
   onOpenEmergencySupport: () => void;
@@ -147,7 +147,9 @@ const COMMUNITIES: Community[] = [
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
-  const [activeScreen, setActiveScreen] = useState<AppScreen>('splash');
+
+  const [activeScreen, setActiveScreen] =
+    useState<AppScreen>('splash');
 
   // ── Tab Navigation ─────────────────────────────────────────────────────────
 
@@ -155,56 +157,78 @@ function App() {
     'Home' | 'Resources' | 'Groups' | 'Messages' | 'Profile'
   >('Home');
 
-// ── Resources Navigation ────────────────────────────────────────────────────
-const [isArticleOpen, setIsArticleOpen] = useState(false);
-const [selectedArticle, setSelectedArticle] =
-  useState<ResourceArticle | null>(null);
-const [savedResources, setSavedResources] = useState<string[]>([]);
-const [isActivityOpen, setIsActivityOpen] = useState(false);
+  // ── Resources Navigation ───────────────────────────────────────────────────
 
-const [selectedActivity, setSelectedActivity] = useState<
-  'breathing' | 'mindfulness' | 'journaling' | 'digitalDetox' | 'healthyRoutine'
->('breathing');
+  const [isArticleOpen, setIsArticleOpen] =
+    useState(false);
 
-const [isEmergencyOpen, setIsEmergencyOpen] = useState(false);
+  const [selectedArticle, setSelectedArticle] =
+    useState<ResourceArticle | null>(null);
 
-// ── Create Resource Navigation ──────────────────────────────────────────────
-const [isCreateResourceOpen, setIsCreateResourceOpen] = useState(false);
+  const [savedResources, setSavedResources] =
+    useState<string[]>([]);
 
-// ── Groups Navigation ───────────────────────────────────────────────────────
-const [groupsView, setGroupsView] = useState<GroupsView>('home');
-const [communities, setCommunities] =
-  useState<Community[]>(COMMUNITIES);
-const [selectedCommunity, setSelectedCommunity] =
-  useState<Community | null>(null);
-const [selectedPost, setSelectedPost] =
-  useState<Post | null>(null);
-const [joinedGroupIds, setJoinedGroupIds] =
-  useState<string[]>([]);
+  const [isActivityOpen, setIsActivityOpen] =
+    useState(false);
 
-useEffect(() => {
-  fetchCommunities();
-}, []);
+  const [selectedActivity, setSelectedActivity] =
+    useState<
+      | 'breathing'
+      | 'mindfulness'
+      | 'journaling'
+      | 'digitalDetox'
+      | 'healthyRoutine'
+    >('breathing');
+
+  const [isEmergencyOpen, setIsEmergencyOpen] =
+    useState(false);
+
+  // ── Create Resource Navigation ─────────────────────────────────────────────
+
+  const [isCreateResourceOpen, setIsCreateResourceOpen] =
+    useState(false);
+
+  // ── Groups Navigation ──────────────────────────────────────────────────────
+
+  const [groupsView, setGroupsView] =
+    useState<GroupsView>('home');
+
+  const [communities, setCommunities] =
+    useState<Community[]>(COMMUNITIES);
+
+  const [selectedCommunity, setSelectedCommunity] =
+    useState<Community | null>(null);
+
+  const [selectedPost, setSelectedPost] =
+    useState<Post | null>(null);
+
+  const [joinedGroupIds, setJoinedGroupIds] =
+    useState<string[]>([]);
+
+  // ── Fetch Communities ──────────────────────────────────────────────────────
 
   useEffect(() => {
-  fetchCommunities();
-}, []);
+    fetchCommunities();
+  }, []);
 
-const fetchCommunities = async () => {
-  try {
-    const response = await fetch('http://localhost:3000/api/communities');
+  const fetchCommunities = async () => {
+    try {
+      const response = await fetch(
+        'http://localhost:3000/api/communities'
+      );
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch communities');
+      if (!response.ok) {
+        throw new Error('Failed to fetch communities');
+      }
+
+      const data = await response.json();
+      setCommunities(data);
+    } catch (error) {
+      console.error('Failed to fetch communities:', error);
     }
+  };
 
-    const data = await response.json();
-    setCommunities(data);
-  } catch (error) {
-    console.error('Failed to fetch communities:', error);
-  }
-};
-  // ── Tab change ──────────────────────────────────────────────────────────────
+  // ── Tab Change ─────────────────────────────────────────────────────────────
 
   const changeTab = (
     tab:
@@ -212,25 +236,29 @@ const fetchCommunities = async () => {
       | 'Resources'
       | 'Groups'
       | 'Messages'
-      | 'Profile'
+      | 'Profile',
   ) => {
+    // Open ProfileScreen separately
+    if (tab === 'Profile') {
+      setActiveScreen('profile');
+      return;
+    }
+
     setActiveTab(tab);
 
+    // Close resource-related screens
     setIsArticleOpen(false);
     setIsActivityOpen(false);
     setIsEmergencyOpen(false);
-
-    // NEW: close Create Resource when changing tabs
     setIsCreateResourceOpen(false);
 
     // Reset groups sub-navigation
-    // when switching back to Groups tab
     if (tab === 'Groups') {
       setGroupsView('home');
     }
   };
 
-  // ── Resources handlers ─────────────────────────────────────────────────────
+  // ── Resources Handlers ─────────────────────────────────────────────────────
 
   const handleOpenArticle = (
     article: ResourceArticle,
@@ -269,7 +297,7 @@ const fetchCommunities = async () => {
     setIsEmergencyOpen(false);
   };
 
-  // ── Create Resource handlers ────────────────────────────────────────────────
+  // ── Create Resource Handlers ───────────────────────────────────────────────
 
   const handleOpenCreateResource = () => {
     setIsCreateResourceOpen(true);
@@ -280,7 +308,7 @@ const fetchCommunities = async () => {
     setActiveTab('Resources');
   };
 
-  // ── Groups handlers ─────────────────────────────────────────────────────────
+  // ── Groups Handlers ─────────────────────────────────────────────────────────
 
   const handleGroupPress = (
     community: Community,
@@ -330,13 +358,15 @@ const fetchCommunities = async () => {
     setGroupsView('home');
   };
 
-  // ── Whether bottom nav should be hidden ─────────────────────────────────────
+  // ── Whether Bottom Navigation Should Be Hidden ──────────────────────────────
 
   const isGroupDeepView =
     activeTab === 'Groups' &&
-    (groupsView === 'discussion' ||
+    (
+      groupsView === 'discussion' ||
       groupsView === 'postDetail' ||
-      groupsView === 'createPost');
+      groupsView === 'createPost'
+    );
 
   const hideBottomNav =
     isArticleOpen ||
@@ -345,10 +375,11 @@ const fetchCommunities = async () => {
     isCreateResourceOpen ||
     isGroupDeepView;
 
-  // ── Screen renderer ─────────────────────────────────────────────────────────
+  // ── Screen Renderer ─────────────────────────────────────────────────────────
 
   const screen = useMemo(() => {
-    // ── Resources: Article open ───────────────────────────────────────────────
+
+    // ── Resources: Article ───────────────────────────────────────────────────
 
     if (
       isArticleOpen &&
@@ -366,7 +397,7 @@ const fetchCommunities = async () => {
       );
     }
 
-    // ── Resources: Activity open ─────────────────────────────────────────────
+    // ── Resources: Activity ──────────────────────────────────────────────────
 
     if (isActivityOpen) {
       return (
@@ -405,9 +436,10 @@ const fetchCommunities = async () => {
       );
     }
 
-    // ── Groups sub-navigation ────────────────────────────────────────────────
+    // ── Groups Sub-Navigation ────────────────────────────────────────────────
 
     if (activeTab === 'Groups') {
+
       // Group Detail
       if (
         groupsView === 'detail' &&
@@ -437,7 +469,9 @@ const fetchCommunities = async () => {
             onBack={handleBackToDetail}
             onCreatePost={handleCreatePost}
             onPostPress={handlePostPress}
-            onOpenEmergencySupport={handleOpenEmergencySupport}
+            onOpenEmergencySupport={
+              handleOpenEmergencySupport
+            }
           />
         );
       }
@@ -453,7 +487,9 @@ const fetchCommunities = async () => {
             onBack={
               handleBackToDiscussion
             }
-            onOpenEmergencySupport={handleOpenEmergencySupport}
+            onOpenEmergencySupport={
+              handleOpenEmergencySupport
+            }
           />
         );
       }
@@ -498,12 +534,11 @@ if (groupsView === 'createGroup') {
 );
     }
 
-    // ── Main tabs ─────────────────────────────────────────────────────────────
+    // ── Main Tabs ─────────────────────────────────────────────────────────────
 
     switch (activeTab) {
-      // ───────────────────────────────────────────────────────────────────────
-      // Resources
-      // ───────────────────────────────────────────────────────────────────────
+
+      // ── Resources ──────────────────────────────────────────────────────────
 
       case 'Resources':
         return (
@@ -524,9 +559,7 @@ if (groupsView === 'createGroup') {
           />
         );
 
-      // ───────────────────────────────────────────────────────────────────────
-      // Messages
-      // ───────────────────────────────────────────────────────────────────────
+      // ── Messages ────────────────────────────────────────────────────────────
 
       case 'Messages':
         return (
@@ -548,9 +581,7 @@ if (groupsView === 'createGroup') {
           </View>
         );
 
-      // ───────────────────────────────────────────────────────────────────────
-      // Profile
-      // ───────────────────────────────────────────────────────────────────────
+      // ── Profile ────────────────────────────────────────────────────────────
 
       case 'Profile':
         return (
@@ -572,13 +603,17 @@ if (groupsView === 'createGroup') {
           </View>
         );
 
-      // ───────────────────────────────────────────────────────────────────────
-      // Home
-      // ───────────────────────────────────────────────────────────────────────
+      // ── Home ────────────────────────────────────────────────────────────────
 
       case 'Home':
       default:
-        return <HomeScreen />;
+        return (
+          <HomeScreen
+            onOpenProfile={() =>
+              setActiveScreen('profile')
+            }
+          />
+        );
     }
   }, [
     activeTab,
@@ -605,6 +640,7 @@ if (groupsView === 'createGroup') {
 
   return (
     <SafeAreaProvider>
+
       <StatusBar
         barStyle={
           isDarkMode
@@ -614,27 +650,51 @@ if (groupsView === 'createGroup') {
       />
 
       {activeScreen === 'splash' ? (
+
         <SplashScreen
-          onFinish={() => setActiveScreen('welcome')}
+          onFinish={() =>
+            setActiveScreen('welcome')
+          }
         />
+
       ) : activeScreen === 'welcome' ? (
+
         <WelcomeScreen
-          onGetStarted={() => setActiveScreen('auth')}
+          onGetStarted={() =>
+            setActiveScreen('auth')
+          }
         />
+
       ) : activeScreen === 'auth' ? (
+
         <AuthScreen
-          onAuthenticated={() => setActiveScreen('onboarding')}
+          onAuthenticated={() =>
+            setActiveScreen('onboarding')
+          }
         />
+
       ) : activeScreen === 'onboarding' ? (
+
         <OnboardingScreen
-          onComplete={() => setActiveScreen('home')}
-          onSkip={() => setActiveScreen('home')}
+          onComplete={() =>
+            setActiveScreen('home')
+          }
+          onSkip={() =>
+            setActiveScreen('home')
+          }
         />
+
       ) : activeScreen === 'profile' ? (
+
         <ProfileScreen
-          onBack={() => setActiveScreen('home')}
+          onBack={() => {
+            setActiveScreen('home');
+            setActiveTab('Home');
+          }}
         />
+
       ) : (
+
         <>
           {screen}
 
@@ -645,8 +705,10 @@ if (groupsView === 'createGroup') {
             />
           )}
         </>
+
       )}
-      </SafeAreaProvider>
+
+    </SafeAreaProvider>
   );
 }
 

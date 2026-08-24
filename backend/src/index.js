@@ -15,6 +15,8 @@ const postsRouter = require('./routes/posts');
 const commentsRouter = require('./routes/comments');
 const communitiesRouter = require('./routes/communities');
 const reportsRouter = require('./routes/reports');
+const emergencyRouter = require('./routes/emergency');
+const trustedContactRouter = require('./routes/trustedContact');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -29,6 +31,8 @@ app.use('/api/posts', postsRouter);
 app.use('/api/comments', commentsRouter);
 app.use('/api/communities', communitiesRouter);
 app.use('/api/reports', reportsRouter);
+app.use('/api/emergency', emergencyRouter);
+app.use('/api/trusted-contact', trustedContactRouter);
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date() }));
 

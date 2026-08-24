@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { setAuthUserId } from '../api/authStore';
 
 type AuthMode = 'login' | 'signup';
 
@@ -76,6 +77,9 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
         return;
       }
 
+      if (result?.user?.id) {
+        setAuthUserId(result.user.id);
+      }
       onAuthenticated();
     } catch {
       setErrorMessage('Could not reach the server. Make sure the API is running.');
