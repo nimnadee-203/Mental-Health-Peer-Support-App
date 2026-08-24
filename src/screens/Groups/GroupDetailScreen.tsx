@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text,
   View,
+  Alert,
 } from 'react-native';
 import type { Community } from '../GroupDiscussionScreen';
 
@@ -28,14 +29,27 @@ export default function GroupDetailScreen({
   onEnter,
 }: GroupDetailScreenProps) {
   const [joined, setJoined] = useState(isJoined);
+  const [showMemberPopup, setShowMemberPopup] = useState(false);
+  
+const handleJoinToggle = () => {
+  const next = !joined;
+  setJoined(next);
 
-  const handleJoinToggle = () => {
-    const next = !joined;
-    setJoined(next);
-    if (next) {
-      onJoin(community._id);
-    }
-  };
+  if (next) {
+    onJoin(community._id);
+
+    Alert.alert(
+      'You’re a member! 🎉',
+      `You have joined ${community.name}.`,
+      [
+        {
+          text: 'Continue',
+          style: 'default',
+        },
+      ],
+    );
+  }
+};
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -44,15 +58,16 @@ export default function GroupDetailScreen({
       {/* BANNER */}
       <View style={[styles.banner, { backgroundColor: community.bgColor }]}>
         <Pressable style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backIcon}>‹</Text>
+          <Text style={styles.backIcon}>◀</Text>
         </Pressable>
         <Text style={styles.bannerEmoji}>{community.emoji}</Text>
       </View>
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}>
+<ScrollView
+  style={{ flex: 1 }}
+  contentContainerStyle={styles.scrollContent}
+  showsVerticalScrollIndicator={true}
+>
 
         {/* CATEGORY BADGE */}
         <View style={[styles.categoryBadge, { backgroundColor: community.bgColor }]}>
@@ -112,7 +127,13 @@ export default function GroupDetailScreen({
       .split('\n')
       .filter(g => g.trim())
       .map((g, i) => (
-        <View key={i} style={styles.guidelineItem}>
+        <View
+  key={i}
+  style={[
+    styles.guidelineItem,
+    { backgroundColor: community.bgColor },
+  ]}
+>
           <View style={styles.guidelineNumber}>
             <Text style={styles.guidelineNumberText}>{i + 1}</Text>
           </View>
@@ -128,7 +149,7 @@ export default function GroupDetailScreen({
       </Text>
     )}
 
-        <View style={{ height: 40 }} />
+       
       </ScrollView>
     </SafeAreaView>
   );
@@ -145,33 +166,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  backButton: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.75)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backIcon: {
-    fontSize: 24,
-    color: '#2D2D3A',
-    fontWeight: '600',
-    lineHeight: 28,
-  },
-  bannerEmoji: {
+backButton: {
+  position: 'absolute',
+  top: 35,
+  left: 12,
+  width: 52,
+  height: 52,
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 10, 
+},
+backIcon: {
+  fontSize: 40,
+  color: '#1F2937',
+  fontWeight: '500',
+  textAlign: 'center',
+  textAlignVertical: 'center',
+  lineHeight: 36,
+  includeFontPadding: false,
+},
+bannerEmoji: {
     fontSize: 72,
   },
   scroll: {
     flex: 1,
   },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
+scrollContent: {
+  paddingHorizontal: 20,
+  paddingTop: 20,
+  paddingBottom: 100,
+},
+
   categoryBadge: {
     alignSelf: 'flex-start',
     borderRadius: 20,
@@ -292,7 +317,6 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 12,
     padding: 14,
-    backgroundColor: '#dfebe0',
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#F3F4F6',
