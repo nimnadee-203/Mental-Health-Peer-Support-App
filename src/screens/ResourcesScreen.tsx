@@ -72,11 +72,15 @@ const sectionOrder = [
 type ResourcesScreenProps = {
   onOpenArticle: (article: ResourceArticle) => void;
 
-  // Optional because View All Activities opens
-  // ActivitiesScreen without selecting an activity.
+  // View All Activities opens ActivitiesScreen
+  // without selecting an activity.
   onOpenActivity: (activity?: ActivityType) => void;
 
   onOpenEmergencySupport: () => void;
+
+  // Opens the CreateResourceScreen
+  onOpenCreateResource: () => void;
+
   savedResources?: string[];
 };
 
@@ -84,6 +88,7 @@ function ResourcesScreen({
   onOpenArticle,
   onOpenActivity,
   onOpenEmergencySupport,
+  onOpenCreateResource,
   savedResources = [],
 }: ResourcesScreenProps) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -306,6 +311,7 @@ function ResourcesScreen({
         <Pressable
           onPress={event => {
             event.stopPropagation();
+
             toggleSavedResource(
               resource.id,
             );
@@ -342,9 +348,11 @@ function ResourcesScreen({
           isFeatured
             ? styles.featuredCard
             : styles.gridCard,
+
           !isFeatured && {
             width: gridCardWidth,
           },
+
           pressed &&
             styles.cardPressed,
         ]}
@@ -484,6 +492,54 @@ function ResourcesScreen({
             },
           )}
         </ScrollView>
+
+        {/* Create Resource */}
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.createResourceButton,
+            pressed &&
+              styles.createResourceButtonPressed,
+          ]}
+          onPress={onOpenCreateResource}
+        >
+          <View
+            style={styles.createResourceIcon}
+          >
+            <Text
+              style={
+                styles.createResourceIconText
+              }
+            >
+              ＋
+            </Text>
+          </View>
+
+          <View
+            style={styles.createResourceContent}
+          >
+            <Text
+              style={styles.createResourceTitle}
+            >
+              Create Resource
+            </Text>
+
+            <Text
+              style={
+                styles.createResourceSubtitle
+              }
+            >
+              Share helpful content with
+              the community
+            </Text>
+          </View>
+
+          <Text
+            style={styles.createResourceArrow}
+          >
+            →
+          </Text>
+        </Pressable>
 
         {/* Emergency Support */}
 
@@ -875,6 +931,63 @@ const styles = StyleSheet.create({
 
   filterChipTextIdle: {
     color: '#6A7280',
+  },
+
+  /* Create Resource */
+
+  createResourceButton: {
+    backgroundColor: '#E6F7EF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#CBE9D8',
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+
+  createResourceButtonPressed: {
+    opacity: 0.8,
+  },
+
+  createResourceIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#CBE9D8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+
+  createResourceIconText: {
+    color: '#198F78',
+    fontSize: 24,
+    fontWeight: '700',
+  },
+
+  createResourceContent: {
+    flex: 1,
+  },
+
+  createResourceTitle: {
+    color: '#1F2A37',
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 3,
+  },
+
+  createResourceSubtitle: {
+    color: '#6A7280',
+    fontSize: 12,
+    lineHeight: 17,
+  },
+
+  createResourceArrow: {
+    color: '#198F78',
+    fontSize: 20,
+    fontWeight: '800',
+    marginLeft: 8,
   },
 
   /* Emergency */

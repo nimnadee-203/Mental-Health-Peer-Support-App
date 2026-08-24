@@ -12,6 +12,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 
 import { API_BASE } from '../config/api';
+import ReportModal from '../components/ReportModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface Community {
@@ -45,6 +46,7 @@ interface GroupDiscussionScreenProps {
   onBack: () => void;
   onCreatePost: (community: Community) => void;
   onPostPress: (post: Post) => void;
+  onOpenEmergencySupport?: () => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -75,9 +77,13 @@ export default function GroupDiscussionScreen({
   onBack,
   onCreatePost,
   onPostPress,
+  onOpenEmergencySupport,
 }: GroupDiscussionScreenProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [reportingPost, setReportingPost] = useState<Post | null>(null);
+  const [hiddenPostIds, setHiddenPostIds] = useState<string[]>([]);
+  const [blockedAuthors, setBlockedAuthors] = useState<string[]>([]);
 
   useEffect(() => {
     fetchPosts();
@@ -107,6 +113,21 @@ export default function GroupDiscussionScreen({
     } catch (error) {
       console.error('Failed to like post:', error);
     }
+  };
+
+  const handleReportAction = (action: 'hide' | 'block' | 'none', post: Post) => {
+    if (action === 'hide') {
+      setHiddenPostIds(prev => [...prev, post._id]);
+    } else if (action === 'block') {
+      setHiddenPostIds(prev => [...prev, post._id]);
+      if (post.authorName && !blockedAuthors.includes(post.authorName)) {
+        setBlockedAuthors(prev => [...prev, post.authorName]);
+      }
+    }
+  };
+
+  const unhidePost = (postId: string) => {
+    setHiddenPostIds(prev => prev.filter(id => id !== postId));
   };
 
   return (
@@ -150,45 +171,76 @@ export default function GroupDiscussionScreen({
                 <Text style={styles.emptyStateText}>No posts yet. Be the first to share!</Text>
               </View>
             ) : (
-              posts.map(post => (
-                <Pressable key={post._id} style={styles.postCard} onPress={() => onPostPress(post)}>
-                  <View style={styles.postHeader}>
-                    <View style={styles.avatarPlaceholder}>
-                      <Text style={styles.avatarEmoji}>🙂</Text>
-                    </View>
-                    <View style={styles.postMetaInfo}>
-                      <Text style={styles.authorName}>{post.authorName}</Text>
-                      <Text style={styles.timeAgo}>{timeAgo(post.createdAt)}</Text>
-                    </View>
-                    <View style={styles.topicBadge}>
-                      <Text style={styles.topicBadgeText}>{post.topic}</Text>
-                    </View>
-                  </View>
+              posts
+                .filter(post => !blockedAuthors.includes(post.authorName))
+                .map(post => {
+                  if (hiddenPostIds.includes(post._id)) {
+                    return (
+                      <View key={post._id} style={styles.hiddenPostCard}>
+                        <View style={styles.hiddenPostInfo}>
+                          <Text style={styles.hiddenPostEmoji}>🙈</Text>
+                          <Text style={styles.hiddenPostText}>Post hidden</Text>
+                        </View>
+                        <Pressable
+                          style={styles.unhideButton}
+                          onPress={() => unhidePost(post._id)}>
+                          <Text style={styles.unhideButtonText}>Undo</Text>
+                        </Pressable>
+                      </View>
+                    );
+                  }
 
-                  <View style={styles.postContentContainer}>
-                    <Text style={styles.postContent}>{post.content}</Text>
-                  </View>
+                  return (
+                    <Pressable
+                      key={post._id}
+                      style={styles.postCard}
+                      onPress={() => onPostPress(post)}>
+                      <View style={styles.postHeader}>
+                        <View style={styles.avatarPlaceholder}>
+                          <Text style={styles.avatarEmoji}>🙂</Text>
+                        </View>
+                        <View style={styles.postMetaInfo}>
+                          <Text style={styles.authorName}>{post.authorName}</Text>
+                          <Text style={styles.timeAgo}>{timeAgo(post.createdAt)}</Text>
+                        </View>
+                        <View style={styles.topicBadge}>
+                          <Text style={styles.topicBadgeText}>{post.topic}</Text>
+                        </View>
+                      </View>
 
-                  <View style={styles.postActions}>
-                    <Pressable style={styles.actionButton} onPress={() => handleLike(post._id)}>
-                      <Text style={styles.actionEmoji}>💛</Text>
-                      <Text style={styles.actionCount}>{post.likes}</Text>
+                      <View style={styles.postContentContainer}>
+                        <Text style={styles.postContent}>{post.content}</Text>
+                      </View>
+
+                      <View style={styles.postActions}>
+                        <Pressable
+                          style={styles.actionButton}
+                          onPress={() => handleLike(post._id)}>
+                          <Text style={styles.actionEmoji}>💛</Text>
+                          <Text style={styles.actionCount}>{post.likes}</Text>
+                        </Pressable>
+                        <Pressable style={styles.actionButton}>
+                          <Text style={styles.actionEmoji}>🤝</Text>
+                          <Text style={styles.actionCount}>{post.commentsCount}</Text>
+                        </Pressable>
+                        <Pressable style={styles.actionButton}>
+                          <Text style={styles.actionIcon}>🔗</Text>
+                          <Text style={styles.actionCount}>Share</Text>
+                        </Pressable>
+                        <View style={styles.flexSpacer} />
+                        <Pressable
+                          style={styles.reportButton}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                          onPress={(e) => {
+                            e?.stopPropagation?.();
+                            setReportingPost(post);
+                          }}>
+                          <Text style={styles.reportIcon}>🚩</Text>
+                        </Pressable>
+                      </View>
                     </Pressable>
-                    <Pressable style={styles.actionButton}>
-                      <Text style={styles.actionEmoji}>🤝</Text>
-                      <Text style={styles.actionCount}>{post.commentsCount}</Text>
-                    </Pressable>
-                    <Pressable style={styles.actionButton}>
-                      <Text style={styles.actionIcon}>🔗</Text>
-                      <Text style={styles.actionCount}>Share</Text>
-                    </Pressable>
-                    <View style={styles.flexSpacer} />
-                    <Pressable style={styles.reportButton}>
-                      <Text style={styles.reportIcon}>🚩</Text>
-                    </Pressable>
-                  </View>
-                </Pressable>
-              ))
+                  );
+                })
             )}
           </View>
         </ScrollView>
@@ -206,6 +258,21 @@ export default function GroupDiscussionScreen({
             <Text style={styles.fabText}>Share something</Text>
           </LinearGradient>
         </Pressable>
+
+        {/* REPORT MODAL */}
+        {reportingPost && (
+          <ReportModal
+            visible={!!reportingPost}
+            targetType="Post"
+            targetId={reportingPost._id}
+            targetAuthorName={reportingPost.authorName}
+            targetContentSnippet={reportingPost.content}
+            groupId={community._id}
+            onClose={() => setReportingPost(null)}
+            onReportSuccess={(action) => handleReportAction(action, reportingPost)}
+            onOpenEmergencySupport={onOpenEmergencySupport}
+          />
+        )}
       </View>
     </SafeAreaView>
   );
@@ -457,5 +524,44 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     color: '#2D2D3A',
+  },
+  hiddenPostCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8F8FC',
+    borderWidth: 1.5,
+    borderColor: '#E8E8F0',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  hiddenPostInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  hiddenPostEmoji: {
+    fontSize: 16,
+  },
+  hiddenPostText: {
+    fontFamily: 'Nunito',
+    fontWeight: '600',
+    fontSize: 13,
+    color: '#8A8A9E',
+  },
+  unhideButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D4C9F5',
+    borderRadius: 8,
+  },
+  unhideButtonText: {
+    fontFamily: 'Nunito',
+    fontWeight: '700',
+    fontSize: 12,
+    color: '#7C67D6',
   },
 });
