@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StatusBar, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -85,6 +85,7 @@ const COMMUNITIES: Community[] = [
       '#FFFFBA',
     ],
     isJoined: false,
+    guidelines: 'Be respectful to others.\nDo not share personal information.\nSupport others with kindness.',
   },
 
   {
@@ -102,6 +103,7 @@ const COMMUNITIES: Community[] = [
       '#D4C9F5',
     ],
     isJoined: false,
+    guidelines: 'Be respectful to others.\nDo not share personal information.\nSupport others with kindness.',
   },
 
   {
@@ -119,6 +121,7 @@ const COMMUNITIES: Community[] = [
       '#FFB3BA',
     ],
     isJoined: false,
+    guidelines: 'Be respectful to others.\nDo not share personal information.\nSupport others with kindness.',
   },
 
   {
@@ -136,6 +139,7 @@ const COMMUNITIES: Community[] = [
       '#C8EDD5',
     ],
     isJoined: false,
+    guidelines: 'Be respectful to others.\nDo not share personal information.\nSupport others with kindness.',
   },
 ];
 
@@ -189,6 +193,9 @@ function App() {
   const [groupsView, setGroupsView] =
     useState<GroupsView>('home');
 
+  const [communities, setCommunities] =
+    useState<Community[]>(COMMUNITIES);
+
   const [selectedCommunity, setSelectedCommunity] =
     useState<Community | null>(null);
 
@@ -197,6 +204,29 @@ function App() {
 
   const [joinedGroupIds, setJoinedGroupIds] =
     useState<string[]>([]);
+
+  // ── Fetch Communities ──────────────────────────────────────────────────────
+
+  useEffect(() => {
+    fetchCommunities();
+  }, []);
+
+  const fetchCommunities = async () => {
+    try {
+      const response = await fetch(
+        'http://localhost:3000/api/communities'
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch communities');
+      }
+
+      const data = await response.json();
+      setCommunities(data);
+    } catch (error) {
+      console.error('Failed to fetch communities:', error);
+    }
+  };
 
   // ── Tab Change ─────────────────────────────────────────────────────────────
 
@@ -482,28 +512,26 @@ function App() {
         );
       }
 
-      // Create Group
-      if (
-        groupsView === 'createGroup'
-      ) {
-        return (
-          <CreateGroupScreen
-            onBack={handleBackToHome}
-          />
-        );
-      }
+if (groupsView === 'createGroup') {
+  return (
+    <CreateGroupScreen
+      onBack={async () => {
+        await fetchCommunities();
+        setGroupsView('home');
+      }}
+    />
+  );
+}
 
-      // Groups Home
-      return (
-        <GroupsHomeScreen
-          communities={COMMUNITIES}
-          joinedIds={joinedGroupIds}
-          onGroupPress={handleGroupPress}
-          onCreateGroup={() =>
-            setGroupsView('createGroup')
-          }
-        />
-      );
+      // Default: Groups home
+    return (
+  <GroupsHomeScreen
+    communities={communities}
+    joinedIds={joinedGroupIds}
+    onGroupPress={handleGroupPress}
+    onCreateGroup={() => setGroupsView('createGroup')}
+  />
+);
     }
 
     // ── Main Tabs ─────────────────────────────────────────────────────────────
@@ -605,6 +633,7 @@ function App() {
     selectedCommunity,
     selectedPost,
     joinedGroupIds,
+    communities,
   ]);
 
   // ── App UI ──────────────────────────────────────────────────────────────────
