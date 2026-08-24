@@ -22,6 +22,7 @@ export interface Community {
   emoji: string;
   bgColor: string;
   description: string;
+    guidelines: string;
   memberCount: number;
   memberAvatarColors: string[];
   isJoined: boolean;

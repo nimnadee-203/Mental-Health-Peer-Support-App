@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StatusBar, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -85,6 +85,7 @@ const COMMUNITIES: Community[] = [
       '#FFFFBA',
     ],
     isJoined: false,
+    guidelines: 'Be respectful to others.\nDo not share personal information.\nSupport others with kindness.',
   },
 
   {
@@ -102,6 +103,7 @@ const COMMUNITIES: Community[] = [
       '#D4C9F5',
     ],
     isJoined: false,
+    guidelines: 'Be respectful to others.\nDo not share personal information.\nSupport others with kindness.',
   },
 
   {
@@ -119,6 +121,7 @@ const COMMUNITIES: Community[] = [
       '#FFB3BA',
     ],
     isJoined: false,
+    guidelines: 'Be respectful to others.\nDo not share personal information.\nSupport others with kindness.',
   },
 
   {
@@ -136,6 +139,7 @@ const COMMUNITIES: Community[] = [
       '#C8EDD5',
     ],
     isJoined: false,
+    guidelines: 'Be respectful to others.\nDo not share personal information.\nSupport others with kindness.',
   },
 ];
 
@@ -151,51 +155,55 @@ function App() {
     'Home' | 'Resources' | 'Groups' | 'Messages' | 'Profile'
   >('Home');
 
-  // ── Resources Navigation ───────────────────────────────────────────────────
+// ── Resources Navigation ────────────────────────────────────────────────────
+const [isArticleOpen, setIsArticleOpen] = useState(false);
+const [selectedArticle, setSelectedArticle] =
+  useState<ResourceArticle | null>(null);
+const [savedResources, setSavedResources] = useState<string[]>([]);
+const [isActivityOpen, setIsActivityOpen] = useState(false);
 
-  const [isArticleOpen, setIsArticleOpen] =
-    useState(false);
+const [selectedActivity, setSelectedActivity] = useState<
+  'breathing' | 'mindfulness' | 'journaling' | 'digitalDetox' | 'healthyRoutine'
+>('breathing');
 
-  const [selectedArticle, setSelectedArticle] =
-    useState<ResourceArticle | null>(null);
+const [isEmergencyOpen, setIsEmergencyOpen] = useState(false);
 
-  const [savedResources, setSavedResources] =
-    useState<string[]>([]);
+// ── Create Resource Navigation ──────────────────────────────────────────────
+const [isCreateResourceOpen, setIsCreateResourceOpen] = useState(false);
 
-  const [isActivityOpen, setIsActivityOpen] =
-    useState(false);
+// ── Groups Navigation ───────────────────────────────────────────────────────
+const [groupsView, setGroupsView] = useState<GroupsView>('home');
+const [communities, setCommunities] =
+  useState<Community[]>(COMMUNITIES);
+const [selectedCommunity, setSelectedCommunity] =
+  useState<Community | null>(null);
+const [selectedPost, setSelectedPost] =
+  useState<Post | null>(null);
+const [joinedGroupIds, setJoinedGroupIds] =
+  useState<string[]>([]);
 
-  const [selectedActivity, setSelectedActivity] =
-    useState<
-      | 'breathing'
-      | 'mindfulness'
-      | 'journaling'
-      | 'digitalDetox'
-      | 'healthyRoutine'
-    >('breathing');
+useEffect(() => {
+  fetchCommunities();
+}, []);
 
-  const [isEmergencyOpen, setIsEmergencyOpen] =
-    useState(false);
+  useEffect(() => {
+  fetchCommunities();
+}, []);
 
-  // NEW: Create Resource navigation
+const fetchCommunities = async () => {
+  try {
+    const response = await fetch('http://localhost:3000/api/communities');
 
-  const [isCreateResourceOpen, setIsCreateResourceOpen] =
-    useState(false);
+    if (!response.ok) {
+      throw new Error('Failed to fetch communities');
+    }
 
-  // ── Groups Navigation ──────────────────────────────────────────────────────
-
-  const [groupsView, setGroupsView] =
-    useState<GroupsView>('home');
-
-  const [selectedCommunity, setSelectedCommunity] =
-    useState<Community | null>(null);
-
-  const [selectedPost, setSelectedPost] =
-    useState<Post | null>(null);
-
-  const [joinedGroupIds, setJoinedGroupIds] =
-    useState<string[]>([]);
-
+    const data = await response.json();
+    setCommunities(data);
+  } catch (error) {
+    console.error('Failed to fetch communities:', error);
+  }
+};
   // ── Tab change ──────────────────────────────────────────────────────────────
 
   const changeTab = (
@@ -468,28 +476,26 @@ function App() {
         );
       }
 
-      // Create Group
-      if (
-        groupsView === 'createGroup'
-      ) {
-        return (
-          <CreateGroupScreen
-            onBack={handleBackToHome}
-          />
-        );
-      }
+if (groupsView === 'createGroup') {
+  return (
+    <CreateGroupScreen
+      onBack={async () => {
+        await fetchCommunities();
+        setGroupsView('home');
+      }}
+    />
+  );
+}
 
-      // Groups Home
-      return (
-        <GroupsHomeScreen
-          communities={COMMUNITIES}
-          joinedIds={joinedGroupIds}
-          onGroupPress={handleGroupPress}
-          onCreateGroup={() =>
-            setGroupsView('createGroup')
-          }
-        />
-      );
+      // Default: Groups home
+    return (
+  <GroupsHomeScreen
+    communities={communities}
+    joinedIds={joinedGroupIds}
+    onGroupPress={handleGroupPress}
+    onCreateGroup={() => setGroupsView('createGroup')}
+  />
+);
     }
 
     // ── Main tabs ─────────────────────────────────────────────────────────────
@@ -592,6 +598,7 @@ function App() {
     selectedCommunity,
     selectedPost,
     joinedGroupIds,
+    communities,
   ]);
 
   // ── App UI ──────────────────────────────────────────────────────────────────

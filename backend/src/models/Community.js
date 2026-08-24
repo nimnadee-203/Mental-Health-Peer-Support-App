@@ -28,6 +28,11 @@ const communitySchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    guidelines: {
+  type: String,
+  default: '',
+  trim: true,
+},
     memberCount: {
       type: Number,
       default: 0,

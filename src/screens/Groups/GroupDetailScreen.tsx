@@ -11,11 +11,6 @@ import {
 import type { Community } from '../GroupDiscussionScreen';
 
 // ─── Guidelines per community (fallback to defaults) ─────────────────────────
-const DEFAULT_GUIDELINES = [
-  'Be respectful and kind to everyone in the community.',
-  "Protect each other's privacy — do not share others' posts outside this group.",
-  "Listen without judgment. Everyone's experience is valid.",
-];
 
 interface GroupDetailScreenProps {
   community: Community;
@@ -112,14 +107,26 @@ export default function GroupDetailScreen({
         {/* COMMUNITY GUIDELINES */}
         <Text style={styles.guidelinesHeading}>COMMUNITY GUIDELINES</Text>
 
-        {DEFAULT_GUIDELINES.map((g, i) => (
-          <View key={i} style={styles.guidelineItem}>
-            <View style={styles.guidelineNumber}>
-              <Text style={styles.guidelineNumberText}>{i + 1}</Text>
-            </View>
-            <Text style={styles.guidelineText}>{g}</Text>
+        {community.guidelines
+  ? community.guidelines
+      .split('\n')
+      .filter(g => g.trim())
+      .map((g, i) => (
+        <View key={i} style={styles.guidelineItem}>
+          <View style={styles.guidelineNumber}>
+            <Text style={styles.guidelineNumberText}>{i + 1}</Text>
           </View>
-        ))}
+
+          <Text style={styles.guidelineText}>
+            {g.trim()}
+          </Text>
+        </View>
+      ))
+  : (
+      <Text style={styles.guidelineText}>
+        No guidelines added for this community.
+      </Text>
+    )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
