@@ -49,7 +49,7 @@ type ResourcesScreenProps = {
       | 'mindfulness'
       | 'journaling'
       | 'digitalDetox'
-      | 'healthyRoutine'
+      | 'healthyRoutine',
   ) => void;
 
   onOpenEmergencySupport: () => void;
@@ -143,7 +143,9 @@ const COMMUNITIES: Community[] = [
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
-  const [activeScreen, setActiveScreen] = useState<AppScreen>('splash');
+
+  const [activeScreen, setActiveScreen] =
+    useState<AppScreen>('splash');
 
   // ── Tab Navigation ─────────────────────────────────────────────────────────
 
@@ -177,7 +179,7 @@ function App() {
   const [isEmergencyOpen, setIsEmergencyOpen] =
     useState(false);
 
-  // NEW: Create Resource navigation
+  // ── Create Resource Navigation ─────────────────────────────────────────────
 
   const [isCreateResourceOpen, setIsCreateResourceOpen] =
     useState(false);
@@ -196,7 +198,7 @@ function App() {
   const [joinedGroupIds, setJoinedGroupIds] =
     useState<string[]>([]);
 
-  // ── Tab change ──────────────────────────────────────────────────────────────
+  // ── Tab Change ─────────────────────────────────────────────────────────────
 
   const changeTab = (
     tab:
@@ -204,25 +206,29 @@ function App() {
       | 'Resources'
       | 'Groups'
       | 'Messages'
-      | 'Profile'
+      | 'Profile',
   ) => {
+    // Open ProfileScreen separately
+    if (tab === 'Profile') {
+      setActiveScreen('profile');
+      return;
+    }
+
     setActiveTab(tab);
 
+    // Close resource-related screens
     setIsArticleOpen(false);
     setIsActivityOpen(false);
     setIsEmergencyOpen(false);
-
-    // NEW: close Create Resource when changing tabs
     setIsCreateResourceOpen(false);
 
     // Reset groups sub-navigation
-    // when switching back to Groups tab
     if (tab === 'Groups') {
       setGroupsView('home');
     }
   };
 
-  // ── Resources handlers ─────────────────────────────────────────────────────
+  // ── Resources Handlers ─────────────────────────────────────────────────────
 
   const handleOpenArticle = (
     article: ResourceArticle,
@@ -261,7 +267,7 @@ function App() {
     setIsEmergencyOpen(false);
   };
 
-  // ── Create Resource handlers ────────────────────────────────────────────────
+  // ── Create Resource Handlers ───────────────────────────────────────────────
 
   const handleOpenCreateResource = () => {
     setIsCreateResourceOpen(true);
@@ -272,7 +278,7 @@ function App() {
     setActiveTab('Resources');
   };
 
-  // ── Groups handlers ─────────────────────────────────────────────────────────
+  // ── Groups Handlers ─────────────────────────────────────────────────────────
 
   const handleGroupPress = (
     community: Community,
@@ -322,13 +328,15 @@ function App() {
     setGroupsView('home');
   };
 
-  // ── Whether bottom nav should be hidden ─────────────────────────────────────
+  // ── Whether Bottom Navigation Should Be Hidden ──────────────────────────────
 
   const isGroupDeepView =
     activeTab === 'Groups' &&
-    (groupsView === 'discussion' ||
+    (
+      groupsView === 'discussion' ||
       groupsView === 'postDetail' ||
-      groupsView === 'createPost');
+      groupsView === 'createPost'
+    );
 
   const hideBottomNav =
     isArticleOpen ||
@@ -337,10 +345,11 @@ function App() {
     isCreateResourceOpen ||
     isGroupDeepView;
 
-  // ── Screen renderer ─────────────────────────────────────────────────────────
+  // ── Screen Renderer ─────────────────────────────────────────────────────────
 
   const screen = useMemo(() => {
-    // ── Resources: Article open ───────────────────────────────────────────────
+
+    // ── Resources: Article ───────────────────────────────────────────────────
 
     if (
       isArticleOpen &&
@@ -358,7 +367,7 @@ function App() {
       );
     }
 
-    // ── Resources: Activity open ─────────────────────────────────────────────
+    // ── Resources: Activity ──────────────────────────────────────────────────
 
     if (isActivityOpen) {
       return (
@@ -397,9 +406,10 @@ function App() {
       );
     }
 
-    // ── Groups sub-navigation ────────────────────────────────────────────────
+    // ── Groups Sub-Navigation ────────────────────────────────────────────────
 
     if (activeTab === 'Groups') {
+
       // Group Detail
       if (
         groupsView === 'detail' &&
@@ -429,7 +439,9 @@ function App() {
             onBack={handleBackToDetail}
             onCreatePost={handleCreatePost}
             onPostPress={handlePostPress}
-            onOpenEmergencySupport={handleOpenEmergencySupport}
+            onOpenEmergencySupport={
+              handleOpenEmergencySupport
+            }
           />
         );
       }
@@ -445,7 +457,9 @@ function App() {
             onBack={
               handleBackToDiscussion
             }
-            onOpenEmergencySupport={handleOpenEmergencySupport}
+            onOpenEmergencySupport={
+              handleOpenEmergencySupport
+            }
           />
         );
       }
@@ -492,12 +506,11 @@ function App() {
       );
     }
 
-    // ── Main tabs ─────────────────────────────────────────────────────────────
+    // ── Main Tabs ─────────────────────────────────────────────────────────────
 
     switch (activeTab) {
-      // ───────────────────────────────────────────────────────────────────────
-      // Resources
-      // ───────────────────────────────────────────────────────────────────────
+
+      // ── Resources ──────────────────────────────────────────────────────────
 
       case 'Resources':
         return (
@@ -518,9 +531,7 @@ function App() {
           />
         );
 
-      // ───────────────────────────────────────────────────────────────────────
-      // Messages
-      // ───────────────────────────────────────────────────────────────────────
+      // ── Messages ────────────────────────────────────────────────────────────
 
       case 'Messages':
         return (
@@ -542,9 +553,7 @@ function App() {
           </View>
         );
 
-      // ───────────────────────────────────────────────────────────────────────
-      // Profile
-      // ───────────────────────────────────────────────────────────────────────
+      // ── Profile ────────────────────────────────────────────────────────────
 
       case 'Profile':
         return (
@@ -566,13 +575,17 @@ function App() {
           </View>
         );
 
-      // ───────────────────────────────────────────────────────────────────────
-      // Home
-      // ───────────────────────────────────────────────────────────────────────
+      // ── Home ────────────────────────────────────────────────────────────────
 
       case 'Home':
       default:
-        return <HomeScreen />;
+        return (
+          <HomeScreen
+            onOpenProfile={() =>
+              setActiveScreen('profile')
+            }
+          />
+        );
     }
   }, [
     activeTab,
@@ -598,6 +611,7 @@ function App() {
 
   return (
     <SafeAreaProvider>
+
       <StatusBar
         barStyle={
           isDarkMode
@@ -607,27 +621,51 @@ function App() {
       />
 
       {activeScreen === 'splash' ? (
+
         <SplashScreen
-          onFinish={() => setActiveScreen('welcome')}
+          onFinish={() =>
+            setActiveScreen('welcome')
+          }
         />
+
       ) : activeScreen === 'welcome' ? (
+
         <WelcomeScreen
-          onGetStarted={() => setActiveScreen('auth')}
+          onGetStarted={() =>
+            setActiveScreen('auth')
+          }
         />
+
       ) : activeScreen === 'auth' ? (
+
         <AuthScreen
-          onAuthenticated={() => setActiveScreen('onboarding')}
+          onAuthenticated={() =>
+            setActiveScreen('onboarding')
+          }
         />
+
       ) : activeScreen === 'onboarding' ? (
+
         <OnboardingScreen
-          onComplete={() => setActiveScreen('home')}
-          onSkip={() => setActiveScreen('home')}
+          onComplete={() =>
+            setActiveScreen('home')
+          }
+          onSkip={() =>
+            setActiveScreen('home')
+          }
         />
+
       ) : activeScreen === 'profile' ? (
+
         <ProfileScreen
-          onBack={() => setActiveScreen('home')}
+          onBack={() => {
+            setActiveScreen('home');
+            setActiveTab('Home');
+          }}
         />
+
       ) : (
+
         <>
           {screen}
 
@@ -638,8 +676,10 @@ function App() {
             />
           )}
         </>
+
       )}
-      </SafeAreaProvider>
+
+    </SafeAreaProvider>
   );
 }
 
