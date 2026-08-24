@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StatusBar, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import BottomNavigation from './src/components/BottomNavigation';
@@ -45,6 +45,7 @@ const COMMUNITIES: Community[] = [
     memberCount: 128,
     memberAvatarColors: ['#FFB3BA', '#FFDFBA', '#FFFFBA'],
     isJoined: false,
+    guidelines: 'Be respectful to others.\nDo not share personal information.\nSupport others with kindness.',
   },
   {
     _id: 'calm_minds',
@@ -57,6 +58,7 @@ const COMMUNITIES: Community[] = [
     memberCount: 94,
     memberAvatarColors: ['#C8EDD5', '#C5DFF8', '#D4C9F5'],
     isJoined: false,
+    guidelines: 'Be respectful to others.\nDo not share personal information.\nSupport others with kindness.',
   },
   {
     _id: 'mindfulness',
@@ -69,6 +71,7 @@ const COMMUNITIES: Community[] = [
     memberCount: 76,
     memberAvatarColors: ['#D4C9F5', '#C5DFF8', '#FFB3BA'],
     isJoined: false,
+    guidelines: 'Be respectful to others.\nDo not share personal information.\nSupport others with kindness.',
   },
   {
     _id: 'not_alone',
@@ -81,6 +84,7 @@ const COMMUNITIES: Community[] = [
     memberCount: 203,
     memberAvatarColors: ['#C5DFF8', '#D4C9F5', '#C8EDD5'],
     isJoined: false,
+    guidelines: 'Be respectful to others.\nDo not share personal information.\nSupport others with kindness.',
   },
 ];
 
@@ -105,10 +109,29 @@ function App() {
 
   // ── Groups Navigation ───────────────────────────────────────────────────────
   const [groupsView, setGroupsView] = useState<GroupsView>('home');
+  const [communities, setCommunities] = useState<Community[]>(COMMUNITIES);
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [joinedGroupIds, setJoinedGroupIds] = useState<string[]>([]);
 
+  useEffect(() => {
+  fetchCommunities();
+}, []);
+
+const fetchCommunities = async () => {
+  try {
+    const response = await fetch('http://localhost:3000/api/communities');
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch communities');
+    }
+
+    const data = await response.json();
+    setCommunities(data);
+  } catch (error) {
+    console.error('Failed to fetch communities:', error);
+  }
+};
   // ── Tab change ──────────────────────────────────────────────────────────────
   const changeTab = (
     tab: 'Home' | 'Resources' | 'Groups' | 'Messages' | 'Profile'
@@ -273,10 +296,13 @@ function App() {
         );
       }
 
-      if (groupsView === 'createGroup') {
+if (groupsView === 'createGroup') {
   return (
     <CreateGroupScreen
-      onBack={handleBackToHome}
+      onBack={async () => {
+        await fetchCommunities();
+        setGroupsView('home');
+      }}
     />
   );
 }
@@ -284,7 +310,7 @@ function App() {
       // Default: Groups home
     return (
   <GroupsHomeScreen
-    communities={COMMUNITIES}
+    communities={communities}
     joinedIds={joinedGroupIds}
     onGroupPress={handleGroupPress}
     onCreateGroup={() => setGroupsView('createGroup')}
@@ -351,6 +377,7 @@ function App() {
     selectedCommunity,
     selectedPost,
     joinedGroupIds,
+    communities,
   ]);
 
   return (
