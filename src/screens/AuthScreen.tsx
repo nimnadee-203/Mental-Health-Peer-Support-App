@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { setAuthUserId } from '../api/authStore';
+import { API_BASE } from '../config/api';
 
 type AuthMode = 'login' | 'signup';
 
@@ -19,8 +20,7 @@ type AuthScreenProps = {
   onAuthenticated: () => void;
 };
 
-const API_BASE_URL =
-  Platform.OS === 'android' ? 'http://10.0.2.2:4000' : 'http://localhost:4000';
+const API_BASE_URL = API_BASE;
 
 function AuthScreen({ onAuthenticated }: AuthScreenProps) {
   const [mode, setMode] = useState<AuthMode>('login');
