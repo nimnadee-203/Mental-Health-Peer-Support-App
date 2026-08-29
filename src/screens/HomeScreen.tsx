@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -7,8 +7,17 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { getAuthUserId } from '../api/authStore';
+import { getUserProfile } from '../api/profileApi';
+import { UserProfile } from '../types/user';
 
-const moods = ['Calm', 'Anxious', 'Hopeful'];
+const moods = [
+  { label: 'Calm', emoji: '🌿' },
+  { label: 'Anxious', emoji: '🌧️' },
+  { label: 'Hopeful', emoji: '☀️' },
+  { label: 'Grateful', emoji: '✨' },
+  { label: 'Tired', emoji: '🌙' },
+];
 
 const quickActions = [
   { label: 'Journal', detail: 'Capture a private reflection', icon: 'J' },
@@ -32,23 +41,79 @@ type HomeScreenProps = {
 };
 
 function HomeScreen({ onOpenProfile }: HomeScreenProps) {
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const [loggedMoods, setLoggedMoods] = useState<string[]>([]);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const fetchProfileData = useCallback(async () => {
+    const userId = getAuthUserId();
+    if (!userId) {
+      setProfile(null);
+      return;
+    }
+    try {
+      const data = await getUserProfile(userId);
+      setProfile(data);
+    } catch {
+      // Ignore fetch error in home
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchProfileData();
+  }, [fetchProfileData]);
+
+  const handleSelectMood = (moodLabel: string, emoji: string) => {
+    setSelectedMood(moodLabel);
+    if (!loggedMoods.includes(moodLabel)) {
+      setLoggedMoods(prev => [...prev, moodLabel]);
+    }
+    setToastMessage(`Checked in as ${moodLabel} ${emoji}`);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3000);
+  };
+
+  // Dynamic calculations for Today's Check-in
+  const moodLogsCount = loggedMoods.length;
+  const peerRepliesCount = profile?.stats?.replies ?? 0;
+  const mindfulTime = moodLogsCount > 0 ? `${moodLogsCount * 5 + 5}m` : '0m';
+
+  // Calculate Check-in Percentage
+  let checkInScore = 0;
+  if (moodLogsCount > 0) checkInScore += 50;
+  if (peerRepliesCount > 0) checkInScore += 25;
+  if (moodLogsCount > 0) checkInScore += 25;
+  checkInScore = Math.min(100, checkInScore);
+
+  // Time-based greeting
+  const hour = new Date().getHours();
+  const greetingText =
+    hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const firstName = profile?.fullName ? profile.fullName.split(' ')[0] : 'there';
+  const avatarLetter = (profile?.fullName || 'P').trim().charAt(0).toUpperCase() || 'P';
+
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
+        {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Good morning</Text>
+            <Text style={styles.greeting}>{`${greetingText}, ${firstName}`}</Text>
             <Text style={styles.title}>Patient Stories</Text>
           </View>
           <Pressable
             accessibilityRole="button"
+            testID="home-profile-avatar"
             style={styles.avatar}
             onPress={onOpenProfile}
           >
-            <Text style={styles.avatarText}>P</Text>
+            <Text style={styles.avatarText}>{avatarLetter}</Text>
           </Pressable>
         </View>
 
+        {/* Hero Section */}
         <View style={styles.hero}>
           <Text style={styles.heroTitle}>Share your health journey</Text>
           <Text style={styles.heroText}>
@@ -60,6 +125,7 @@ function HomeScreen({ onOpenProfile }: HomeScreenProps) {
           </Pressable>
         </View>
 
+        {/* Quick Actions Grid */}
         <View style={styles.quickGrid}>
           {quickActions.map(action => (
             <Pressable key={action.label} style={styles.quickCard}>
@@ -72,47 +138,71 @@ function HomeScreen({ onOpenProfile }: HomeScreenProps) {
           ))}
         </View>
 
+        {/* Today's Check-in Card (Dynamic) */}
         <View style={styles.checkInPanel}>
           <View style={styles.checkInHeader}>
             <View>
               <Text style={styles.checkInTitle}>Today's check-in</Text>
-              <Text style={styles.checkInSubtitle}>A gentle snapshot for you</Text>
+              <Text style={styles.checkInSubtitle}>
+                {selectedMood
+                  ? `Logged as ${selectedMood} today`
+                  : 'Tap how you feel below to check in'}
+              </Text>
             </View>
-            <Text style={styles.checkInScore}>72%</Text>
+            <Text style={styles.checkInScore}>{`${checkInScore}%`}</Text>
           </View>
           <View style={styles.progressTrack}>
-            <View style={styles.progressFill} />
+            <View style={[styles.progressFill, { width: `${checkInScore}%` }]} />
           </View>
           <View style={styles.checkInStats}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>4</Text>
+              <Text style={styles.statValue}>{moodLogsCount}</Text>
               <Text style={styles.statLabel}>mood logs</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>18m</Text>
+              <Text style={styles.statValue}>{mindfulTime}</Text>
               <Text style={styles.statLabel}>mindful time</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>3</Text>
+              <Text style={styles.statValue}>{peerRepliesCount}</Text>
               <Text style={styles.statLabel}>peer replies</Text>
             </View>
           </View>
         </View>
 
+        {/* Toast Feedback */}
+        {toastMessage ? (
+          <View style={styles.toastBox}>
+            <Text style={styles.toastText}>{toastMessage}</Text>
+          </View>
+        ) : null}
+
+        {/* How Are You Feeling? (Interactive Mood Selection) */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>How are you feeling?</Text>
         </View>
 
         <View style={styles.moodRow}>
-          {moods.map(mood => (
-            <Pressable key={mood} style={styles.moodChip}>
-              <Text style={styles.moodText}>{mood}</Text>
-            </Pressable>
-          ))}
+          {moods.map(moodItem => {
+            const isSelected = selectedMood === moodItem.label;
+            return (
+              <Pressable
+                key={moodItem.label}
+                testID={`mood-${moodItem.label}`}
+                style={[styles.moodChip, isSelected && styles.moodChipSelected]}
+                onPress={() => handleSelectMood(moodItem.label, moodItem.emoji)}
+              >
+                <Text style={[styles.moodText, isSelected && styles.moodTextSelected]}>
+                  {`${moodItem.emoji} ${moodItem.label}`}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
 
+        {/* Support Spaces */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Support spaces</Text>
         </View>
@@ -130,6 +220,7 @@ function HomeScreen({ onOpenProfile }: HomeScreenProps) {
           ))}
         </View>
 
+        {/* Grounding Tools */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Grounding tools</Text>
         </View>
@@ -143,6 +234,7 @@ function HomeScreen({ onOpenProfile }: HomeScreenProps) {
           ))}
         </View>
 
+        {/* Community Post */}
         <View style={styles.postCard}>
           <View style={styles.postHeader}>
             <View style={styles.postAvatar}>
@@ -175,7 +267,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
-    paddingBottom: 32,
+    paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
@@ -312,7 +404,6 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   progressFill: {
-    width: '72%',
     height: '100%',
     backgroundColor: '#34D399',
   },
@@ -341,6 +432,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#3E5C78',
     marginHorizontal: 10,
   },
+  toastBox: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  toastText: {
+    color: '#065F46',
+    fontWeight: '700',
+    fontSize: 13,
+  },
   sectionHeader: {
     marginTop: 24,
     marginBottom: 12,
@@ -352,19 +458,27 @@ const styles = StyleSheet.create({
   },
   moodRow: {
     flexDirection: 'row',
-    gap: 10,
+    flexWrap: 'wrap',
+    gap: 8,
   },
   moodChip: {
-    height: 38,
-    paddingHorizontal: 16,
+    height: 40,
+    paddingHorizontal: 14,
     borderRadius: 8,
     backgroundColor: '#EAF2FF',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  moodChipSelected: {
+    backgroundColor: '#2563EB',
+  },
   moodText: {
     color: '#2563EB',
     fontWeight: '800',
+    fontSize: 14,
+  },
+  moodTextSelected: {
+    color: '#FFFFFF',
   },
   spaceList: {
     gap: 10,
