@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
-  KeyboardAvoidingView,
   ActivityIndicator,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -17,16 +17,24 @@ import { API_BASE } from '../config/api';
 type AuthMode = 'login' | 'signup';
 
 type AuthScreenProps = {
-  onAuthenticated: () => void;
+  onAuthenticated: (isSignup?: boolean) => void;
 };
 
+interface FieldErrors {
+  fullName?: string;
+  email?: string;
+  password?: string;
+}
+
 const API_BASE_URL = API_BASE;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function AuthScreen({ onAuthenticated }: AuthScreenProps) {
   const [mode, setMode] = useState<AuthMode>('login');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -36,18 +44,41 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
     ? 'Join the support space with a few simple details.'
     : 'Log in to continue sharing and reading patient stories.';
 
-  const canSubmit = useMemo(() => {
-    const hasAuthFields = email.trim().length > 0 && password.trim().length > 0;
+  const handleToggleMode = (newMode: AuthMode) => {
+    setMode(newMode);
+    setFieldErrors({});
+    setErrorMessage('');
+  };
 
-    if (!isSignup) {
-      return hasAuthFields;
+  const validateFields = (): boolean => {
+    const errors: FieldErrors = {};
+
+    if (isSignup) {
+      if (!fullName.trim()) {
+        errors.fullName = 'Full name is required.';
+      } else if (fullName.trim().length < 2) {
+        errors.fullName = 'Full name must be at least 2 characters long.';
+      }
     }
 
-    return hasAuthFields && fullName.trim().length > 0;
-  }, [email, fullName, isSignup, password]);
+    if (!email.trim()) {
+      errors.email = 'Email address is required.';
+    } else if (!EMAIL_REGEX.test(email.trim())) {
+      errors.email = 'Please enter a valid email address (e.g. user@example.com).';
+    }
+
+    if (!password) {
+      errors.password = 'Password is required.';
+    } else if (isSignup && password.length < 6) {
+      errors.password = 'Password must be at least 6 characters long.';
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSubmit = async () => {
-    if (!canSubmit || isSubmitting) {
+    if (!validateFields() || isSubmitting) {
       return;
     }
 
@@ -80,7 +111,7 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
       if (result?.user?.id) {
         setAuthUserId(result.user.id);
       }
-      onAuthenticated();
+      onAuthenticated(isSignup);
     } catch {
       setErrorMessage('Could not reach the server. Make sure the API is running.');
     } finally {
@@ -116,10 +147,19 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                     autoCapitalize="words"
                     placeholder="Enter your name"
                     placeholderTextColor="#9CA3AF"
-                    style={styles.input}
+                    style={[styles.input, fieldErrors.fullName ? styles.inputError : null]}
                     value={fullName}
-                    onChangeText={setFullName}
+                    onChangeText={text => {
+                      setFullName(text);
+                      if (fieldErrors.fullName) {
+                        setFieldErrors(prev => ({ ...prev, fullName: undefined }));
+                      }
+                    }}
+                    testID="signup-name-input"
                   />
+                  {fieldErrors.fullName ? (
+                    <Text style={styles.fieldErrorText}>{fieldErrors.fullName}</Text>
+                  ) : null}
                 </View>
               ) : null}
 
@@ -132,10 +172,19 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                   keyboardType="email-address"
                   placeholder="you@example.com"
                   placeholderTextColor="#9CA3AF"
-                  style={styles.input}
+                  style={[styles.input, fieldErrors.email ? styles.inputError : null]}
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={text => {
+                    setEmail(text);
+                    if (fieldErrors.email) {
+                      setFieldErrors(prev => ({ ...prev, email: undefined }));
+                    }
+                  }}
+                  testID="auth-email-input"
                 />
+                {fieldErrors.email ? (
+                  <Text style={styles.fieldErrorText}>{fieldErrors.email}</Text>
+                ) : null}
               </View>
 
               <View style={styles.field}>
@@ -144,21 +193,31 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                   placeholder="Enter your password"
                   placeholderTextColor="#9CA3AF"
                   secureTextEntry
-                  style={styles.input}
+                  style={[styles.input, fieldErrors.password ? styles.inputError : null]}
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={text => {
+                    setPassword(text);
+                    if (fieldErrors.password) {
+                      setFieldErrors(prev => ({ ...prev, password: undefined }));
+                    }
+                  }}
+                  testID="auth-password-input"
                 />
+                {fieldErrors.password ? (
+                  <Text style={styles.fieldErrorText}>{fieldErrors.password}</Text>
+                ) : null}
               </View>
 
               <Pressable
                 accessibilityRole="button"
-                disabled={!canSubmit || isSubmitting}
+                disabled={isSubmitting}
                 style={({ pressed }) => [
                   styles.primaryButton,
-                  (!canSubmit || isSubmitting) && styles.primaryButtonDisabled,
-                  pressed && canSubmit && !isSubmitting && styles.primaryButtonPressed,
+                  isSubmitting && styles.primaryButtonDisabled,
+                  pressed && !isSubmitting && styles.primaryButtonPressed,
                 ]}
                 onPress={handleSubmit}
+                testID="auth-submit-button"
               >
                 {isSubmitting ? (
                   <ActivityIndicator color="#FFFFFF" />
@@ -183,7 +242,7 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
             </Text>
             <Pressable
               accessibilityRole="button"
-              onPress={() => setMode(isSignup ? 'login' : 'signup')}
+              onPress={() => handleToggleMode(isSignup ? 'login' : 'signup')}
             >
               <Text style={styles.footerAction}>
                 {isSignup ? 'Log In' : 'Create Account'}
@@ -193,7 +252,7 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
             <Pressable
               accessibilityRole="button"
               style={styles.guestButton}
-              onPress={onAuthenticated}
+              onPress={() => onAuthenticated(false)}
             >
               <Text style={styles.guestButtonText}>Continue as Guest →</Text>
             </Pressable>
@@ -251,7 +310,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   field: {
-    gap: 8,
+    gap: 6,
   },
   label: {
     color: '#111827',
@@ -267,6 +326,15 @@ const styles = StyleSheet.create({
     color: '#111827',
     fontSize: 16,
     paddingHorizontal: 14,
+  },
+  inputError: {
+    borderColor: '#EF4444',
+  },
+  fieldErrorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 2,
   },
   primaryButton: {
     height: 52,

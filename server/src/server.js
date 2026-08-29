@@ -83,7 +83,29 @@ app.post('/auth/signup', async (request, response) => {
       return response.status(400).json({ message: 'All fields are required.' });
     }
 
-    const existingUser = await User.findOne({ email });
+    const cleanName = fullName.trim();
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (cleanName.length < 2) {
+      return response
+        .status(400)
+        .json({ message: 'Full name must be at least 2 characters long.' });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      return response
+        .status(400)
+        .json({ message: 'Please enter a valid email address.' });
+    }
+
+    if (password.length < 6) {
+      return response
+        .status(400)
+        .json({ message: 'Password must be at least 6 characters long.' });
+    }
+
+    const existingUser = await User.findOne({ email: cleanEmail });
 
     if (existingUser) {
       return response
@@ -92,7 +114,7 @@ app.post('/auth/signup', async (request, response) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const user = await User.create({ fullName, email, passwordHash });
+    const user = await User.create({ fullName: cleanName, email: cleanEmail, passwordHash });
 
     return response.status(201).json({
       user: buildUserProfile(user),

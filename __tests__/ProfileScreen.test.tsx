@@ -1,12 +1,13 @@
 import React from 'react';
-import { Text } from 'react-native';
+import { Alert, Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import ProfileScreen from '../src/screens/ProfileScreen';
-import { getAuthUserId } from '../src/api/authStore';
+import { getAuthUserId, setAuthUserId } from '../src/api/authStore';
 import { getUserProfile, updateUserProfile } from '../src/api/profileApi';
 
 jest.mock('../src/api/authStore', () => ({
   getAuthUserId: jest.fn(),
+  setAuthUserId: jest.fn(),
 }));
 
 jest.mock('../src/api/profileApi', () => ({
@@ -140,5 +141,37 @@ describe('ProfileScreen', () => {
 
     expect(updatedTexts).toContain('Jane Doe Updated');
     expect(updatedTexts).toContain('Updated bio content');
+  });
+
+  it('triggers logout prompt when logout button is pressed', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert');
+    mockGetAuthUserId.mockReturnValue('user-123');
+    mockGetUserProfile.mockResolvedValue({
+      id: 'user-123',
+      fullName: 'Jane Doe',
+      email: 'jane@example.com',
+      bio: 'Bio',
+      interests: [],
+      stats: { posts: 0, supports: 0, replies: 0 },
+    });
+
+    let renderer: ReactTestRenderer.ReactTestRenderer;
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(<ProfileScreen onBack={() => {}} />);
+    });
+
+    const root = renderer!.root;
+    const logoutButton = root.findByProps({ testID: 'logout-button' });
+    expect(logoutButton).toBeTruthy();
+
+    await ReactTestRenderer.act(async () => {
+      logoutButton.props.onPress();
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Log Out',
+      'Are you sure you want to log out of your account?',
+      expect.any(Array),
+    );
   });
 });

@@ -30,6 +30,7 @@ import CreateGroupScreen from './src/screens/Groups/CreateGroupScreen';
 
 import EmergencySupportScreen from './src/screens/EmergencySupportScreen';
 import { API_BASE } from './src/config/api';
+import { setAuthUserId } from './src/api/authStore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -212,12 +213,6 @@ function App() {
       | 'Messages'
       | 'Profile',
   ) => {
-    // Open ProfileScreen separately
-    if (tab === 'Profile') {
-      setActiveScreen('profile');
-      return;
-    }
-
     setActiveTab(tab);
 
     // Close resource-related screens
@@ -559,22 +554,15 @@ if (groupsView === 'createGroup') {
 
       case 'Profile':
         return (
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: '#F2F5F7',
-              justifyContent: 'center',
-              alignItems: 'center',
+          <ProfileScreen
+            onBack={() => changeTab('Home')}
+            onNavigateToAuth={() => setActiveScreen('auth')}
+            onLogout={() => {
+              setAuthUserId(null);
+              setActiveScreen('auth');
+              setActiveTab('Home');
             }}
-          >
-            <StatusBar
-              barStyle={
-                isDarkMode
-                  ? 'light-content'
-                  : 'dark-content'
-              }
-            />
-          </View>
+          />
         );
 
       // ── Home ────────────────────────────────────────────────────────────────
@@ -583,9 +571,7 @@ if (groupsView === 'createGroup') {
       default:
         return (
           <HomeScreen
-            onOpenProfile={() =>
-              setActiveScreen('profile')
-            }
+            onOpenProfile={() => changeTab('Profile')}
           />
         );
     }
@@ -644,8 +630,8 @@ if (groupsView === 'createGroup') {
       ) : activeScreen === 'auth' ? (
 
         <AuthScreen
-          onAuthenticated={() =>
-            setActiveScreen('onboarding')
+          onAuthenticated={isSignup =>
+            setActiveScreen(isSignup ? 'onboarding' : 'home')
           }
         />
 
@@ -658,16 +644,6 @@ if (groupsView === 'createGroup') {
           onSkip={() =>
             setActiveScreen('home')
           }
-        />
-
-      ) : activeScreen === 'profile' ? (
-
-        <ProfileScreen
-          onBack={() => {
-            setActiveScreen('home');
-            setActiveTab('Home');
-          }}
-          onNavigateToAuth={() => setActiveScreen('auth')}
         />
 
       ) : (

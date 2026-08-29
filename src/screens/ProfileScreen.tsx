@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -10,18 +11,19 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getAuthUserId } from '../api/authStore';
+import { getAuthUserId, setAuthUserId } from '../api/authStore';
 import { getUserProfile, updateUserProfile } from '../api/profileApi';
 import { UserProfile } from '../types/user';
 
 type ProfileScreenProps = {
   onBack: () => void;
   onNavigateToAuth?: () => void;
+  onLogout?: () => void;
 };
 
 const DEFAULT_INTERESTS = ['Anxiety support', 'Mindfulness', 'Daily journaling'];
 
-function ProfileScreen({ onBack, onNavigateToAuth }: ProfileScreenProps) {
+function ProfileScreen({ onBack, onNavigateToAuth, onLogout }: ProfileScreenProps) {
   const [userId, setUserId] = useState<string | null>(getAuthUserId());
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -109,6 +111,26 @@ function ProfileScreen({ onBack, onNavigateToAuth }: ProfileScreenProps) {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleConfirmLogout = () => {
+    Alert.alert('Log Out', 'Are you sure you want to log out of your account?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Log Out',
+        style: 'destructive',
+        onPress: () => {
+          setAuthUserId(null);
+          setProfile(null);
+          setUserId(null);
+          if (onLogout) {
+            onLogout();
+          } else if (onNavigateToAuth) {
+            onNavigateToAuth();
+          }
+        },
+      },
+    ]);
   };
 
   // Avatar initial
@@ -225,15 +247,26 @@ function ProfileScreen({ onBack, onNavigateToAuth }: ProfileScreenProps) {
               </View>
             </View>
 
-            {/* Edit Profile Button */}
-            <Pressable
-              accessibilityRole="button"
-              testID="edit-profile-button"
-              style={styles.editButton}
-              onPress={handleOpenEdit}
-            >
-              <Text style={styles.editButtonText}>Edit Profile</Text>
-            </Pressable>
+            {/* Action Buttons: Edit Profile & Log Out */}
+            <View style={styles.actionRow}>
+              <Pressable
+                accessibilityRole="button"
+                testID="edit-profile-button"
+                style={styles.editButton}
+                onPress={handleOpenEdit}
+              >
+                <Text style={styles.editButtonText}>Edit Profile</Text>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                testID="logout-button"
+                style={styles.logoutButton}
+                onPress={handleConfirmLogout}
+              >
+                <Text style={styles.logoutButtonText}>Log Out</Text>
+              </Pressable>
+            </View>
           </>
         ) : null}
       </ScrollView>
@@ -339,7 +372,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
-    paddingBottom: 32,
+    paddingBottom: 100,
   },
   topBar: {
     flexDirection: 'row',
@@ -534,17 +567,34 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: 4,
   },
+  actionRow: {
+    gap: 12,
+    marginTop: 18,
+  },
   editButton: {
     height: 50,
     borderRadius: 8,
     backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 18,
     paddingHorizontal: 20,
   },
   editButtonText: {
     color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  logoutButton: {
+    height: 50,
+    borderRadius: 8,
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoutButtonText: {
+    color: '#DC2626',
     fontSize: 16,
     fontWeight: '900',
   },
