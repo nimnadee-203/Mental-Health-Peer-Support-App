@@ -192,6 +192,47 @@ app.put('/profile/:userId', async (request, response) => {
   }
 });
 
+app.get('/communities', (_request, response) => {
+  response.json([
+    {
+      _id: '1',
+      name: 'Anxiety & Stress Support',
+      category: 'Stress & Anxiety',
+      emoji: '🌿',
+      bgColor: '#E6F4EA',
+      description: 'A safe space to share anxiety coping strategies and ground yourself.',
+      guidelines: 'Be kind, respectful, and supportive.',
+      memberCount: 1420,
+      memberAvatarColors: ['#34D399', '#60A5FA', '#F472B6'],
+      isJoined: false,
+    },
+    {
+      _id: '2',
+      name: 'Daily Mindfulness & Healing',
+      category: 'Mindfulness',
+      emoji: '🧘',
+      bgColor: '#E8F0FE',
+      description: 'Practice meditation, breathing exercises, and present-moment awareness.',
+      guidelines: 'Share your journey openly.',
+      memberCount: 890,
+      memberAvatarColors: ['#818CF8', '#FBBF24', '#34D399'],
+      isJoined: false,
+    },
+    {
+      _id: '3',
+      name: 'Depression Recovery Peers',
+      category: 'Depression',
+      emoji: '☀️',
+      bgColor: '#FEF3C7',
+      description: 'Supporting each other through low moments with hope and small wins.',
+      guidelines: 'No medical advice; offer peer empathy.',
+      memberCount: 1105,
+      memberAvatarColors: ['#F87171', '#60A5FA', '#A78BFA'],
+      isJoined: false,
+    },
+  ]);
+});
+
 if (!process.env.MONGODB_URI) {
   throw new Error('MONGODB_URI is required. Copy .env.example to .env and set it there.');
 }

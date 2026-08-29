@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { API_BASE } from '../../config/api';
 
 type CreateGroupScreenProps = {
   onBack: () => void;
@@ -85,7 +86,7 @@ const handleCreateGroup = async () => {
   }
 
   try {
-    const response = await fetch('http://localhost:3000/api/communities', {
+    const response = await fetch(`${API_BASE}/communities`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

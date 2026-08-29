@@ -19,6 +19,9 @@ function SplashScreen({ onFinish }: SplashScreenProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.85)).current;
 
+  const onFinishRef = useRef(onFinish);
+  onFinishRef.current = onFinish;
+
   useEffect(() => {
     // Fade in and scale up animation
     Animated.parallel([
@@ -35,20 +38,20 @@ function SplashScreen({ onFinish }: SplashScreenProps) {
       }),
     ]).start();
 
-    // Auto navigate after 2.5 seconds
+    // Auto navigate after 800ms
     const timer = setTimeout(() => {
-      onFinish();
-    }, 2500);
+      onFinishRef.current();
+    }, 800);
 
     return () => clearTimeout(timer);
-  }, [fadeAnim, scaleAnim, onFinish]);
+  }, [fadeAnim, scaleAnim]);
 
   return (
     <SafeAreaView style={styles.container}>
       <Pressable
         accessibilityRole="button"
         style={styles.touchArea}
-        onPress={onFinish}
+        onPress={() => onFinishRef.current()}
       >
         <Animated.View
           style={[

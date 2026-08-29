@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { StatusBar, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -29,6 +29,7 @@ import CreatePostScreen from './src/screens/CreatePostScreen';
 import CreateGroupScreen from './src/screens/Groups/CreateGroupScreen';
 
 import EmergencySupportScreen from './src/screens/EmergencySupportScreen';
+import { API_BASE } from './src/config/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -69,7 +70,44 @@ type GroupsView =
 
 // ─── Community Data ───────────────────────────────────────────────────────────
 
-
+const INITIAL_COMMUNITIES: Community[] = [
+  {
+    _id: '1',
+    name: 'Anxiety & Stress Support',
+    category: 'Stress & Anxiety',
+    emoji: '🌿',
+    bgColor: '#E6F4EA',
+    description: 'A safe space to share anxiety coping strategies and ground yourself.',
+    guidelines: 'Be kind, respectful, and supportive.',
+    memberCount: 1420,
+    memberAvatarColors: ['#34D399', '#60A5FA', '#F472B6'],
+    isJoined: false,
+  },
+  {
+    _id: '2',
+    name: 'Daily Mindfulness & Healing',
+    category: 'Mindfulness',
+    emoji: '🧘',
+    bgColor: '#E8F0FE',
+    description: 'Practice meditation, breathing exercises, and present-moment awareness.',
+    guidelines: 'Share your journey openly.',
+    memberCount: 890,
+    memberAvatarColors: ['#818CF8', '#FBBF24', '#34D399'],
+    isJoined: false,
+  },
+  {
+    _id: '3',
+    name: 'Depression Recovery Peers',
+    category: 'Depression',
+    emoji: '☀️',
+    bgColor: '#FEF3C7',
+    description: 'Supporting each other through low moments with hope and small wins.',
+    guidelines: 'No medical advice; offer peer empathy.',
+    memberCount: 1105,
+    memberAvatarColors: ['#F87171', '#60A5FA', '#A78BFA'],
+    isJoined: false,
+  },
+];
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
@@ -121,7 +159,7 @@ function App() {
   const [groupsView, setGroupsView] =
     useState<GroupsView>('home');
 
-const [communities, setCommunities] = useState<Community[]>([]);
+  const [communities, setCommunities] = useState<Community[]>(INITIAL_COMMUNITIES);
 
   const [selectedCommunity, setSelectedCommunity] =
     useState<Community | null>(null);
@@ -141,17 +179,26 @@ const [communities, setCommunities] = useState<Community[]>([]);
   const fetchCommunities = async () => {
     try {
       const response = await fetch(
-        'http://localhost:3000/api/communities'
+        `${API_BASE}/communities`
       );
 
       if (!response.ok) {
-        throw new Error('Failed to fetch communities');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
-      setCommunities(data);
+      const text = await response.text();
+      if (!text || text.trim().length === 0) {
+        throw new Error('Empty response body');
+      }
+
+      const data = JSON.parse(text);
+      if (Array.isArray(data) && data.length > 0) {
+        setCommunities(data);
+      } else {
+        setCommunities(INITIAL_COMMUNITIES);
+      }
     } catch (error) {
-      console.error('Failed to fetch communities:', error);
+      setCommunities(INITIAL_COMMUNITIES);
     }
   };
 
@@ -563,6 +610,10 @@ if (groupsView === 'createGroup') {
     communities,
   ]);
 
+  const handleSplashFinish = useCallback(() => {
+    setActiveScreen('welcome');
+  }, []);
+
   // ── App UI ──────────────────────────────────────────────────────────────────
 
   return (
@@ -579,9 +630,7 @@ if (groupsView === 'createGroup') {
       {activeScreen === 'splash' ? (
 
         <SplashScreen
-          onFinish={() =>
-            setActiveScreen('welcome')
-          }
+          onFinish={handleSplashFinish}
         />
 
       ) : activeScreen === 'welcome' ? (
