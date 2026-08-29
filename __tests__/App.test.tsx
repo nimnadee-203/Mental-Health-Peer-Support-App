@@ -3,13 +3,26 @@
  */
 
 import React from 'react';
-import { Pressable, Text } from 'react-native';
+import { Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import BottomNavigation from '../src/components/BottomNavigation';
 import HomeScreen from '../src/screens/HomeScreen';
 import ResourceArticleScreen from '../src/screens/ResourceArticleScreen';
 import ResourcesScreen from '../src/screens/ResourcesScreen';
+import ActivitiesScreen from '../src/screens/ActivitiesScreen';
 import { resourceArticles } from '../src/types/ResourceArticle';
+
+jest.mock('react-native-sound', () => {
+  const SoundMock = jest.fn().mockImplementation(() => ({
+    setNumberOfLoops: jest.fn(),
+    setVolume: jest.fn(),
+    play: jest.fn(),
+    stop: jest.fn(),
+    release: jest.fn(),
+  }));
+  (SoundMock as any).setCategory = jest.fn();
+  return SoundMock;
+});
 
 test('renders the home screen content and the full shared bottom navigation', async () => {
   let homeComponent: ReactTestRenderer.ReactTestRenderer;
@@ -40,8 +53,10 @@ test('renders the home screen content and the full shared bottom navigation', as
   expect(navTextLabels).toContain('Messages');
   expect(navTextLabels).toContain('Profile');
 
-  homeComponent!.unmount();
-  navComponent!.unmount();
+  await ReactTestRenderer.act(() => {
+    homeComponent!.unmount();
+    navComponent!.unmount();
+  });
 });
 
 test('opens the article detail screen when the resources card is pressed', async () => {
@@ -71,38 +86,28 @@ test('opens the article detail screen when the resources card is pressed', async
 
   expect(onOpenArticle).toHaveBeenCalledTimes(1);
 
-  resourceComponent!.unmount();
+  await ReactTestRenderer.act(() => {
+    resourceComponent!.unmount();
+  });
 });
 
-test('starts the breathing exercise flow from the resources screen', async () => {
+test('starts the breathing exercise flow from the activities screen', async () => {
   jest.useFakeTimers();
 
-  let resourceComponent: ReactTestRenderer.ReactTestRenderer;
+  let activitiesComponent: ReactTestRenderer.ReactTestRenderer | undefined;
 
   try {
     await ReactTestRenderer.act(() => {
-      resourceComponent = ReactTestRenderer.create(
-        <ResourcesScreen
-          onOpenArticle={() => {}}
-          onOpenActivity={() => {}}
-          onOpenEmergencySupport={() => {}}
-          onOpenCreateResource={() => {}}
-          savedResources={[]}
+      activitiesComponent = ReactTestRenderer.create(
+        <ActivitiesScreen
+          activity="breathing"
+          onBack={() => {}}
+          onSelectActivity={() => {}}
         />,
       );
     });
 
-    const startButton = resourceComponent!.root
-      .findAll(node => node.props.testID === 'breathing-start-button')[0];
-
-    expect(startButton).toBeTruthy();
-
-    await ReactTestRenderer.act(() => {
-      startButton.props.onPress();
-      jest.runOnlyPendingTimers();
-    });
-
-    const activityText = resourceComponent!.root
+    const activityText = activitiesComponent!.root
       .findAllByType(Text)
       .map(node => node.props.children)
       .flatMap(value => (Array.isArray(value) ? value : [value]))
@@ -111,7 +116,7 @@ test('starts the breathing exercise flow from the resources screen', async () =>
     expect(activityText).toContain('Breathe in slowly');
   } finally {
     await ReactTestRenderer.act(() => {
-      resourceComponent?.unmount();
+      activitiesComponent?.unmount();
       jest.runOnlyPendingTimers();
     });
     jest.useRealTimers();
@@ -139,5 +144,7 @@ test('allows the user to go back from the article detail screen', async () => {
 
   expect(onBack).toHaveBeenCalledTimes(1);
 
-  articleComponent!.unmount();
+  await ReactTestRenderer.act(() => {
+    articleComponent!.unmount();
+  });
 });

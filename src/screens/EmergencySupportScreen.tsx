@@ -268,7 +268,7 @@ export function EmergencySupportScreen({
               accessibilityLabel={`Call Police — ${EMERGENCY_CONTACTS.POLICE}`}
             >
               <Text style={styles.dangerCallButtonText}>
-                📞 Call Police — {EMERGENCY_CONTACTS.POLICE}
+                {`📞 Call Police — ${EMERGENCY_CONTACTS.POLICE}`}
               </Text>
             </Pressable>
 
@@ -279,7 +279,7 @@ export function EmergencySupportScreen({
               accessibilityLabel={`Call Ambulance — ${EMERGENCY_CONTACTS.AMBULANCE}`}
             >
               <Text style={styles.dangerCallButtonText}>
-                📞 Call Ambulance — {EMERGENCY_CONTACTS.AMBULANCE}
+                {`📞 Call Ambulance — ${EMERGENCY_CONTACTS.AMBULANCE}`}
               </Text>
             </Pressable>
 
@@ -290,7 +290,7 @@ export function EmergencySupportScreen({
               accessibilityLabel={`Call Emergency & Rescue — ${EMERGENCY_CONTACTS.RESCUE}`}
             >
               <Text style={styles.dangerCallButtonText}>
-                📞 Call Emergency & Rescue — {EMERGENCY_CONTACTS.RESCUE}
+                {`📞 Call Emergency & Rescue — ${EMERGENCY_CONTACTS.RESCUE}`}
               </Text>
             </Pressable>
           </View>

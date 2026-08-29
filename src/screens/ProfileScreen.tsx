@@ -1,26 +1,127 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { getAuthUserId } from '../api/authStore';
+import { getUserProfile, updateUserProfile } from '../api/profileApi';
+import { UserProfile } from '../types/user';
 
 type ProfileScreenProps = {
   onBack: () => void;
+  onNavigateToAuth?: () => void;
 };
 
-const interests = ['Anxiety support', 'Mindfulness', 'Daily journaling'];
+const DEFAULT_INTERESTS = ['Anxiety support', 'Mindfulness', 'Daily journaling'];
 
-function ProfileScreen({ onBack }: ProfileScreenProps) {
+function ProfileScreen({ onBack, onNavigateToAuth }: ProfileScreenProps) {
+  const [userId, setUserId] = useState<string | null>(getAuthUserId());
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Edit Mode state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editFullName, setEditFullName] = useState('');
+  const [editBio, setEditBio] = useState('');
+  const [editInterests, setEditInterests] = useState<string[]>([]);
+  const [newInterestInput, setNewInterestInput] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const fetchProfile = useCallback(async () => {
+    const currentUserId = getAuthUserId();
+    setUserId(currentUserId);
+
+    if (!currentUserId) {
+      setProfile(null);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const data = await getUserProfile(currentUserId);
+      setProfile(data);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load profile.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
+
+  const handleOpenEdit = () => {
+    if (!profile) return;
+    setEditFullName(profile.fullName);
+    setEditBio(profile.bio || '');
+    setEditInterests(profile.interests || DEFAULT_INTERESTS);
+    setNewInterestInput('');
+    setSaveError(null);
+    setIsEditing(true);
+  };
+
+  const handleAddInterest = () => {
+    const trimmed = newInterestInput.trim();
+    if (trimmed && !editInterests.includes(trimmed)) {
+      setEditInterests([...editInterests, trimmed]);
+      setNewInterestInput('');
+    }
+  };
+
+  const handleRemoveInterest = (interestToRemove: string) => {
+    setEditInterests(editInterests.filter(i => i !== interestToRemove));
+  };
+
+  const handleSaveProfile = async () => {
+    if (!userId || !profile) return;
+
+    if (!editFullName.trim()) {
+      setSaveError('Full name cannot be empty.');
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      const updated = await updateUserProfile(userId, {
+        fullName: editFullName.trim(),
+        bio: editBio.trim(),
+        interests: editInterests,
+      });
+      setProfile(updated);
+      setIsEditing(false);
+    } catch (err: any) {
+      setSaveError(err?.message || 'Failed to update profile.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Avatar initial
+  const avatarLetter = (profile?.fullName || 'P').trim().charAt(0).toUpperCase() || 'P';
+
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
+        {/* Top Header Bar */}
         <View style={styles.topBar}>
           <Pressable
             accessibilityRole="button"
+            testID="profile-back-button"
             style={styles.backButton}
             onPress={onBack}
           >
@@ -30,59 +131,203 @@ function ProfileScreen({ onBack }: ProfileScreenProps) {
           <View style={styles.topBarSpacer} />
         </View>
 
-        <View style={styles.profileHeader}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>P</Text>
+        {/* Loading Indicator */}
+        {isLoading ? (
+          <View style={styles.centerBox}>
+            <ActivityIndicator size="large" color="#2563EB" />
+            <Text style={styles.loadingText}>Loading profile...</Text>
           </View>
-          <Text style={styles.name}>Patient User</Text>
-          <Text style={styles.email}>patient@example.com</Text>
-          <Text style={styles.bio}>
-            Sharing small steps, honest updates, and support with the community.
-          </Text>
-        </View>
-
-        <View style={styles.statsRow}>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>12</Text>
-            <Text style={styles.statLabel}>Posts</Text>
+        ) : !userId ? (
+          /* Guest Mode Layout */
+          <View style={styles.guestContainer}>
+            <View style={styles.guestAvatar}>
+              <Text style={styles.avatarText}>G</Text>
+            </View>
+            <Text style={styles.name}>Guest User</Text>
+            <Text style={styles.email}>Log in to sync your profile</Text>
+            <Text style={styles.bio}>
+              Join the Mental Health Peer Support community to save your preferences, connect with groups, and personalize your experience.
+            </Text>
+            {onNavigateToAuth ? (
+              <Pressable
+                accessibilityRole="button"
+                testID="profile-login-button"
+                style={styles.editButton}
+                onPress={onNavigateToAuth}
+              >
+                <Text style={styles.editButtonText}>Log In / Sign Up</Text>
+              </Pressable>
+            ) : null}
           </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>84</Text>
-            <Text style={styles.statLabel}>Supports</Text>
+        ) : error ? (
+          /* Error State */
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
+            <Pressable style={styles.retryButton} onPress={fetchProfile}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </Pressable>
           </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>18</Text>
-            <Text style={styles.statLabel}>Replies</Text>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Support Interests</Text>
-          <View style={styles.chipRow}>
-            {interests.map(interest => (
-              <View key={interest} style={styles.chip}>
-                <Text style={styles.chipText}>{interest}</Text>
+        ) : profile ? (
+          /* Logged-In User Profile Layout */
+          <>
+            <View style={styles.profileHeader}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{avatarLetter}</Text>
               </View>
-            ))}
-          </View>
-        </View>
+              <Text style={styles.name}>{profile.fullName}</Text>
+              <Text style={styles.email}>{profile.email}</Text>
+              <Text style={styles.bio}>
+                {profile.bio || 'Sharing small steps, honest updates, and support with the community.'}
+              </Text>
+            </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <View style={styles.activityItem}>
-            <Text style={styles.activityTitle}>Shared a story</Text>
-            <Text style={styles.activityText}>A small win today</Text>
-          </View>
-          <View style={styles.activityItem}>
-            <Text style={styles.activityTitle}>Supported a post</Text>
-            <Text style={styles.activityText}>Breathing through a difficult morning</Text>
-          </View>
-        </View>
+            {/* Stats Row */}
+            <View style={styles.statsRow}>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{profile.stats?.posts ?? 0}</Text>
+                <Text style={styles.statLabel}>Posts</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{profile.stats?.supports ?? 0}</Text>
+                <Text style={styles.statLabel}>Supports</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{profile.stats?.replies ?? 0}</Text>
+                <Text style={styles.statLabel}>Replies</Text>
+              </View>
+            </View>
 
-        <Pressable accessibilityRole="button" style={styles.editButton}>
-          <Text style={styles.editButtonText}>Edit Profile</Text>
-        </Pressable>
+            {/* Support Interests */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Support Interests</Text>
+              <View style={styles.chipRow}>
+                {(profile.interests && profile.interests.length > 0
+                  ? profile.interests
+                  : DEFAULT_INTERESTS
+                ).map(interest => (
+                  <View key={interest} style={styles.chip}>
+                    <Text style={styles.chipText}>{interest}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Recent Activity */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Recent Activity</Text>
+              <View style={styles.activityItem}>
+                <Text style={styles.activityTitle}>Shared a story</Text>
+                <Text style={styles.activityText}>A small win today</Text>
+              </View>
+              <View style={styles.activityItem}>
+                <Text style={styles.activityTitle}>Supported a post</Text>
+                <Text style={styles.activityText}>Breathing through a difficult morning</Text>
+              </View>
+            </View>
+
+            {/* Edit Profile Button */}
+            <Pressable
+              accessibilityRole="button"
+              testID="edit-profile-button"
+              style={styles.editButton}
+              onPress={handleOpenEdit}
+            >
+              <Text style={styles.editButtonText}>Edit Profile</Text>
+            </Pressable>
+          </>
+        ) : null}
       </ScrollView>
+
+      {/* Edit Profile Modal */}
+      <Modal visible={isEditing} animationType="slide" transparent>
+        <SafeAreaView style={styles.modalOverlay}>
+          <ScrollView contentContainerStyle={styles.modalContent}>
+            <Text style={styles.modalTitle}>Edit Profile</Text>
+
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Full Name</Text>
+              <TextInput
+                style={styles.input}
+                value={editFullName}
+                onChangeText={setEditFullName}
+                placeholder="Enter full name"
+                placeholderTextColor="#9CA3AF"
+                testID="edit-name-input"
+              />
+            </View>
+
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Bio</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={editBio}
+                onChangeText={setEditBio}
+                placeholder="Tell us a bit about yourself..."
+                placeholderTextColor="#9CA3AF"
+                multiline
+                numberOfLines={3}
+                testID="edit-bio-input"
+              />
+            </View>
+
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Interests</Text>
+              <View style={styles.chipRow}>
+                {editInterests.map(interest => (
+                  <Pressable
+                    key={interest}
+                    style={styles.editableChip}
+                    onPress={() => handleRemoveInterest(interest)}
+                  >
+                    <Text style={styles.editableChipText}>{interest} ✕</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <View style={styles.addInterestRow}>
+                <TextInput
+                  style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                  value={newInterestInput}
+                  onChangeText={setNewInterestInput}
+                  placeholder="Add interest"
+                  placeholderTextColor="#9CA3AF"
+                  testID="add-interest-input"
+                />
+                <Pressable
+                  style={styles.addInterestButton}
+                  onPress={handleAddInterest}
+                  testID="add-interest-button"
+                >
+                  <Text style={styles.addInterestButtonText}>Add</Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {saveError ? <Text style={styles.errorText}>{saveError}</Text> : null}
+
+            <View style={styles.modalActions}>
+              <Pressable
+                style={styles.cancelButton}
+                onPress={() => setIsEditing(false)}
+                disabled={isSaving}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={styles.saveButton}
+                onPress={handleSaveProfile}
+                disabled={isSaving}
+                testID="save-profile-button"
+              >
+                {isSaving ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Save</Text>
+                )}
+              </Pressable>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -122,6 +367,58 @@ const styles = StyleSheet.create({
   },
   topBarSpacer: {
     width: 66,
+  },
+  centerBox: {
+    paddingVertical: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    color: '#6B7280',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  errorBox: {
+    padding: 20,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  errorText: {
+    color: '#B91C1C',
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  retryButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#EF4444',
+    borderRadius: 6,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  guestContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 24,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  guestAvatar: {
+    width: 86,
+    height: 86,
+    borderRadius: 43,
+    backgroundColor: '#9CA3AF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   profileHeader: {
     backgroundColor: '#FFFFFF',
@@ -244,11 +541,107 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 18,
+    paddingHorizontal: 20,
   },
   editButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '900',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    gap: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  fieldGroup: {
+    gap: 6,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#374151',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: '#111827',
+    backgroundColor: '#FAFAFA',
+  },
+  textArea: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  editableChip: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  editableChipText: {
+    color: '#92400E',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  addInterestRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  addInterestButton: {
+    backgroundColor: '#2563EB',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  addInterestButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 12,
+  },
+  cancelButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  cancelButtonText: {
+    color: '#4B5563',
+    fontWeight: '700',
+  },
+  saveButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    backgroundColor: '#2563EB',
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
   },
 });
 

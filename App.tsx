@@ -667,6 +667,7 @@ if (groupsView === 'createGroup') {
             setActiveScreen('home');
             setActiveTab('Home');
           }}
+          onNavigateToAuth={() => setActiveScreen('auth')}
         />
 
       ) : (
