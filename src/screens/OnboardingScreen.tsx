@@ -18,14 +18,14 @@ type OnboardingScreenProps = {
 };
 
 const INTEREST_TOPICS = [
-  'Anxiety Support',
-  'Depression & Mood',
-  'Stress Management',
-  'Mindfulness',
-  'Sleep & Recovery',
-  'Self-Care Routines',
-  'Peer Stories',
-  'Grief & Healing',
+  'Stress',
+  'Anxiety',
+  'Loneliness',
+  'Academic pressure',
+  'Relationship problems',
+  'Grief',
+  'Self-confidence',
+  'General wellbeing',
 ];
 
 const GUIDELINES = [
@@ -46,8 +46,9 @@ const GUIDELINES = [
 function OnboardingScreen({ onComplete, onSkip }: OnboardingScreenProps) {
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [selectedInterests, setSelectedInterests] = useState<string[]>([
-    'Anxiety Support',
-    'Self-Care Routines',
+    'Anxiety',
+    'Academic pressure',
+    'Self-confidence',
   ]);
 
   const totalSteps = 3;
@@ -162,35 +163,45 @@ function OnboardingScreen({ onComplete, onSkip }: OnboardingScreenProps) {
         {currentStep === 2 ? (
           <View style={styles.stepContainer}>
             <View style={styles.badgeContainer}>
-              <Text style={styles.badgeText}>Personalize Your Experience</Text>
+              <Text style={styles.badgeText}>Mental Health Interests</Text>
             </View>
 
-            <Text style={styles.title}>Select Your Topics of Interest</Text>
+            <Text style={styles.title}>What would you like support with?</Text>
             <Text style={styles.subtitle}>
-              Choose topics you would like to explore. We will use these to recommend relevant peer support groups.
+              Select the topics you want support with. These will become the basis for your personalized recommendations.
             </Text>
 
-            <View style={styles.chipGrid}>
+            <View style={styles.interestList}>
               {INTEREST_TOPICS.map(topic => {
                 const isSelected = selectedInterests.includes(topic);
                 return (
                   <Pressable
                     key={topic}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isSelected }}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: isSelected }}
+                    testID={`interest-checkbox-${topic.toLowerCase().replace(/\s+/g, '-')}`}
                     style={[
-                      styles.chip,
-                      isSelected && styles.chipSelected,
+                      styles.checkboxRow,
+                      isSelected && styles.checkboxRowSelected,
                     ]}
                     onPress={() => toggleInterest(topic)}
                   >
+                    <View style={styles.checkboxBox}>
+                      <Text
+                        style={[
+                          styles.checkboxIcon,
+                          isSelected && styles.checkboxIconSelected,
+                        ]}
+                      >
+                        {isSelected ? '☑' : '☐'}
+                      </Text>
+                    </View>
                     <Text
                       style={[
-                        styles.chipText,
-                        isSelected && styles.chipTextSelected,
+                        styles.checkboxLabel,
+                        isSelected && styles.checkboxLabelSelected,
                       ]}
                     >
-                      {isSelected ? '✓ ' : '+ '}
                       {topic}
                     </Text>
                   </Pressable>
@@ -244,6 +255,7 @@ function OnboardingScreen({ onComplete, onSkip }: OnboardingScreenProps) {
 
         <Pressable
           accessibilityRole="button"
+          testID="onboarding-next-button"
           style={({ pressed }) => [
             styles.primaryButton,
             currentStep > 1 && styles.flexButton,
@@ -252,7 +264,11 @@ function OnboardingScreen({ onComplete, onSkip }: OnboardingScreenProps) {
           onPress={handleNext}
         >
           <Text style={styles.primaryButtonText}>
-            {currentStep === totalSteps ? 'Get Started' : 'Next'}
+            {currentStep === totalSteps
+              ? 'Get Started'
+              : currentStep === 2
+              ? 'Continue'
+              : 'Next'}
           </Text>
         </Pressable>
       </View>
@@ -359,10 +375,42 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
   },
-  featureDesc: {
-    color: '#6B7280',
-    fontSize: 14,
-    lineHeight: 20,
+  interestList: {
+    gap: 10,
+    marginTop: 8,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+  },
+  checkboxRowSelected: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#2563EB',
+  },
+  checkboxBox: {
+    marginRight: 12,
+  },
+  checkboxIcon: {
+    fontSize: 22,
+    color: '#9CA3AF',
+  },
+  checkboxIconSelected: {
+    color: '#2563EB',
+  },
+  checkboxLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#374151',
+  },
+  checkboxLabelSelected: {
+    color: '#1E40AF',
+    fontWeight: '800',
   },
   chipGrid: {
     flexDirection: 'row',
