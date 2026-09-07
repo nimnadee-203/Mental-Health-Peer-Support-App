@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ResourceArticle } from '../types/ResourceArticle';
 
 type ResourceFilter =
   | 'Emotional Wellbeing'
@@ -27,48 +28,36 @@ const categories: ResourceFilter[] = [
 
 type CreateResourceScreenProps = {
   onBack: () => void;
+  onCreateResource: (resource: ResourceArticle) => Promise<void> | void;
 };
 
 function CreateResourceScreen({
   onBack,
+  onCreateResource,
 }: CreateResourceScreenProps) {
   const [title, setTitle] = useState('');
-  const [description, setDescription] =
-    useState('');
-  const [category, setCategory] =
-    useState<ResourceFilter | null>(null);
-  const [readTime, setReadTime] =
-    useState('');
-  const [imageUrl, setImageUrl] =
-    useState('');
-  const [content, setContent] =
-    useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState<ResourceFilter | null>(null);
+  const [readTime, setReadTime] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [content, setContent] = useState('');
 
-  const [showCategories, setShowCategories] =
-    useState(false);
+  const [showCategories, setShowCategories] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleCreateResource = () => {
+  const handleCreateResource = async () => {
     if (!title.trim()) {
-      Alert.alert(
-        'Missing information',
-        'Please enter a resource title.',
-      );
+      Alert.alert('Missing information', 'Please enter a resource title.');
       return;
     }
 
     if (!description.trim()) {
-      Alert.alert(
-        'Missing information',
-        'Please enter a description.',
-      );
+      Alert.alert('Missing information', 'Please enter a description.');
       return;
     }
 
     if (!category) {
-      Alert.alert(
-        'Missing information',
-        'Please select a category.',
-      );
+      Alert.alert('Missing information', 'Please select a category.');
       return;
     }
 
@@ -81,23 +70,57 @@ function CreateResourceScreen({
     }
 
     if (!content.trim()) {
-      Alert.alert(
-        'Missing information',
-        'Please enter the resource content.',
-      );
+      Alert.alert('Missing information', 'Please enter the resource content.');
       return;
     }
 
-    Alert.alert(
-      'Resource Created',
-      'Your resource has been created successfully.',
-      [
+    const trimmedTitle = title.trim();
+    const article: ResourceArticle = {
+      id: `${trimmedTitle
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '')}-${Date.now()}`,
+      category,
+      section: 'Explore Resources',
+      title: trimmedTitle,
+      description: description.trim(),
+      icon: '📄',
+      accent: '#D8E6FC',
+      image: imageUrl.trim(),
+      readTime: readTime.trim(),
+      content: [
         {
-          text: 'OK',
-          onPress: onBack,
+          heading: trimmedTitle,
+          paragraphs: content
+            .trim()
+            .split(/\n\s*\n/)
+            .filter(Boolean),
         },
       ],
-    );
+    };
+
+    setIsSaving(true);
+
+    try {
+      await onCreateResource(article);
+      Alert.alert(
+        'Resource Created',
+        'Your resource has been created successfully.',
+        [
+          {
+            text: 'OK',
+            onPress: onBack,
+          },
+        ],
+      );
+    } catch (error: any) {
+      Alert.alert(
+        'Could not create resource',
+        error?.message || 'Please check your connection and try again.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -110,23 +133,15 @@ function CreateResourceScreen({
         {/* Header */}
 
         <View style={styles.header}>
-          <Pressable
-            style={styles.backButton}
-            onPress={onBack}
-          >
-            <Text style={styles.backIcon}>
-              ←
-            </Text>
+          <Pressable style={styles.backButton} onPress={onBack}>
+            <Text style={styles.backIcon}>←</Text>
           </Pressable>
 
           <View style={styles.headerText}>
-            <Text style={styles.pageTitle}>
-              Create Resource
-            </Text>
+            <Text style={styles.pageTitle}>Create Resource</Text>
 
             <Text style={styles.pageSubtitle}>
-              Share helpful content with the
-              community.
+              Share helpful content with the community.
             </Text>
           </View>
         </View>
@@ -137,9 +152,7 @@ function CreateResourceScreen({
           {/* Title */}
 
           <View style={styles.field}>
-            <Text style={styles.label}>
-              Resource Title
-            </Text>
+            <Text style={styles.label}>Resource Title</Text>
 
             <TextInput
               value={title}
@@ -154,43 +167,30 @@ function CreateResourceScreen({
           {/* Description */}
 
           <View style={styles.field}>
-            <Text style={styles.label}>
-              Description
-            </Text>
+            <Text style={styles.label}>Description</Text>
 
             <TextInput
               value={description}
               onChangeText={setDescription}
               placeholder="Briefly describe this resource"
               placeholderTextColor="#9AA3AE"
-              style={[
-                styles.input,
-                styles.multilineInput,
-              ]}
+              style={[styles.input, styles.multilineInput]}
               multiline
               textAlignVertical="top"
               maxLength={250}
             />
 
-            <Text style={styles.characterCount}>
-              {description.length}/250
-            </Text>
+            <Text style={styles.characterCount}>{description.length}/250</Text>
           </View>
 
           {/* Category */}
 
           <View style={styles.field}>
-            <Text style={styles.label}>
-              Category
-            </Text>
+            <Text style={styles.label}>Category</Text>
 
             <Pressable
               style={styles.dropdown}
-              onPress={() =>
-                setShowCategories(
-                  current => !current,
-                )
-              }
+              onPress={() => setShowCategories(current => !current)}
             >
               <Text
                 style={
@@ -199,8 +199,7 @@ function CreateResourceScreen({
                     : styles.dropdownPlaceholder
                 }
               >
-                {category ??
-                  'Select a category'}
+                {category ?? 'Select a category'}
               </Text>
 
               <Text style={styles.dropdownArrow}>
@@ -211,43 +210,30 @@ function CreateResourceScreen({
             {showCategories && (
               <View style={styles.categoryList}>
                 {categories.map(item => {
-                  const selected =
-                    category === item;
+                  const selected = category === item;
 
                   return (
                     <Pressable
                       key={item}
                       style={[
                         styles.categoryOption,
-                        selected &&
-                          styles.categoryOptionSelected,
+                        selected && styles.categoryOptionSelected,
                       ]}
                       onPress={() => {
                         setCategory(item);
-                        setShowCategories(
-                          false,
-                        );
+                        setShowCategories(false);
                       }}
                     >
                       <Text
                         style={[
                           styles.categoryOptionText,
-                          selected &&
-                            styles.categoryOptionTextSelected,
+                          selected && styles.categoryOptionTextSelected,
                         ]}
                       >
                         {item}
                       </Text>
 
-                      {selected && (
-                        <Text
-                          style={
-                            styles.checkMark
-                          }
-                        >
-                          ✓
-                        </Text>
-                      )}
+                      {selected && <Text style={styles.checkMark}>✓</Text>}
                     </Pressable>
                   );
                 })}
@@ -258,9 +244,7 @@ function CreateResourceScreen({
           {/* Read Time */}
 
           <View style={styles.field}>
-            <Text style={styles.label}>
-              Read Time
-            </Text>
+            <Text style={styles.label}>Read Time</Text>
 
             <TextInput
               value={readTime}
@@ -274,9 +258,7 @@ function CreateResourceScreen({
           {/* Image URL */}
 
           <View style={styles.field}>
-            <Text style={styles.label}>
-              Image URL
-            </Text>
+            <Text style={styles.label}>Image URL</Text>
 
             <TextInput
               value={imageUrl}
@@ -289,27 +271,21 @@ function CreateResourceScreen({
             />
 
             <Text style={styles.helperText}>
-              Optional. Add an image URL for
-              the resource.
+              Optional. Add an image URL for the resource.
             </Text>
           </View>
 
           {/* Content */}
 
           <View style={styles.field}>
-            <Text style={styles.label}>
-              Resource Content
-            </Text>
+            <Text style={styles.label}>Resource Content</Text>
 
             <TextInput
               value={content}
               onChangeText={setContent}
               placeholder="Write the full resource content here..."
               placeholderTextColor="#9AA3AE"
-              style={[
-                styles.input,
-                styles.contentInput,
-              ]}
+              style={[styles.input, styles.contentInput]}
               multiline
               textAlignVertical="top"
             />
@@ -321,19 +297,18 @@ function CreateResourceScreen({
         <Pressable
           style={({ pressed }) => [
             styles.createButton,
-            pressed &&
-              styles.createButtonPressed,
+            (pressed || isSaving) && styles.createButtonPressed,
           ]}
           onPress={handleCreateResource}
+          disabled={isSaving}
         >
           <Text style={styles.createButtonText}>
-            Create Resource
+            {isSaving ? 'Creating...' : 'Create Resource'}
           </Text>
         </Pressable>
 
         <Text style={styles.bottomNote}>
-          Your resource will be reviewed before
-          being published.
+          Your resource will be reviewed before being published.
         </Text>
       </ScrollView>
     </SafeAreaView>

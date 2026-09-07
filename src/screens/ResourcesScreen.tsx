@@ -82,6 +82,7 @@ type ResourcesScreenProps = {
   onOpenCreateResource: () => void;
 
   savedResources?: string[];
+  resources?: ResourceArticle[];
 };
 
 function ResourcesScreen({
@@ -90,6 +91,7 @@ function ResourcesScreen({
   onOpenEmergencySupport,
   onOpenCreateResource,
   savedResources = [],
+  resources = resourceArticles,
 }: ResourcesScreenProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] =
@@ -120,7 +122,7 @@ function ResourcesScreen({
   const savedFromProp = useMemo(() => {
     return savedResources
       .map(value => {
-        const byId = resourceArticles.find(
+        const byId = resources.find(
           article => article.id === value,
         );
 
@@ -128,7 +130,7 @@ function ResourcesScreen({
           return byId.id;
         }
 
-        const byTitle = resourceArticles.find(
+        const byTitle = resources.find(
           article =>
             article.title.toLowerCase() ===
             value.toLowerCase(),
@@ -140,7 +142,7 @@ function ResourcesScreen({
         (value): value is string =>
           Boolean(value),
       );
-  }, [savedResources]);
+  }, [resources, savedResources]);
 
   const isResourceSaved = (
     resourceId: string,
@@ -172,16 +174,16 @@ function ResourcesScreen({
   };
 
   const resolvedSavedResources = useMemo(() => {
-    return resourceArticles.filter(article =>
+    return resources.filter(article =>
       isResourceSaved(article.id),
     );
-  }, [saveOverrides, savedFromProp]);
+  }, [resources, saveOverrides, savedFromProp]);
 
   const normalizedQuery =
     searchQuery.trim().toLowerCase();
 
   const filteredResources = useMemo(() => {
-    return resourceArticles.filter(article => {
+    return resources.filter(article => {
       const matchesCategory =
         selectedFilter === 'All' ||
         article.category === selectedFilter;
@@ -204,12 +206,13 @@ function ResourcesScreen({
       );
     });
   }, [
+    resources,
     normalizedQuery,
     selectedFilter,
   ]);
 
   const featuredArticle =
-    resourceArticles.find(
+    resources.find(
       article =>
         article.id ===
         'small-steps-for-difficult-days',
@@ -711,6 +714,7 @@ function ResourcesScreen({
             </View>
 
             <Pressable
+              testID="view-all-activities"
               onPress={() =>
                 onOpenActivity(undefined)
               }

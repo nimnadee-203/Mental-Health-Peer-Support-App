@@ -17,7 +17,9 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import type { Community } from './GroupDiscussionScreen';
 
-import { API_BASE } from '../config/api';
+import { COMMUNITY_API_BASE } from '../config/api';
+
+const REQUEST_TIMEOUT_MS = 10000;
 
 const TOPICS = [
   'General',
@@ -60,20 +62,27 @@ export default function CreatePostScreen({
     if (!isFormValid || isSubmitting) return;
 
     setIsSubmitting(true);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
     try {
       const encodedGroupId = encodeURIComponent(community._id);
-      const response = await fetch(`${API_BASE}/posts/group/${encodedGroupId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${COMMUNITY_API_BASE}/posts/group/${encodedGroupId}`,
+        {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            content: content.trim(),
+            topic,
+            contentNote,
+            isAnonymous,
+          }),
         },
-        body: JSON.stringify({
-          content: content.trim(),
-          topic,
-          contentNote,
-          isAnonymous,
-        }),
-      });
+      );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
@@ -83,13 +92,14 @@ export default function CreatePostScreen({
       onPostCreated();
     } catch (error: any) {
       console.error('Post creation error:', error);
-      Alert.alert(
-        'Could not post',
-        error?.message ||
-          'Something went wrong while submitting your post. Please check your connection and try again.',
-        [{ text: 'OK' }],
-      );
+      const message =
+        error?.name === 'AbortError'
+          ? 'The server took too long to respond. Please try again.'
+          : error?.message ||
+            'Something went wrong while submitting your post. Please check your connection and try again.';
+      Alert.alert('Could not post', message, [{ text: 'OK' }]);
     } finally {
+      clearTimeout(timeoutId);
       setIsSubmitting(false);
     }
   };
@@ -97,10 +107,10 @@ export default function CreatePostScreen({
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.container}>
-        
+        style={styles.container}
+      >
         {/* HEADER */}
         <View style={styles.header}>
           <Pressable style={styles.backButton} onPress={onBack}>
@@ -110,17 +120,19 @@ export default function CreatePostScreen({
 
         <ScrollView
           contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}>
-          
+          showsVerticalScrollIndicator={false}
+        >
           <Text style={styles.pageTitle}>Share with the community</Text>
           <Text style={styles.pageSubtitle}>
-            You can share anonymously. Only post what you feel comfortable sharing.
+            You can share anonymously. Only post what you feel comfortable
+            sharing.
           </Text>
 
           <View style={styles.warningCard}>
             <Text style={styles.warningEmoji}>🔒</Text>
             <Text style={styles.warningText}>
-              Please avoid sharing personal contact information or identifying details.
+              Please avoid sharing personal contact information or identifying
+              details.
             </Text>
           </View>
 
@@ -136,9 +148,7 @@ export default function CreatePostScreen({
               value={content}
               onChangeText={setContent}
             />
-            <Text style={styles.charCount}>
-              {content.length} characters
-            </Text>
+            <Text style={styles.charCount}>{content.length} characters</Text>
           </View>
 
           {/* TOPIC SELECTION */}
@@ -151,8 +161,14 @@ export default function CreatePostScreen({
                   <Pressable
                     key={t}
                     style={[styles.pill, isSelected && styles.pillSelected]}
-                    onPress={() => setTopic(t)}>
-                    <Text style={[styles.pillText, isSelected && styles.pillTextSelected]}>
+                    onPress={() => setTopic(t)}
+                  >
+                    <Text
+                      style={[
+                        styles.pillText,
+                        isSelected && styles.pillTextSelected,
+                      ]}
+                    >
                       {t}
                     </Text>
                   </Pressable>
@@ -171,8 +187,14 @@ export default function CreatePostScreen({
                   <Pressable
                     key={note}
                     style={[styles.pill, isSelected && styles.pillNoteSelected]}
-                    onPress={() => setContentNote(note)}>
-                    <Text style={[styles.pillText, isSelected && styles.pillNoteTextSelected]}>
+                    onPress={() => setContentNote(note)}
+                  >
+                    <Text
+                      style={[
+                        styles.pillText,
+                        isSelected && styles.pillNoteTextSelected,
+                      ]}
+                    >
                       {note}
                     </Text>
                   </Pressable>
@@ -185,7 +207,9 @@ export default function CreatePostScreen({
           <View style={styles.toggleContainer}>
             <View style={styles.toggleTextContainer}>
               <Text style={styles.toggleTitle}>Post anonymously</Text>
-              <Text style={styles.toggleSubtitle}>Your name will not be shown</Text>
+              <Text style={styles.toggleSubtitle}>
+                Your name will not be shown
+              </Text>
             </View>
             <Switch
               trackColor={{ false: '#E8E8F0', true: '#2D2D3A' }}
@@ -198,24 +222,35 @@ export default function CreatePostScreen({
 
           {/* SUBMIT BUTTON */}
           <Pressable
-            style={[styles.submitButtonContainer, !isFormValid && styles.submitButtonDisabled]}
+            style={[
+              styles.submitButtonContainer,
+              !isFormValid && styles.submitButtonDisabled,
+            ]}
             onPress={handleSubmit}
-            disabled={!isFormValid || isSubmitting}>
+            disabled={!isFormValid || isSubmitting}
+          >
             <LinearGradient
-              colors={isFormValid ? ['#C5DFF8', '#C8EDD5'] : ['#F7F7FB', '#F7F7FB']}
+              colors={
+                isFormValid ? ['#C5DFF8', '#C8EDD5'] : ['#F7F7FB', '#F7F7FB']
+              }
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.submitButtonGradient}>
+              style={styles.submitButtonGradient}
+            >
               {isSubmitting ? (
                 <ActivityIndicator color="#2D2D3A" />
               ) : (
-                <Text style={[styles.submitButtonText, !isFormValid && styles.submitButtonTextDisabled]}>
+                <Text
+                  style={[
+                    styles.submitButtonText,
+                    !isFormValid && styles.submitButtonTextDisabled,
+                  ]}
+                >
                   {content.trim().length > 0 ? 'Post' : 'Write something first'}
                 </Text>
               )}
             </LinearGradient>
           </Pressable>
-
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

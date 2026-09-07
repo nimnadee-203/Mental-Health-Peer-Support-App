@@ -1,6 +1,11 @@
-import { API_BASE } from '../config/api';
+import { COMMUNITY_API_BASE } from '../config/api';
 import { getAuthUserId } from './authStore';
-import { EmergencyType, EmergencyStatus, EmergencyRequest, TrustedContact } from '../types/emergency';
+import {
+  EmergencyType,
+  EmergencyStatus,
+  EmergencyRequest,
+  TrustedContact,
+} from '../types/emergency';
 
 const getHeaders = () => {
   const headers: Record<string, string> = {
@@ -8,16 +13,16 @@ const getHeaders = () => {
   };
   const token = getAuthUserId();
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers.Authorization = `Bearer ${token}`;
   }
   return headers;
 };
 
 export async function createEmergencyRequest(
   type: EmergencyType,
-  description: string
+  description: string,
 ): Promise<{ success: boolean; requestId: string; status: EmergencyStatus }> {
-  const response = await fetch(`${API_BASE}/emergency`, {
+  const response = await fetch(`${COMMUNITY_API_BASE}/emergency`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({ type, description }),
@@ -32,7 +37,7 @@ export async function createEmergencyRequest(
 }
 
 export async function getMyEmergencyRequests(): Promise<EmergencyRequest[]> {
-  const response = await fetch(`${API_BASE}/emergency/my-requests`, {
+  const response = await fetch(`${COMMUNITY_API_BASE}/emergency/my-requests`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -47,9 +52,9 @@ export async function getMyEmergencyRequests(): Promise<EmergencyRequest[]> {
 
 export async function updateEmergencyRequestStatus(
   id: string,
-  status: EmergencyStatus
+  status: EmergencyStatus,
 ): Promise<EmergencyRequest> {
-  const response = await fetch(`${API_BASE}/emergency/${id}/status`, {
+  const response = await fetch(`${COMMUNITY_API_BASE}/emergency/${id}/status`, {
     method: 'PATCH',
     headers: getHeaders(),
     body: JSON.stringify({ status }),
@@ -64,7 +69,7 @@ export async function updateEmergencyRequestStatus(
 }
 
 export async function getTrustedContact(): Promise<TrustedContact | null> {
-  const response = await fetch(`${API_BASE}/trusted-contact`, {
+  const response = await fetch(`${COMMUNITY_API_BASE}/trusted-contact`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -87,7 +92,7 @@ export async function createTrustedContact(contact: {
   phone: string;
   relationship: string;
 }): Promise<TrustedContact> {
-  const response = await fetch(`${API_BASE}/trusted-contact`, {
+  const response = await fetch(`${COMMUNITY_API_BASE}/trusted-contact`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(contact),
@@ -107,7 +112,7 @@ export async function updateTrustedContact(contact: {
   phone?: string;
   relationship?: string;
 }): Promise<TrustedContact> {
-  const response = await fetch(`${API_BASE}/trusted-contact`, {
+  const response = await fetch(`${COMMUNITY_API_BASE}/trusted-contact`, {
     method: 'PATCH',
     headers: getHeaders(),
     body: JSON.stringify(contact),
@@ -123,7 +128,7 @@ export async function updateTrustedContact(contact: {
 }
 
 export async function deleteTrustedContact(): Promise<{ success: boolean }> {
-  const response = await fetch(`${API_BASE}/trusted-contact`, {
+  const response = await fetch(`${COMMUNITY_API_BASE}/trusted-contact`, {
     method: 'DELETE',
     headers: getHeaders(),
   });
@@ -137,12 +142,15 @@ export async function deleteTrustedContact(): Promise<{ success: boolean }> {
 }
 
 export async function notifyTrustedContact(
-  requestId: string
+  requestId: string,
 ): Promise<{ success: boolean; message: string }> {
-  const response = await fetch(`${API_BASE}/emergency/${requestId}/notify-trusted-contact`, {
-    method: 'POST',
-    headers: getHeaders(),
-  });
+  const response = await fetch(
+    `${COMMUNITY_API_BASE}/emergency/${requestId}/notify-trusted-contact`,
+    {
+      method: 'POST',
+      headers: getHeaders(),
+    },
+  );
 
   if (!response.ok) {
     const err = await response.json().catch(() => null);
