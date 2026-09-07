@@ -16,7 +16,7 @@ import ResourceArticleScreen from './src/screens/ResourceArticleScreen';
 import ActivitiesScreen from './src/screens/ActivitiesScreen';
 import CreateResourceScreen from './src/screens/CreateResourceScreen';
 
-import { ResourceArticle } from './src/types/ResourceArticle';
+import { ResourceArticle, resourceArticles } from './src/types/ResourceArticle';
 
 import GroupsHomeScreen from './src/screens/Groups/GroupsHomeScreen';
 import GroupDetailScreen from './src/screens/Groups/GroupDetailScreen';
@@ -29,8 +29,12 @@ import CreatePostScreen from './src/screens/CreatePostScreen';
 import CreateGroupScreen from './src/screens/Groups/CreateGroupScreen';
 
 import EmergencySupportScreen from './src/screens/EmergencySupportScreen';
-import { API_BASE } from './src/config/api';
+import { API_BASE, COMMUNITY_API_BASE } from './src/config/api';
 import { getAuthUserId, setAuthUserId } from './src/api/authStore';
+import {
+  createResource as createResourceRequest,
+  getResources,
+} from './src/api/resourcesApi';
 import { updateUserProfile } from './src/api/profileApi';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -79,7 +83,8 @@ const INITIAL_COMMUNITIES: Community[] = [
     category: 'Stress & Anxiety',
     emoji: '🌿',
     bgColor: '#E6F4EA',
-    description: 'A safe space to share anxiety coping strategies and ground yourself.',
+    description:
+      'A safe space to share anxiety coping strategies and ground yourself.',
     guidelines: 'Be kind, respectful, and supportive.',
     memberCount: 1420,
     memberAvatarColors: ['#34D399', '#60A5FA', '#F472B6'],
@@ -91,7 +96,8 @@ const INITIAL_COMMUNITIES: Community[] = [
     category: 'Mindfulness',
     emoji: '🧘',
     bgColor: '#E8F0FE',
-    description: 'Practice meditation, breathing exercises, and present-moment awareness.',
+    description:
+      'Practice meditation, breathing exercises, and present-moment awareness.',
     guidelines: 'Share your journey openly.',
     memberCount: 890,
     memberAvatarColors: ['#818CF8', '#FBBF24', '#34D399'],
@@ -103,7 +109,8 @@ const INITIAL_COMMUNITIES: Community[] = [
     category: 'Depression',
     emoji: '☀️',
     bgColor: '#FEF3C7',
-    description: 'Supporting each other through low moments with hope and small wins.',
+    description:
+      'Supporting each other through low moments with hope and small wins.',
     guidelines: 'No medical advice; offer peer empathy.',
     memberCount: 1105,
     memberAvatarColors: ['#F87171', '#60A5FA', '#A78BFA'],
@@ -116,8 +123,7 @@ const INITIAL_COMMUNITIES: Community[] = [
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
 
-  const [activeScreen, setActiveScreen] =
-    useState<AppScreen>('splash');
+  const [activeScreen, setActiveScreen] = useState<AppScreen>('splash');
 
   // ── Tab Navigation ─────────────────────────────────────────────────────────
 
@@ -127,50 +133,53 @@ function App() {
 
   // ── Resources Navigation ───────────────────────────────────────────────────
 
-  const [isArticleOpen, setIsArticleOpen] =
-    useState(false);
+  const [isArticleOpen, setIsArticleOpen] = useState(false);
 
   const [selectedArticle, setSelectedArticle] =
     useState<ResourceArticle | null>(null);
 
-  const [savedResources, setSavedResources] =
-    useState<string[]>([]);
+  const [savedResources, setSavedResources] = useState<string[]>([]);
 
-  const [isActivityOpen, setIsActivityOpen] =
-    useState(false);
+  const [createdResources, setCreatedResources] = useState<ResourceArticle[]>(
+    [],
+  );
 
-  const [selectedActivity, setSelectedActivity] =
-    useState<
-      | 'breathing'
-      | 'mindfulness'
-      | 'journaling'
-      | 'digitalDetox'
-      | 'healthyRoutine'
-    >('breathing');
+  const allResources = useMemo(
+    () => [...createdResources, ...resourceArticles],
+    [createdResources],
+  );
 
-  const [isEmergencyOpen, setIsEmergencyOpen] =
-    useState(false);
+  const [isActivityOpen, setIsActivityOpen] = useState(false);
+
+  const [selectedActivity, setSelectedActivity] = useState<
+    | 'breathing'
+    | 'mindfulness'
+    | 'journaling'
+    | 'digitalDetox'
+    | 'healthyRoutine'
+    | undefined
+  >(undefined);
+
+  const [isEmergencyOpen, setIsEmergencyOpen] = useState(false);
 
   // ── Create Resource Navigation ─────────────────────────────────────────────
 
-  const [isCreateResourceOpen, setIsCreateResourceOpen] =
-    useState(false);
+  const [isCreateResourceOpen, setIsCreateResourceOpen] = useState(false);
 
   // ── Groups Navigation ──────────────────────────────────────────────────────
 
-  const [groupsView, setGroupsView] =
-    useState<GroupsView>('home');
+  const [groupsView, setGroupsView] = useState<GroupsView>('home');
 
-  const [communities, setCommunities] = useState<Community[]>(INITIAL_COMMUNITIES);
+  const [communities, setCommunities] =
+    useState<Community[]>(INITIAL_COMMUNITIES);
 
-  const [selectedCommunity, setSelectedCommunity] =
-    useState<Community | null>(null);
+  const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(
+    null,
+  );
 
-  const [selectedPost, setSelectedPost] =
-    useState<Post | null>(null);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
-  const [joinedGroupIds, setJoinedGroupIds] =
-    useState<string[]>([]);
+  const [joinedGroupIds, setJoinedGroupIds] = useState<string[]>([]);
 
   // ── Fetch Communities ──────────────────────────────────────────────────────
 
@@ -178,11 +187,27 @@ function App() {
     fetchCommunities();
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    getResources()
+      .then(resources => {
+        if (isMounted) {
+          setCreatedResources(resources);
+        }
+      })
+      .catch(error => {
+        console.warn('Failed to fetch saved resources:', error);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const fetchCommunities = async () => {
     try {
-      const response = await fetch(
-        `${API_BASE}/communities`
-      );
+      const response = await fetch(`${COMMUNITY_API_BASE}/communities`);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -207,12 +232,7 @@ function App() {
   // ── Tab Change ─────────────────────────────────────────────────────────────
 
   const changeTab = (
-    tab:
-      | 'Home'
-      | 'Resources'
-      | 'Groups'
-      | 'Messages'
-      | 'Profile',
+    tab: 'Home' | 'Resources' | 'Groups' | 'Messages' | 'Profile',
   ) => {
     setActiveTab(tab);
 
@@ -230,15 +250,11 @@ function App() {
 
   // ── Resources Handlers ─────────────────────────────────────────────────────
 
-  const handleOpenArticle = (
-    article: ResourceArticle,
-  ) => {
+  const handleOpenArticle = (article: ResourceArticle) => {
     setSelectedArticle(article);
 
     setSavedResources(current =>
-      current.includes(article.id)
-        ? current
-        : [...current, article.id],
+      current.includes(article.id) ? current : [...current, article.id],
     );
 
     setIsArticleOpen(true);
@@ -252,9 +268,7 @@ function App() {
       | 'digitalDetox'
       | 'healthyRoutine',
   ) => {
-    if (activity) {
-      setSelectedActivity(activity);
-    }
+    setSelectedActivity(activity);
 
     setIsActivityOpen(true);
   };
@@ -278,28 +292,26 @@ function App() {
     setActiveTab('Resources');
   };
 
+  const handleCreateResource = async (resource: ResourceArticle) => {
+    const savedResource = await createResourceRequest(resource);
+
+    setCreatedResources(current => [savedResource, ...current]);
+  };
+
   // ── Groups Handlers ─────────────────────────────────────────────────────────
 
-  const handleGroupPress = (
-    community: Community,
-  ) => {
+  const handleGroupPress = (community: Community) => {
     setSelectedCommunity(community);
     setGroupsView('detail');
   };
 
-  const handleJoinGroup = (
-    communityId: string,
-  ) => {
+  const handleJoinGroup = (communityId: string) => {
     setJoinedGroupIds(prev =>
-      prev.includes(communityId)
-        ? prev
-        : [...prev, communityId],
+      prev.includes(communityId) ? prev : [...prev, communityId],
     );
   };
 
-  const handleEnterCommunity = (
-    community: Community,
-  ) => {
+  const handleEnterCommunity = (community: Community) => {
     setSelectedCommunity(community);
     setGroupsView('discussion');
   };
@@ -309,9 +321,7 @@ function App() {
     setGroupsView('postDetail');
   };
 
-  const handleCreatePost = (
-    community: Community,
-  ) => {
+  const handleCreatePost = (community: Community) => {
     setSelectedCommunity(community);
     setGroupsView('createPost');
   };
@@ -332,11 +342,9 @@ function App() {
 
   const isGroupDeepView =
     activeTab === 'Groups' &&
-    (
-      groupsView === 'discussion' ||
+    (groupsView === 'discussion' ||
       groupsView === 'postDetail' ||
-      groupsView === 'createPost'
-    );
+      groupsView === 'createPost');
 
   const hideBottomNav =
     isArticleOpen ||
@@ -348,13 +356,9 @@ function App() {
   // ── Screen Renderer ─────────────────────────────────────────────────────────
 
   const screen = useMemo(() => {
-
     // ── Resources: Article ───────────────────────────────────────────────────
 
-    if (
-      isArticleOpen &&
-      selectedArticle
-    ) {
+    if (isArticleOpen && selectedArticle) {
       return (
         <ResourceArticleScreen
           article={selectedArticle}
@@ -373,9 +377,7 @@ function App() {
       return (
         <ActivitiesScreen
           activity={selectedActivity}
-          onSelectActivity={
-            setSelectedActivity
-          }
+          onSelectActivity={setSelectedActivity}
           onBack={() => {
             setIsActivityOpen(false);
             setActiveTab('Resources');
@@ -387,11 +389,7 @@ function App() {
     // ── Resources: Emergency Support ─────────────────────────────────────────
 
     if (isEmergencyOpen) {
-      return (
-        <EmergencySupportScreen
-          onBack={handleBackFromEmergency}
-        />
-      );
+      return <EmergencySupportScreen onBack={handleBackFromEmergency} />;
     }
 
     // ── Resources: Create Resource ───────────────────────────────────────────
@@ -399,9 +397,8 @@ function App() {
     if (isCreateResourceOpen) {
       return (
         <CreateResourceScreen
-          onBack={
-            handleBackFromCreateResource
-          }
+          onBack={handleBackFromCreateResource}
+          onCreateResource={handleCreateResource}
         />
       );
     }
@@ -409,18 +406,12 @@ function App() {
     // ── Groups Sub-Navigation ────────────────────────────────────────────────
 
     if (activeTab === 'Groups') {
-
       // Group Detail
-      if (
-        groupsView === 'detail' &&
-        selectedCommunity
-      ) {
+      if (groupsView === 'detail' && selectedCommunity) {
         return (
           <GroupDetailScreen
             community={selectedCommunity}
-            isJoined={joinedGroupIds.includes(
-              selectedCommunity._id,
-            )}
+            isJoined={joinedGroupIds.includes(selectedCommunity._id)}
             onBack={handleBackToHome}
             onJoin={handleJoinGroup}
             onEnter={handleEnterCommunity}
@@ -429,103 +420,76 @@ function App() {
       }
 
       // Group Discussion
-      if (
-        groupsView === 'discussion' &&
-        selectedCommunity
-      ) {
+      if (groupsView === 'discussion' && selectedCommunity) {
         return (
           <GroupDiscussionScreen
             community={selectedCommunity}
             onBack={handleBackToDetail}
             onCreatePost={handleCreatePost}
             onPostPress={handlePostPress}
-            onOpenEmergencySupport={
-              handleOpenEmergencySupport
-            }
+            onOpenEmergencySupport={handleOpenEmergencySupport}
           />
         );
       }
 
       // Post Detail
-      if (
-        groupsView === 'postDetail' &&
-        selectedPost
-      ) {
+      if (groupsView === 'postDetail' && selectedPost) {
         return (
           <PostDetailScreen
             post={selectedPost}
-            onBack={
-              handleBackToDiscussion
-            }
-            onOpenEmergencySupport={
-              handleOpenEmergencySupport
-            }
+            onBack={handleBackToDiscussion}
+            onOpenEmergencySupport={handleOpenEmergencySupport}
           />
         );
       }
 
       // Create Post
-      if (
-        groupsView === 'createPost' &&
-        selectedCommunity
-      ) {
+      if (groupsView === 'createPost' && selectedCommunity) {
         return (
           <CreatePostScreen
             community={selectedCommunity}
-            onBack={
-              handleBackToDiscussion
-            }
-            onPostCreated={
-              handleBackToDiscussion
-            }
+            onBack={handleBackToDiscussion}
+            onPostCreated={handleBackToDiscussion}
           />
         );
       }
 
-if (groupsView === 'createGroup') {
-  return (
-    <CreateGroupScreen
-      onBack={async () => {
-        await fetchCommunities();
-        setGroupsView('home');
-      }}
-    />
-  );
-}
+      if (groupsView === 'createGroup') {
+        return (
+          <CreateGroupScreen
+            onBack={async () => {
+              await fetchCommunities();
+              setGroupsView('home');
+            }}
+          />
+        );
+      }
 
       // Default: Groups home
-    return (
-  <GroupsHomeScreen
-    communities={communities}
-    joinedIds={joinedGroupIds}
-    onGroupPress={handleGroupPress}
-    onCreateGroup={() => setGroupsView('createGroup')}
-  />
-);
+      return (
+        <GroupsHomeScreen
+          communities={communities}
+          joinedIds={joinedGroupIds}
+          onGroupPress={handleGroupPress}
+          onCreateGroup={() => setGroupsView('createGroup')}
+        />
+      );
     }
 
     // ── Main Tabs ─────────────────────────────────────────────────────────────
 
     switch (activeTab) {
-
       // ── Resources ──────────────────────────────────────────────────────────
 
       case 'Resources':
         return (
           <ResourcesScreen
             savedResources={savedResources}
-            onOpenArticle={
-              handleOpenArticle
-            }
-            onOpenActivity={
-              handleOpenActivity
-            }
-            onOpenEmergencySupport={
-              handleOpenEmergencySupport
-            }
-            onOpenCreateResource={
-              handleOpenCreateResource
-            }
+            resources={allResources}
+            onOpenArticle={handleOpenArticle}
+            onOpenActivity={handleOpenActivity}
+            onOpenEmergencySupport={handleOpenEmergencySupport}
+            onOpenCreateResource={handleOpenCreateResource}
           />
         );
 
@@ -542,11 +506,7 @@ if (groupsView === 'createGroup') {
             }}
           >
             <StatusBar
-              barStyle={
-                isDarkMode
-                  ? 'light-content'
-                  : 'dark-content'
-              }
+              barStyle={isDarkMode ? 'light-content' : 'dark-content'}
             />
           </View>
         );
@@ -570,11 +530,7 @@ if (groupsView === 'createGroup') {
 
       case 'Home':
       default:
-        return (
-          <HomeScreen
-            onOpenProfile={() => changeTab('Profile')}
-          />
-        );
+        return <HomeScreen onOpenProfile={() => changeTab('Profile')} />;
     }
   }, [
     activeTab,
@@ -605,71 +561,49 @@ if (groupsView === 'createGroup') {
 
   return (
     <SafeAreaProvider>
-
-      <StatusBar
-        barStyle={
-          isDarkMode
-            ? 'light-content'
-            : 'dark-content'
-        }
-      />
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
 
       {activeScreen === 'splash' ? (
-
-        <SplashScreen
-          onFinish={handleSplashFinish}
-        />
-
+        <SplashScreen onFinish={handleSplashFinish} />
       ) : activeScreen === 'welcome' ? (
-
-        <WelcomeScreen
-          onGetStarted={() =>
-            setActiveScreen('auth')
-          }
-        />
-
+        <WelcomeScreen onGetStarted={() => setActiveScreen('auth')} />
       ) : activeScreen === 'auth' ? (
-
         <AuthScreen
           onAuthenticated={isSignup =>
             setActiveScreen(isSignup ? 'onboarding' : 'home')
           }
         />
-
       ) : activeScreen === 'onboarding' ? (
-
         <OnboardingScreen
-          onComplete={async data => {
-            const currentUserId = getAuthUserId();
-            if (currentUserId && data?.selectedInterests?.length) {
-              try {
-                await updateUserProfile(currentUserId, {
-                  interests: data.selectedInterests,
-                });
-              } catch (e) {
-                // Silently handle offline/guest error
-              }
-            }
-            setActiveScreen('home');
-          }}
+<OnboardingScreen
+  onComplete={async data => {
+    const currentUserId = getAuthUserId();
+
+    if (currentUserId && data?.selectedInterests?.length) {
+      try {
+        await updateUserProfile(currentUserId, {
+          interests: data.selectedInterests,
+        });
+      } catch (e) {
+        // Silently handle offline/guest error
+      }
+    }
+
+    setActiveScreen('home');
+  }}
+  onSkip={() => setActiveScreen('home')}
+/>
           onSkip={() => setActiveScreen('home')}
         />
-
       ) : (
-
         <>
           {screen}
 
           {!hideBottomNav && (
-            <BottomNavigation
-              activeTab={activeTab}
-              onChangeTab={changeTab}
-            />
+            <BottomNavigation activeTab={activeTab} onChangeTab={changeTab} />
           )}
         </>
-
       )}
-
     </SafeAreaProvider>
   );
 }
