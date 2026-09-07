@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getAuthUserId, setAuthUserId } from '../api/authStore';
 import { getUserProfile, updateUserProfile } from '../api/profileApi';
-import { UserProfile } from '../types/user';
+import { MessagingOption, UserProfile, VisibilityOption } from '../types/user';
 
 type ProfileScreenProps = {
   onBack: () => void;
@@ -37,6 +37,17 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout }: ProfileScreenProp
   const [newInterestInput, setNewInterestInput] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Privacy Settings state
+  const [profileVisibility, setProfileVisibility] =
+    useState<VisibilityOption>('Group Members');
+  const [anonymousSharing, setAnonymousSharing] = useState<boolean>(true);
+  const [whoCanMessageMe, setWhoCanMessageMe] =
+    useState<MessagingOption>('Group Members');
+  const [showInterestsOnProfile, setShowInterestsOnProfile] =
+    useState<boolean>(false);
+  const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
+  const [privacySaveSuccess, setPrivacySaveSuccess] = useState(false);
 
   const fetchProfile = useCallback(async () => {
     const currentUserId = getAuthUserId();
@@ -64,6 +75,49 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout }: ProfileScreenProp
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
+
+  useEffect(() => {
+    if (profile) {
+      if (profile.privacySettings) {
+        setProfileVisibility(
+          profile.privacySettings.profileVisibility || 'Group Members',
+        );
+        setAnonymousSharing(profile.privacySettings.anonymousSharing ?? true);
+        setWhoCanMessageMe(
+          profile.privacySettings.whoCanMessageMe || 'Group Members',
+        );
+        setShowInterestsOnProfile(
+          profile.privacySettings.showInterestsOnProfile ?? false,
+        );
+      } else {
+        setShowInterestsOnProfile(true);
+      }
+    }
+  }, [profile]);
+
+  const handleSavePrivacySettings = async () => {
+    if (!userId || !profile) return;
+
+    setIsSavingPrivacy(true);
+    setPrivacySaveSuccess(false);
+
+    try {
+      const updated = await updateUserProfile(userId, {
+        privacySettings: {
+          profileVisibility,
+          anonymousSharing,
+          whoCanMessageMe,
+          showInterestsOnProfile,
+        },
+      });
+      setProfile(updated);
+      setPrivacySaveSuccess(true);
+    } catch (err: any) {
+      Alert.alert('Save Failed', err?.message || 'Could not save privacy settings.');
+    } finally {
+      setIsSavingPrivacy(false);
+    }
+  };
 
   const handleOpenEdit = () => {
     if (!profile) return;
@@ -220,19 +274,21 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout }: ProfileScreenProp
             </View>
 
             {/* Support Interests */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Support Interests</Text>
-              <View style={styles.chipRow}>
-                {(profile.interests && profile.interests.length > 0
-                  ? profile.interests
-                  : DEFAULT_INTERESTS
-                ).map(interest => (
-                  <View key={interest} style={styles.chip}>
-                    <Text style={styles.chipText}>{interest}</Text>
-                  </View>
-                ))}
+            {showInterestsOnProfile ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Support Interests</Text>
+                <View style={styles.chipRow}>
+                  {(profile.interests && profile.interests.length > 0
+                    ? profile.interests
+                    : DEFAULT_INTERESTS
+                  ).map(interest => (
+                    <View key={interest} style={styles.chip}>
+                      <Text style={styles.chipText}>{interest}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
-            </View>
+            ) : null}
 
             {/* Recent Activity */}
             <View style={styles.section}>
@@ -244,6 +300,153 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout }: ProfileScreenProp
               <View style={styles.activityItem}>
                 <Text style={styles.activityTitle}>Supported a post</Text>
                 <Text style={styles.activityText}>Breathing through a difficult morning</Text>
+              </View>
+            </View>
+
+            {/* Privacy Settings Section */}
+            <View style={styles.section} testID="privacy-settings-section">
+              <Text style={styles.sectionTitle}>Privacy Settings</Text>
+
+              {/* Profile Visibility */}
+              <View style={styles.privacySubGroup}>
+                <Text style={styles.privacySubTitle}>Profile Visibility</Text>
+                <View style={styles.radioGroup}>
+                  {(['Everyone', 'Group Members', 'Only Me'] as const).map(option => {
+                    const isSelected = profileVisibility === option;
+                    return (
+                      <Pressable
+                        key={option}
+                        style={styles.radioOption}
+                        onPress={() => setProfileVisibility(option)}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: isSelected }}
+                        testID={`radio-visibility-${option.replace(/\s+/g, '-').toLowerCase()}`}
+                      >
+                        <View
+                          style={[
+                            styles.radioCircle,
+                            isSelected && styles.radioCircleSelected,
+                          ]}
+                        >
+                          {isSelected && <View style={styles.radioDot} />}
+                        </View>
+                        <Text
+                          style={[
+                            styles.radioText,
+                            isSelected && styles.radioTextSelected,
+                          ]}
+                        >
+                          {option}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Anonymous Sharing */}
+              <View style={styles.toggleRow}>
+                <Text style={styles.privacySubTitle}>Anonymous Sharing</Text>
+                <Pressable
+                  style={[
+                    styles.toggleButton,
+                    anonymousSharing ? styles.toggleOn : styles.toggleOff,
+                  ]}
+                  onPress={() => setAnonymousSharing(prev => !prev)}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: anonymousSharing }}
+                  testID="toggle-anonymous-sharing"
+                >
+                  <Text
+                    style={[
+                      styles.toggleText,
+                      anonymousSharing ? styles.toggleTextOn : styles.toggleTextOff,
+                    ]}
+                  >
+                    {anonymousSharing ? '[ ON ]' : '[ OFF ]'}
+                  </Text>
+                </Pressable>
+              </View>
+
+              {/* Who can message me? */}
+              <View style={styles.privacySubGroup}>
+                <Text style={styles.privacySubTitle}>Who can message me?</Text>
+                <View style={styles.radioGroup}>
+                  {(['Everyone', 'Group Members', 'Nobody'] as const).map(option => {
+                    const isSelected = whoCanMessageMe === option;
+                    return (
+                      <Pressable
+                        key={option}
+                        style={styles.radioOption}
+                        onPress={() => setWhoCanMessageMe(option)}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: isSelected }}
+                        testID={`radio-messaging-${option.replace(/\s+/g, '-').toLowerCase()}`}
+                      >
+                        <View
+                          style={[
+                            styles.radioCircle,
+                            isSelected && styles.radioCircleSelected,
+                          ]}
+                        >
+                          {isSelected && <View style={styles.radioDot} />}
+                        </View>
+                        <Text
+                          style={[
+                            styles.radioText,
+                            isSelected && styles.radioTextSelected,
+                          ]}
+                        >
+                          {option}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Show my interests on profile */}
+              <View style={styles.toggleRow}>
+                <Text style={styles.privacySubTitle}>Show my interests on profile</Text>
+                <Pressable
+                  style={[
+                    styles.toggleButton,
+                    showInterestsOnProfile ? styles.toggleOn : styles.toggleOff,
+                  ]}
+                  onPress={() => setShowInterestsOnProfile(prev => !prev)}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: showInterestsOnProfile }}
+                  testID="toggle-show-interests"
+                >
+                  <Text
+                    style={[
+                      styles.toggleText,
+                      showInterestsOnProfile ? styles.toggleTextOn : styles.toggleTextOff,
+                    ]}
+                  >
+                    {showInterestsOnProfile ? '[ ON ]' : '[ OFF ]'}
+                  </Text>
+                </Pressable>
+              </View>
+
+              {/* Save Changes Button */}
+              <View style={styles.savePrivacyRow}>
+                <Pressable
+                  accessibilityRole="button"
+                  testID="save-privacy-settings-button"
+                  style={styles.savePrivacyButton}
+                  onPress={handleSavePrivacySettings}
+                  disabled={isSavingPrivacy}
+                >
+                  {isSavingPrivacy ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.savePrivacyButtonText}>Save Changes</Text>
+                  )}
+                </Pressable>
+                {privacySaveSuccess ? (
+                  <Text style={styles.saveSuccessText}>Changes saved successfully!</Text>
+                ) : null}
               </View>
             </View>
 
@@ -566,6 +769,107 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     marginTop: 4,
+  },
+  privacySubGroup: {
+    marginTop: 14,
+  },
+  privacySubTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  radioGroup: {
+    gap: 8,
+    paddingLeft: 4,
+  },
+  radioOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  radioCircle: {
+    height: 20,
+    width: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#9CA3AF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  radioCircleSelected: {
+    borderColor: '#2563EB',
+  },
+  radioDot: {
+    height: 10,
+    width: 10,
+    borderRadius: 5,
+    backgroundColor: '#2563EB',
+  },
+  radioText: {
+    fontSize: 15,
+    color: '#4B5563',
+    fontWeight: '600',
+  },
+  radioTextSelected: {
+    color: '#111827',
+    fontWeight: '800',
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
+    paddingVertical: 4,
+  },
+  toggleButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  toggleOn: {
+    backgroundColor: '#DCFCE7',
+    borderColor: '#86EFAC',
+  },
+  toggleOff: {
+    backgroundColor: '#F3F4F6',
+    borderColor: '#D1D5DB',
+  },
+  toggleText: {
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  toggleTextOn: {
+    color: '#15803D',
+  },
+  toggleTextOff: {
+    color: '#6B7280',
+  },
+  savePrivacyRow: {
+    alignItems: 'center',
+    marginTop: 22,
+  },
+  savePrivacyButton: {
+    backgroundColor: '#2563EB',
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 160,
+  },
+  savePrivacyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  saveSuccessText: {
+    color: '#059669',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 8,
   },
   actionRow: {
     gap: 12,

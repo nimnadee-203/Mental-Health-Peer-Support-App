@@ -174,4 +174,100 @@ describe('ProfileScreen', () => {
       expect.any(Array),
     );
   });
+
+  it('renders Privacy Settings section and saves privacy updates', async () => {
+    mockGetAuthUserId.mockReturnValue('user-123');
+    mockGetUserProfile.mockResolvedValue({
+      id: 'user-123',
+      fullName: 'Jane Doe',
+      email: 'jane@example.com',
+      bio: 'Bio',
+      interests: ['Mindfulness'],
+      stats: { posts: 0, supports: 0, replies: 0 },
+      privacySettings: {
+        profileVisibility: 'Group Members',
+        anonymousSharing: true,
+        whoCanMessageMe: 'Group Members',
+        showInterestsOnProfile: false,
+      },
+    });
+
+    mockUpdateUserProfile.mockResolvedValue({
+      id: 'user-123',
+      fullName: 'Jane Doe',
+      email: 'jane@example.com',
+      bio: 'Bio',
+      interests: ['Mindfulness'],
+      stats: { posts: 0, supports: 0, replies: 0 },
+      privacySettings: {
+        profileVisibility: 'Everyone',
+        anonymousSharing: false,
+        whoCanMessageMe: 'Nobody',
+        showInterestsOnProfile: true,
+      },
+    });
+
+    let renderer: ReactTestRenderer.ReactTestRenderer;
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(<ProfileScreen onBack={() => {}} />);
+    });
+
+    const root = renderer!.root;
+
+    // Verify privacy settings section is rendered
+    const privacySection = root.findByProps({ testID: 'privacy-settings-section' });
+    expect(privacySection).toBeTruthy();
+
+    const texts = root
+      .findAllByType(Text)
+      .map(t => t.props.children)
+      .flatMap(v => (Array.isArray(v) ? v : [v]))
+      .join(' ');
+
+    expect(texts).toContain('Privacy Settings');
+    expect(texts).toContain('Profile Visibility');
+    expect(texts).toContain('Anonymous Sharing');
+    expect(texts).toContain('Who can message me?');
+    expect(texts).toContain('Show my interests on profile');
+
+    // Change Visibility to Everyone
+    const everyoneRadio = root.findByProps({ testID: 'radio-visibility-everyone' });
+    await ReactTestRenderer.act(async () => {
+      everyoneRadio.props.onPress();
+    });
+
+    // Toggle Anonymous Sharing off
+    const anonToggle = root.findByProps({ testID: 'toggle-anonymous-sharing' });
+    await ReactTestRenderer.act(async () => {
+      anonToggle.props.onPress();
+    });
+
+    // Change Messaging to Nobody
+    const nobodyRadio = root.findByProps({ testID: 'radio-messaging-nobody' });
+    await ReactTestRenderer.act(async () => {
+      nobodyRadio.props.onPress();
+    });
+
+    // Toggle Show Interests on
+    const showInterestsToggle = root.findByProps({ testID: 'toggle-show-interests' });
+    await ReactTestRenderer.act(async () => {
+      showInterestsToggle.props.onPress();
+    });
+
+    // Press Save Changes button
+    const savePrivacyBtn = root.findByProps({ testID: 'save-privacy-settings-button' });
+    await ReactTestRenderer.act(async () => {
+      savePrivacyBtn.props.onPress();
+    });
+
+    expect(mockUpdateUserProfile).toHaveBeenCalledWith('user-123', {
+      privacySettings: {
+        profileVisibility: 'Everyone',
+        anonymousSharing: false,
+        whoCanMessageMe: 'Nobody',
+        showInterestsOnProfile: true,
+      },
+    });
+  });
 });
+

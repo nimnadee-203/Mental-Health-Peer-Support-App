@@ -56,6 +56,26 @@ const userSchema = new mongoose.Schema(
         default: 0,
       },
     },
+    privacySettings: {
+      profileVisibility: {
+        type: String,
+        enum: ['Everyone', 'Group Members', 'Only Me'],
+        default: 'Group Members',
+      },
+      anonymousSharing: {
+        type: Boolean,
+        default: true,
+      },
+      whoCanMessageMe: {
+        type: String,
+        enum: ['Everyone', 'Group Members', 'Nobody'],
+        default: 'Group Members',
+      },
+      showInterestsOnProfile: {
+        type: Boolean,
+        default: false,
+      },
+    },
   },
   { timestamps: true },
 );
@@ -69,6 +89,12 @@ const buildUserProfile = user => ({
   bio: user.bio,
   interests: user.interests,
   stats: user.stats,
+  privacySettings: user.privacySettings || {
+    profileVisibility: 'Group Members',
+    anonymousSharing: true,
+    whoCanMessageMe: 'Group Members',
+    showInterestsOnProfile: false,
+  },
 });
 
 app.get('/health', (_request, response) => {
@@ -172,7 +198,7 @@ app.get('/profile/:userId', async (request, response) => {
 app.put('/profile/:userId', async (request, response) => {
   try {
     const { userId } = request.params;
-    const { fullName, bio, interests } = request.body;
+    const { fullName, bio, interests, privacySettings } = request.body;
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return response.status(400).json({ message: 'Invalid user ID.' });
@@ -193,6 +219,10 @@ app.put('/profile/:userId', async (request, response) => {
         .filter(interest => typeof interest === 'string')
         .map(interest => interest.trim())
         .filter(Boolean);
+    }
+
+    if (privacySettings && typeof privacySettings === 'object') {
+      updates.privacySettings = privacySettings;
     }
 
     if (updates.fullName === '') {

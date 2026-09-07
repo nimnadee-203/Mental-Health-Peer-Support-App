@@ -30,11 +30,12 @@ import CreateGroupScreen from './src/screens/Groups/CreateGroupScreen';
 
 import EmergencySupportScreen from './src/screens/EmergencySupportScreen';
 import { API_BASE, COMMUNITY_API_BASE } from './src/config/api';
-import { setAuthUserId } from './src/api/authStore';
+import { getAuthUserId, setAuthUserId } from './src/api/authStore';
 import {
   createResource as createResourceRequest,
   getResources,
 } from './src/api/resourcesApi';
+import { updateUserProfile } from './src/api/profileApi';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -574,7 +575,24 @@ function App() {
         />
       ) : activeScreen === 'onboarding' ? (
         <OnboardingScreen
-          onComplete={() => setActiveScreen('home')}
+<OnboardingScreen
+  onComplete={async data => {
+    const currentUserId = getAuthUserId();
+
+    if (currentUserId && data?.selectedInterests?.length) {
+      try {
+        await updateUserProfile(currentUserId, {
+          interests: data.selectedInterests,
+        });
+      } catch (e) {
+        // Silently handle offline/guest error
+      }
+    }
+
+    setActiveScreen('home');
+  }}
+  onSkip={() => setActiveScreen('home')}
+/>
           onSkip={() => setActiveScreen('home')}
         />
       ) : (
