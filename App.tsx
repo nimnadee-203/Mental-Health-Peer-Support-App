@@ -15,6 +15,9 @@ import GroupDiscussionScreen, {
 import PostDetailScreen from './src/screens/PostDetailScreen';
 import CreatePostScreen from './src/screens/CreatePostScreen';
 import EmergencySupportScreen from './src/screens/EmergencySupportScreen';
+import CreateGroupScreen from './src/screens/CreateGroupScreen';
+import MessagesScreen, { Conversation } from './src/screens/MessagesScreen';
+import ChatScreen from './src/screens/ChatScreen';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ResourcesScreenProps = {
@@ -29,7 +32,7 @@ type ResourcesScreenProps = {
 const ResourcesScreen =
   require('./src/screens/ResourcesScreen').default as React.ComponentType<ResourcesScreenProps>;
 
-type GroupsView = 'home' | 'detail' | 'discussion' | 'postDetail' | 'createPost';
+type GroupsView = 'home' | 'detail' | 'discussion' | 'postDetail' | 'createPost' | 'createGroup';
 
 // ─── Community Data ───────────────────────────────────────────────────────────
 const COMMUNITIES: Community[] = [
@@ -108,6 +111,20 @@ function App() {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [joinedGroupIds, setJoinedGroupIds] = useState<string[]>([]);
 
+  // ── Messages Navigation ─────────────────────────────────────────────────────
+  const [messagesView, setMessagesView] = useState<'list' | 'chat'>('list');
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+
+  const handleOpenChat = (conversation: Conversation) => {
+    setSelectedConversation(conversation);
+    setMessagesView('chat');
+  };
+
+  const handleBackFromChat = () => {
+    setMessagesView('list');
+    setSelectedConversation(null);
+  };
+
   // ── Tab change ──────────────────────────────────────────────────────────────
   const changeTab = (
     tab: 'Home' | 'Resources' | 'Groups' | 'Messages' | 'Profile'
@@ -173,6 +190,10 @@ function App() {
     setGroupsView('createPost');
   };
 
+  const handleCreateGroup = () => {
+    setGroupsView('createGroup');
+  };
+
   const handleBackToDiscussion = () => {
     setGroupsView('discussion');
   };
@@ -190,9 +211,12 @@ function App() {
     activeTab === 'Groups' &&
     (groupsView === 'discussion' ||
       groupsView === 'postDetail' ||
-      groupsView === 'createPost');
+      groupsView === 'createPost' ||
+      groupsView === 'createGroup');
 
-  const hideBottomNav = isArticleOpen || isActivityOpen || isEmergencyOpen || isGroupDeepView;
+  const isInChatView = activeTab === 'Messages' && messagesView === 'chat';
+
+  const hideBottomNav = isArticleOpen || isActivityOpen || isEmergencyOpen || isGroupDeepView || isInChatView;
 
   // ── Screen renderer ─────────────────────────────────────────────────────────
   const screen = useMemo(() => {
@@ -272,12 +296,17 @@ function App() {
         );
       }
 
+      if (groupsView === 'createGroup') {
+        return <CreateGroupScreen onBack={handleBackToHome} />;
+      }
+
       // Default: Groups home
       return (
         <GroupsHomeScreen
           communities={COMMUNITIES}
           joinedIds={joinedGroupIds}
           onGroupPress={handleGroupPress}
+          onCreateGroup={handleCreateGroup}
         />
       );
     }
@@ -295,18 +324,18 @@ function App() {
         );
 
       case 'Messages':
-        return (
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: '#F2F5F7',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}>
-            <StatusBar
-              barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+        if (messagesView === 'chat' && selectedConversation) {
+          return (
+            <ChatScreen
+              conversation={selectedConversation}
+              onBack={handleBackFromChat}
             />
-          </View>
+          );
+        }
+        return (
+          <MessagesScreen
+            onOpenChat={handleOpenChat}
+          />
         );
 
       case 'Profile':
@@ -341,6 +370,8 @@ function App() {
     selectedCommunity,
     selectedPost,
     joinedGroupIds,
+    messagesView,
+    selectedConversation,
   ]);
 
   return (
