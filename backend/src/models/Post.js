@@ -39,6 +39,14 @@ const postSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    imageUrl: {
+      type: String,
+      default: null,
+    },
+    likedBy: {
+      type: [String],
+      default: [],
+    },
   },
   { timestamps: true }
 );
