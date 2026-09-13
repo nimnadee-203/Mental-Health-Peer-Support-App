@@ -28,6 +28,7 @@ router.post('/', async (req, res) => {
       emoji,
       bgColor,
       description,
+      guidelines,
       memberCount,
       memberAvatarColors,
       isJoined,
@@ -51,6 +52,7 @@ router.post('/', async (req, res) => {
       memberCount: memberCount || 1,
       memberAvatarColors: memberAvatarColors || ['#C5DFF8', '#F9D4E0', '#C8EDD5'],
       isJoined: isJoined !== undefined ? isJoined : true,
+      guidelines: guidelines ? guidelines.trim() : '',
     });
 
     await community.save();

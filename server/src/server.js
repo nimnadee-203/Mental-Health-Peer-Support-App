@@ -3,6 +3,7 @@ import cors from 'cors';
 import dns from 'dns';
 import dotenv from 'dotenv';
 import express from 'express';
+import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 
 dns.setServers(['8.8.8.8', '8.8.4.4']);
@@ -11,6 +12,7 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 4000;
+const jwtSecret = process.env.JWT_SECRET || 'mind-mate-development-secret';
 
 app.use(cors());
 app.use(express.json());
@@ -33,11 +35,83 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    role: {
+      type: String,
+      enum: ['user', 'moderator', 'admin'],
+      default: 'user',
+      index: true,
+    },
+    bio: {
+      type: String,
+      trim: true,
+      default: 'Sharing small steps, honest updates, and support with the community.',
+    },
+    interests: {
+      type: [String],
+      default: ['Anxiety support', 'Mindfulness', 'Daily journaling'],
+    },
+    stats: {
+      posts: {
+        type: Number,
+        default: 0,
+      },
+      supports: {
+        type: Number,
+        default: 0,
+      },
+      replies: {
+        type: Number,
+        default: 0,
+      },
+    },
+    privacySettings: {
+      profileVisibility: {
+        type: String,
+        enum: ['Everyone', 'Group Members', 'Only Me'],
+        default: 'Group Members',
+      },
+      anonymousSharing: {
+        type: Boolean,
+        default: true,
+      },
+      whoCanMessageMe: {
+        type: String,
+        enum: ['Everyone', 'Group Members', 'Nobody'],
+        default: 'Group Members',
+      },
+      showInterestsOnProfile: {
+        type: Boolean,
+        default: false,
+      },
+    },
   },
   { timestamps: true },
 );
 
 const User = mongoose.model('User', userSchema);
+
+const buildUserProfile = user => ({
+  id: user._id,
+  fullName: user.fullName,
+  email: user.email,
+  role: user.role || 'user',
+  bio: user.bio,
+  interests: user.interests,
+  stats: user.stats,
+  privacySettings: user.privacySettings || {
+    profileVisibility: 'Group Members',
+    anonymousSharing: true,
+    whoCanMessageMe: 'Group Members',
+    showInterestsOnProfile: false,
+  },
+});
+
+const createToken = user =>
+  jwt.sign(
+    { sub: user._id.toString(), role: user.role || 'user' },
+    jwtSecret,
+    { expiresIn: '7d' },
+  );
 
 app.get('/health', (_request, response) => {
   response.json({ status: 'ok' });
@@ -51,7 +125,29 @@ app.post('/auth/signup', async (request, response) => {
       return response.status(400).json({ message: 'All fields are required.' });
     }
 
-    const existingUser = await User.findOne({ email });
+    const cleanName = fullName.trim();
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (cleanName.length < 2) {
+      return response
+        .status(400)
+        .json({ message: 'Full name must be at least 2 characters long.' });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      return response
+        .status(400)
+        .json({ message: 'Please enter a valid email address.' });
+    }
+
+    if (password.length < 6) {
+      return response
+        .status(400)
+        .json({ message: 'Password must be at least 6 characters long.' });
+    }
+
+    const existingUser = await User.findOne({ email: cleanEmail });
 
     if (existingUser) {
       return response
@@ -60,14 +156,11 @@ app.post('/auth/signup', async (request, response) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const user = await User.create({ fullName, email, passwordHash });
+    const user = await User.create({ fullName: cleanName, email: cleanEmail, passwordHash });
 
     return response.status(201).json({
-      user: {
-        id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-      },
+      user: buildUserProfile(user),
+      token: createToken(user),
     });
   } catch (error) {
     return response.status(500).json({ message: 'Could not create account.' });
@@ -92,15 +185,122 @@ app.post('/auth/login', async (request, response) => {
     }
 
     return response.json({
-      user: {
-        id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-      },
+      user: buildUserProfile(user),
+      token: createToken(user),
     });
   } catch (error) {
     return response.status(500).json({ message: 'Could not log in.' });
   }
+});
+
+app.get('/profile/:userId', async (request, response) => {
+  try {
+    const { userId } = request.params;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return response.status(400).json({ message: 'Invalid user ID.' });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return response.status(404).json({ message: 'User not found.' });
+    }
+
+    return response.json({ user: buildUserProfile(user) });
+  } catch (error) {
+    return response.status(500).json({ message: 'Could not load profile.' });
+  }
+});
+
+app.put('/profile/:userId', async (request, response) => {
+  try {
+    const { userId } = request.params;
+    const { fullName, bio, interests, privacySettings } = request.body;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return response.status(400).json({ message: 'Invalid user ID.' });
+    }
+
+    const updates = {};
+
+    if (typeof fullName === 'string') {
+      updates.fullName = fullName.trim();
+    }
+
+    if (typeof bio === 'string') {
+      updates.bio = bio.trim();
+    }
+
+    if (Array.isArray(interests)) {
+      updates.interests = interests
+        .filter(interest => typeof interest === 'string')
+        .map(interest => interest.trim())
+        .filter(Boolean);
+    }
+
+    if (privacySettings && typeof privacySettings === 'object') {
+      updates.privacySettings = privacySettings;
+    }
+
+    if (updates.fullName === '') {
+      return response.status(400).json({ message: 'Full name cannot be empty.' });
+    }
+
+    const user = await User.findByIdAndUpdate(userId, updates, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!user) {
+      return response.status(404).json({ message: 'User not found.' });
+    }
+
+    return response.json({ user: buildUserProfile(user) });
+  } catch (error) {
+    return response.status(500).json({ message: 'Could not update profile.' });
+  }
+});
+
+app.get('/communities', (_request, response) => {
+  response.json([
+    {
+      _id: '1',
+      name: 'Anxiety & Stress Support',
+      category: 'Stress & Anxiety',
+      emoji: '🌿',
+      bgColor: '#E6F4EA',
+      description: 'A safe space to share anxiety coping strategies and ground yourself.',
+      guidelines: 'Be kind, respectful, and supportive.',
+      memberCount: 1420,
+      memberAvatarColors: ['#34D399', '#60A5FA', '#F472B6'],
+      isJoined: false,
+    },
+    {
+      _id: '2',
+      name: 'Daily Mindfulness & Healing',
+      category: 'Mindfulness',
+      emoji: '🧘',
+      bgColor: '#E8F0FE',
+      description: 'Practice meditation, breathing exercises, and present-moment awareness.',
+      guidelines: 'Share your journey openly.',
+      memberCount: 890,
+      memberAvatarColors: ['#818CF8', '#FBBF24', '#34D399'],
+      isJoined: false,
+    },
+    {
+      _id: '3',
+      name: 'Depression Recovery Peers',
+      category: 'Depression',
+      emoji: '☀️',
+      bgColor: '#FEF3C7',
+      description: 'Supporting each other through low moments with hope and small wins.',
+      guidelines: 'No medical advice; offer peer empathy.',
+      memberCount: 1105,
+      memberAvatarColors: ['#F87171', '#60A5FA', '#A78BFA'],
+      isJoined: false,
+    },
+  ]);
 });
 
 if (!process.env.MONGODB_URI) {

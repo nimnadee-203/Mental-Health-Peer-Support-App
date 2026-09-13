@@ -14,7 +14,6 @@ import {
   View,
 } from 'react-native';
 
-import Sound from 'react-native-sound';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type ActivityType =
@@ -589,6 +588,9 @@ function ActivitiesScreen({
   const [soundLoaded, setSoundLoaded] =
     useState(false);
 
+  const [musicAvailable, setMusicAvailable] =
+    useState(true);
+
   /* =======================================================
      JOURNALING STATE
   ======================================================= */
@@ -617,10 +619,25 @@ function ActivitiesScreen({
   ======================================================= */
 
   const soundRef =
-    useRef<Sound | null>(null);
+    useRef<any | null>(null);
 
   useEffect(() => {
-    Sound.setCategory('Playback');
+    let Sound: any;
+
+    try {
+      Sound =
+        require('react-native-sound')
+          .default ??
+        require('react-native-sound');
+      Sound.setCategory('Playback');
+    } catch (error) {
+      console.log(
+        'Calm music is unavailable:',
+        error,
+      );
+      setMusicAvailable(false);
+      return;
+    }
 
     const calmMusicUri =
       Image.resolveAssetSource(
@@ -1024,6 +1041,10 @@ function ActivitiesScreen({
   };
 
   const toggleMusic = () => {
+    if (!musicAvailable) {
+      return;
+    }
+
     setMusicEnabled(
       current => !current,
     );
@@ -1647,6 +1668,7 @@ function ActivitiesScreen({
               musicEnabled &&
                 styles.musicButtonActive,
             ]}
+            disabled={!musicAvailable}
             onPress={toggleMusic}
           >
             <Text
@@ -1666,7 +1688,9 @@ function ActivitiesScreen({
             >
               {musicEnabled
                 ? 'ON'
-                : 'OFF'}
+                : musicAvailable
+                  ? 'OFF'
+                  : 'N/A'}
             </Text>
           </Pressable>
         </View>

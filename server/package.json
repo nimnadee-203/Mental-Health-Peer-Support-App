@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "check:db": "node src/check-db.js",
+    "create-admin": "node src/create-role.js admin",
+    "create-moderator": "node src/create-role.js moderator",
     "dev": "node --watch src/server.js",
     "start": "node src/server.js"
   },
@@ -13,6 +15,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.9.5"
   }
 }
