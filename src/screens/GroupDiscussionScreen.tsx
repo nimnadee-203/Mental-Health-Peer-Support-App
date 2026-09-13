@@ -114,15 +114,28 @@ export default function GroupDiscussionScreen({
   }, [fetchPosts]);
 
   const handleLike = async (postId: string) => {
-    // Optimistic UI update
+    // Optimistic +1 (backend will correct the final value)
     setPosts(prev =>
       prev.map(p => (p._id === postId ? { ...p, likes: p.likes + 1 } : p)),
     );
     try {
-      await fetch(`${COMMUNITY_API_BASE}/posts/${postId}/like`, {
+      const res = await fetch(`${COMMUNITY_API_BASE}/posts/${postId}/like`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: 'mock-user-1' }),
       });
+      if (res.ok) {
+        const updated = await res.json();
+        // Sync with real server value — handles toggle (unlike) correctly
+        setPosts(prev =>
+          prev.map(p => (p._id === postId ? { ...p, likes: updated.likes } : p)),
+        );
+      }
     } catch (error) {
+      // Rollback optimistic update on network failure
+      setPosts(prev =>
+        prev.map(p => (p._id === postId ? { ...p, likes: Math.max(0, p.likes - 1) } : p)),
+      );
       console.error('Failed to like post:', error);
     }
   };

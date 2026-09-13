@@ -35,6 +35,8 @@ export interface Conversation {
 
 interface MessagesScreenProps {
   onOpenChat: (conversation: Conversation) => void;
+  /** Called whenever the total unread count changes — used to update the nav badge */
+  onUnreadCountChange?: (count: number) => void;
 }
 
 // ─── Local seed data (shown while backend loads / when offline) ───────────────
@@ -249,7 +251,7 @@ function ConversationRow({ conversation, onPress }: ConversationRowProps) {
 }
 
 // ─── MessagesScreen ───────────────────────────────────────────────────────────
-export default function MessagesScreen({ onOpenChat }: MessagesScreenProps) {
+export default function MessagesScreen({ onOpenChat, onUnreadCountChange }: MessagesScreenProps) {
   const [conversations, setConversations] = useState<Conversation[]>(SEED_CONVERSATIONS);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
@@ -258,6 +260,12 @@ export default function MessagesScreen({ onOpenChat }: MessagesScreenProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
+
+  // Propagate unread count to parent (nav badge)
+  useEffect(() => {
+    onUnreadCountChange?.(totalUnread);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalUnread]);
 
   // ── Fetch from backend (supplements local seed) ─────────────────────────────
   useEffect(() => {
@@ -533,7 +541,7 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#2D2D3A',
+    backgroundColor: '#22C55E',
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
     right: 1,

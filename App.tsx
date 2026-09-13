@@ -249,6 +249,9 @@ function App() {
     setSelectedConversation(null);
   };
 
+  // Total unread count surfaced from MessagesScreen → drives nav badge
+  const [totalUnread, setTotalUnread] = useState(0);
+
   // ── Tab Change ──────────────────────────────────────────────────────────────
   const changeTab = (
     tab: 'Home' | 'Resources' | 'Groups' | 'Messages' | 'Profile',
@@ -531,7 +534,12 @@ function App() {
             />
           );
         }
-        return <MessagesScreen onOpenChat={handleOpenChat} />;
+        return (
+          <MessagesScreen
+            onOpenChat={handleOpenChat}
+            onUnreadCountChange={setTotalUnread}
+          />
+        );
 
       // ── Profile ────────────────────────────────────────────────────────────
 
@@ -629,7 +637,11 @@ function App() {
           {screen}
 
           {!hideBottomNav && (
-            <BottomNavigation activeTab={activeTab} onChangeTab={changeTab} />
+            <BottomNavigation
+              activeTab={activeTab}
+              onChangeTab={changeTab}
+              unreadMessages={totalUnread}
+            />
           )}
         </>
       )}

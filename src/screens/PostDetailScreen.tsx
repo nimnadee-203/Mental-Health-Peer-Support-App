@@ -43,7 +43,7 @@ function timeAgo(dateString: string) {
   if (diffInSeconds < 60) return 'Just now';
   const diffInMinutes = Math.floor(diffInSeconds / 60);
   if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-  const diffInHours = Math.floor(diffInSeconds / 60);
+  const diffInHours = Math.floor(diffInMinutes / 60); // was wrongly dividing seconds again
   if (diffInHours < 24) return `${diffInHours}h ago`;
   const diffInDays = Math.floor(diffInHours / 24);
   return `${diffInDays}d ago`;
@@ -131,12 +131,28 @@ export default function PostDetailScreen({
   };
 
   const handleLikeComment = async (commentId: string) => {
+    // Optimistic update
     setComments(prev =>
       prev.map(c => (c._id === commentId ? { ...c, likes: c.likes + 1 } : c))
     );
     try {
-      await fetch(`${API_BASE}/comments/${commentId}/like`, { method: 'POST' });
+      const res = await fetch(`${API_BASE}/comments/${commentId}/like`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: 'mock-user-1' }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        // Sync with actual server value (handles toggle correctly)
+        setComments(prev =>
+          prev.map(c => (c._id === commentId ? { ...c, likes: updated.likes } : c))
+        );
+      }
     } catch (error) {
+      // Rollback optimistic update on network failure
+      setComments(prev =>
+        prev.map(c => (c._id === commentId ? { ...c, likes: Math.max(0, c.likes - 1) } : c))
+      );
       console.error('Failed to like comment:', error);
     }
   };
@@ -224,7 +240,7 @@ export default function PostDetailScreen({
                 </View>
                 <View style={styles.actionButtonStatic}>
                   <Text style={styles.actionEmoji}>🤝</Text>
-                  <Text style={styles.actionCount}>{post.commentsCount + comments.length}</Text>
+                  <Text style={styles.actionCount}>{comments.length}</Text>
                 </View>
                 <View style={styles.flexSpacer} />
                 <Pressable
