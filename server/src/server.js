@@ -3,6 +3,7 @@ import cors from 'cors';
 import dns from 'dns';
 import dotenv from 'dotenv';
 import express from 'express';
+import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 
 dns.setServers(['8.8.8.8', '8.8.4.4']);
@@ -11,6 +12,7 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 4000;
+const jwtSecret = process.env.JWT_SECRET || 'mind-mate-development-secret';
 
 app.use(cors());
 app.use(express.json());
@@ -32,6 +34,12 @@ const userSchema = new mongoose.Schema(
     passwordHash: {
       type: String,
       required: true,
+    },
+    role: {
+      type: String,
+      enum: ['user', 'moderator', 'admin'],
+      default: 'user',
+      index: true,
     },
     bio: {
       type: String,
@@ -86,6 +94,7 @@ const buildUserProfile = user => ({
   id: user._id,
   fullName: user.fullName,
   email: user.email,
+  role: user.role || 'user',
   bio: user.bio,
   interests: user.interests,
   stats: user.stats,
@@ -96,6 +105,13 @@ const buildUserProfile = user => ({
     showInterestsOnProfile: false,
   },
 });
+
+const createToken = user =>
+  jwt.sign(
+    { sub: user._id.toString(), role: user.role || 'user' },
+    jwtSecret,
+    { expiresIn: '7d' },
+  );
 
 app.get('/health', (_request, response) => {
   response.json({ status: 'ok' });
@@ -144,6 +160,7 @@ app.post('/auth/signup', async (request, response) => {
 
     return response.status(201).json({
       user: buildUserProfile(user),
+      token: createToken(user),
     });
   } catch (error) {
     return response.status(500).json({ message: 'Could not create account.' });
@@ -169,6 +186,7 @@ app.post('/auth/login', async (request, response) => {
 
     return response.json({
       user: buildUserProfile(user),
+      token: createToken(user),
     });
   } catch (error) {
     return response.status(500).json({ message: 'Could not log in.' });

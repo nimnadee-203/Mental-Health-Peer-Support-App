@@ -38,6 +38,7 @@ export interface Post {
   contentNote: string;
   isAnonymous: boolean;
   authorName: string;
+  authorId?: string;
   likes: number;
   commentsCount: number;
   createdAt: string;

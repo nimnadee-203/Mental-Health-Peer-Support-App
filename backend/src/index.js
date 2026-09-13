@@ -18,6 +18,7 @@ const reportsRouter = require('./routes/reports');
 const emergencyRouter = require('./routes/emergency');
 const trustedContactRouter = require('./routes/trustedContact');
 const resourcesRouter = require('./routes/resources');
+const moderationRouter = require('./routes/moderation');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -35,6 +36,7 @@ app.use('/api/reports', reportsRouter);
 app.use('/api/emergency', emergencyRouter);
 app.use('/api/trusted-contact', trustedContactRouter);
 app.use('/api/resources', resourcesRouter);
+app.use('/api/moderation', moderationRouter);
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date() }));
 

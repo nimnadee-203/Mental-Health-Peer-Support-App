@@ -18,6 +18,7 @@ export interface UserProfile {
   id: string;
   fullName: string;
   email: string;
+  role?: 'user' | 'moderator' | 'admin';
   bio: string;
   interests: string[];
   stats: UserProfileStats;

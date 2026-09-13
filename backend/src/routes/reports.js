@@ -3,12 +3,14 @@ const router = express.Router();
 const Report = require('../models/Report');
 const Post = require('../models/Post');
 const Comment = require('../models/Comment');
+const auth = require('../middleware/auth');
+const requireRole = require('../middleware/requireRole');
 
 /**
  * POST /api/reports
  * Submit a report for a Post or Comment.
  */
-router.post('/', async (req, res) => {
+router.post('/', auth, async (req, res) => {
   try {
     const {
       targetType,
@@ -38,6 +40,7 @@ router.post('/', async (req, res) => {
     // ── Retrieve target content snapshot for moderator review ─────────────
     let targetContentPreview = '';
     let targetAuthor = '';
+    let targetAuthorId;
     let detectedGroupId = groupId || null;
 
     if (targetType === 'Post') {
@@ -45,6 +48,7 @@ router.post('/', async (req, res) => {
       if (post) {
         targetContentPreview = post.content ? post.content.substring(0, 500) : '';
         targetAuthor = post.authorName || 'Member';
+        targetAuthorId = post.authorId;
         if (!detectedGroupId) {
           detectedGroupId = post.groupId;
         }
@@ -72,8 +76,10 @@ router.post('/', async (req, res) => {
       reasonNote: reasonNote ? reasonNote.trim() : '',
       targetContentPreview,
       targetAuthor,
+      targetAuthorId,
       reporterName: reporterName ? reporterName.trim() : 'Anonymous User',
       status: 'pending',
+      reportedBy: req.user.id,
     });
 
     await report.save();
@@ -93,7 +99,7 @@ router.post('/', async (req, res) => {
  * GET /api/reports
  * Get list of reports with optional filtering by status, targetType, or groupId.
  */
-router.get('/', async (req, res) => {
+router.get('/', auth, requireRole(['moderator', 'admin']), async (req, res) => {
   try {
     const { status, targetType, groupId, limit = 50, page = 1 } = req.query;
 
@@ -133,7 +139,7 @@ router.get('/', async (req, res) => {
  * GET /api/reports/:id
  * Get details of a single report.
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id', auth, requireRole(['moderator', 'admin']), async (req, res) => {
   try {
     const report = await Report.findById(req.params.id);
     if (!report) {
@@ -150,10 +156,10 @@ router.get('/:id', async (req, res) => {
  * PATCH /api/reports/:id/status
  * Update report review status (e.g. reviewed, dismissed, action_taken).
  */
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', auth, requireRole(['moderator', 'admin']), async (req, res) => {
   try {
     const { status } = req.body;
-    const allowedStatuses = ['pending', 'reviewed', 'dismissed', 'action_taken'];
+    const allowedStatuses = ['pending', 'under_review', 'resolved', 'dismissed'];
 
     if (!status || !allowedStatuses.includes(status)) {
       return res.status(400).json({
@@ -163,7 +169,12 @@ router.patch('/:id/status', async (req, res) => {
 
     const report = await Report.findByIdAndUpdate(
       req.params.id,
-      { status },
+      {
+        status,
+        reviewedBy: req.user.id,
+        reviewedAt: new Date(),
+        moderatorAction: status === 'dismissed' ? 'dismissed' : 'updated',
+      },
       { new: true }
     );
 

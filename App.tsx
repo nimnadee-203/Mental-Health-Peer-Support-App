@@ -10,6 +10,7 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SplashScreen from './src/screens/SplashScreen';
 import WelcomeScreen from './src/screens/WelcomeScreen';
+import ModeratorDashboardScreen from './src/screens/ModeratorDashboardScreen';
 
 import ResourcesScreen from './src/screens/ResourcesScreen';
 import ResourceArticleScreen from './src/screens/ResourceArticleScreen';
@@ -30,7 +31,7 @@ import CreateGroupScreen from './src/screens/Groups/CreateGroupScreen';
 
 import EmergencySupportScreen from './src/screens/EmergencySupportScreen';
 import { API_BASE, COMMUNITY_API_BASE } from './src/config/api';
-import { getAuthUserId, setAuthUserId } from './src/api/authStore';
+import { getAuthRole, getAuthUserId, setAuthUserId } from './src/api/authStore';
 import {
   createResource as createResourceRequest,
   getResources,
@@ -45,7 +46,8 @@ type AppScreen =
   | 'auth'
   | 'onboarding'
   | 'home'
-  | 'profile';
+  | 'profile'
+  | 'moderation';
 
 type ResourcesScreenProps = {
   onOpenArticle: (article: ResourceArticle) => void;
@@ -518,6 +520,9 @@ function App() {
           <ProfileScreen
             onBack={() => changeTab('Home')}
             onNavigateToAuth={() => setActiveScreen('auth')}
+            onOpenModeration={
+              getAuthRole() === 'user' ? undefined : () => setActiveScreen('moderation')
+            }
             onLogout={() => {
               setAuthUserId(null);
               setActiveScreen('auth');
@@ -572,6 +577,11 @@ function App() {
           onAuthenticated={isSignup =>
             setActiveScreen(isSignup ? 'onboarding' : 'home')
           }
+        />
+      ) : activeScreen === 'moderation' ? (
+        <ModeratorDashboardScreen
+          role={getAuthRole() === 'admin' ? 'admin' : 'moderator'}
+          onBack={() => setActiveScreen('home')}
         />
       ) : activeScreen === 'onboarding' ? (
         <OnboardingScreen

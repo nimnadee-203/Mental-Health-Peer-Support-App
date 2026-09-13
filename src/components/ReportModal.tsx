@@ -11,7 +11,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { API_BASE } from '../config/api';
+import { COMMUNITY_API_BASE } from '../config/api';
+import { getAuthToken } from '../api/authStore';
 
 export interface ReportModalProps {
   visible: boolean;
@@ -137,9 +138,12 @@ export default function ReportModal({
     setErrorMessage('');
 
     try {
-      const response = await fetch(`${API_BASE}/reports`, {
+      const response = await fetch(`${COMMUNITY_API_BASE}/reports`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {}),
+        },
         body: JSON.stringify({
           targetType,
           targetId,
@@ -158,9 +162,7 @@ export default function ReportModal({
 
       setStep('success');
     } catch (error: any) {
-      console.warn('Backend report submission error, using safe fallback:', error.message);
-      // Even if network fails, grant seamless user reassurance
-      setStep('success');
+      setErrorMessage(error?.message || 'Could not submit this report. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

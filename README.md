@@ -32,6 +32,35 @@ npm run dev
 Put your real MongoDB connection string in `server/.env`. If your password contains
 `@`, encode it as `%40` in the URI.
 
+Set the same `JWT_SECRET` in `server/.env` and `backend/.env`. The authentication
+service signs login tokens and the community service verifies them for moderation.
+
+## Mobile moderation
+
+Moderation is built into the React Native app. After creating role accounts, log in
+through the normal mobile login screen. Moderators and admins can open moderation
+from Profile; normal users do not see that option.
+
+Create development accounts from `server/` without putting passwords in Git:
+
+```sh
+npm run create-admin
+npm run create-moderator
+```
+
+Run both existing APIs for the complete app:
+
+```sh
+cd server
+npm run dev
+
+cd ../backend
+npm start
+```
+
+Moderation endpoints are protected on the backend. Moderator access is available to
+`moderator` and `admin`; user-role management is restricted to `admin`.
+
 ## Step 2: Build and run your app
 
 With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:

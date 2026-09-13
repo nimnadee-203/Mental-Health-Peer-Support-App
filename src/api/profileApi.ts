@@ -1,12 +1,12 @@
 import { API_BASE } from '../config/api';
-import { getAuthUserId } from './authStore';
+import { getAuthToken } from './authStore';
 import { UpdateProfilePayload, UserProfile } from '../types/user';
 
 const getHeaders = () => {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
-  const token = getAuthUserId();
+  const token = getAuthToken();
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
