@@ -84,6 +84,8 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
 
     setErrorMessage('');
     setIsSubmitting(true);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     try {
       const response = await fetch(
@@ -98,6 +100,7 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
             email: email.trim(),
             password,
           }),
+          signal: controller.signal,
         },
       );
 
@@ -112,9 +115,16 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
         setAuthUserId(result.user.id);
       }
       onAuthenticated(isSignup);
-    } catch {
-      setErrorMessage('Could not reach the server. Make sure the API is running.');
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        setErrorMessage(
+          'The server took too long to respond. Check that the API is reachable from this device.',
+        );
+      } else {
+        setErrorMessage('Could not reach the server. Make sure the API is running.');
+      }
     } finally {
+      clearTimeout(timeoutId);
       setIsSubmitting(false);
     }
   };

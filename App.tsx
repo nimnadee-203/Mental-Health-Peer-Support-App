@@ -575,24 +575,21 @@ function App() {
         />
       ) : activeScreen === 'onboarding' ? (
         <OnboardingScreen
-<OnboardingScreen
-  onComplete={async data => {
-    const currentUserId = getAuthUserId();
+          onComplete={async data => {
+            const currentUserId = getAuthUserId();
 
-    if (currentUserId && data?.selectedInterests?.length) {
-      try {
-        await updateUserProfile(currentUserId, {
-          interests: data.selectedInterests,
-        });
-      } catch (e) {
-        // Silently handle offline/guest error
-      }
-    }
+            if (currentUserId && data?.selectedInterests?.length) {
+              try {
+                await updateUserProfile(currentUserId, {
+                  interests: data.selectedInterests,
+                });
+              } catch (e) {
+                // Silently handle offline/guest error
+              }
+            }
 
-    setActiveScreen('home');
-  }}
-  onSkip={() => setActiveScreen('home')}
-/>
+            setActiveScreen('home');
+          }}
           onSkip={() => setActiveScreen('home')}
         />
       ) : (
