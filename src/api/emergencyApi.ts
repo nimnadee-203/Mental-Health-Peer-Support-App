@@ -1,5 +1,5 @@
 import { COMMUNITY_API_BASE } from '../config/api';
-import { getAuthUserId } from './authStore';
+import { getAuthToken } from './authStore';
 import {
   EmergencyType,
   EmergencyStatus,
@@ -11,7 +11,7 @@ const getHeaders = () => {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
-  const token = getAuthUserId();
+  const token = getAuthToken();
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }

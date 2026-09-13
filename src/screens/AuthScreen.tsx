@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { setAuthUserId } from '../api/authStore';
+import { setAuthSession } from '../api/authStore';
 import { API_BASE } from '../config/api';
 
 type AuthMode = 'login' | 'signup';
@@ -111,9 +111,16 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
         return;
       }
 
-      if (result?.user?.id) {
-        setAuthUserId(result.user.id);
+      if (!result?.user?.id || !result?.token) {
+        setErrorMessage('The server did not create a login session. Please try again.');
+        return;
       }
+
+      setAuthSession({
+        userId: result.user.id,
+        token: result.token,
+        role: result.user.role,
+      });
       onAuthenticated(isSignup);
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {

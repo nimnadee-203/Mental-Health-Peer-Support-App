@@ -18,6 +18,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import type { Community } from './GroupDiscussionScreen';
 
 import { COMMUNITY_API_BASE } from '../config/api';
+import { clearAuthSession, getAuthToken } from '../api/authStore';
 
 const REQUEST_TIMEOUT_MS = 10000;
 
@@ -74,6 +75,9 @@ export default function CreatePostScreen({
           signal: controller.signal,
           headers: {
             'Content-Type': 'application/json',
+            ...(getAuthToken()
+              ? { Authorization: `Bearer ${getAuthToken()}` }
+              : {}),
           },
           body: JSON.stringify({
             content: content.trim(),
@@ -86,18 +90,29 @@ export default function CreatePostScreen({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.error || 'Failed to create post');
+        const requestError = new Error(errorData?.error || 'Failed to create post');
+        (requestError as any).status = response.status;
+        throw requestError;
       }
 
       onPostCreated();
     } catch (error: any) {
       console.error('Post creation error:', error);
+      if (error?.status === 401) {
+        clearAuthSession();
+        Alert.alert(
+          'Session expired',
+          'Please log in again before creating a post.',
+        );
+      }
       const message =
         error?.name === 'AbortError'
           ? 'The server took too long to respond. Please try again.'
           : error?.message ||
             'Something went wrong while submitting your post. Please check your connection and try again.';
-      Alert.alert('Could not post', message, [{ text: 'OK' }]);
+      if (error?.status !== 401) {
+        Alert.alert('Could not post', message, [{ text: 'OK' }]);
+      }
     } finally {
       clearTimeout(timeoutId);
       setIsSubmitting(false);

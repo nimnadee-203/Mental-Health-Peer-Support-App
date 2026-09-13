@@ -42,14 +42,32 @@ const reportSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    targetAuthorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
     reporterName: {
       type: String,
       default: 'Anonymous User',
       trim: true,
     },
+    reportedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
+    },
+    reviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    reviewedAt: Date,
+    moderatorAction: {
+      type: String,
+      default: '',
+    },
     status: {
       type: String,
-      enum: ['pending', 'reviewed', 'dismissed', 'action_taken'],
+      enum: ['pending', 'under_review', 'resolved', 'dismissed'],
       default: 'pending',
       index: true,
     },

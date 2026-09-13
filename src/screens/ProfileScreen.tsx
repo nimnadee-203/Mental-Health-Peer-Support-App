@@ -19,11 +19,12 @@ type ProfileScreenProps = {
   onBack: () => void;
   onNavigateToAuth?: () => void;
   onLogout?: () => void;
+  onOpenModeration?: () => void;
 };
 
 const DEFAULT_INTERESTS = ['Anxiety support', 'Mindfulness', 'Daily journaling'];
 
-function ProfileScreen({ onBack, onNavigateToAuth, onLogout }: ProfileScreenProps) {
+function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration }: ProfileScreenProps) {
   const [userId, setUserId] = useState<string | null>(getAuthUserId());
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -206,6 +207,12 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout }: ProfileScreenProp
           <Text style={styles.topBarTitle}>Profile</Text>
           <View style={styles.topBarSpacer} />
         </View>
+
+        {onOpenModeration ? (
+          <Pressable style={styles.moderationButton} onPress={onOpenModeration}>
+            <Text style={styles.moderationButtonText}>Open Moderation</Text>
+          </Pressable>
+        ) : null}
 
         {/* Loading Indicator */}
         {isLoading ? (
@@ -572,6 +579,17 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#F5F7FA',
+  },
+  moderationButton: {
+    backgroundColor: '#E6F4EA',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  moderationButtonText: {
+    color: '#276A5A',
+    fontWeight: '800',
   },
   content: {
     padding: 20,

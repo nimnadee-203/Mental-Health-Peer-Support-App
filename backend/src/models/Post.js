@@ -31,6 +31,11 @@ const postSchema = new mongoose.Schema(
       default: 'Member',
       trim: true,
     },
+    authorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
+    },
     likes: {
       type: Number,
       default: 0,
@@ -38,6 +43,12 @@ const postSchema = new mongoose.Schema(
     commentsCount: {
       type: Number,
       default: 0,
+    },
+    moderationStatus: {
+      type: String,
+      enum: ['visible', 'hidden'],
+      default: 'visible',
+      index: true,
     },
   },
   { timestamps: true }

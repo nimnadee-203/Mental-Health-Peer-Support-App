@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Post = require('../models/Post');
+const auth = require('../middleware/auth');
 
 /**
  * GET /api/posts/group/:groupId
@@ -9,7 +10,7 @@ const Post = require('../models/Post');
 router.get('/group/:groupId', async (req, res) => {
   try {
     const { groupId } = req.params;
-    const posts = await Post.find({ groupId }).sort({ createdAt: -1 });
+    const posts = await Post.find({ groupId, moderationStatus: { $ne: 'hidden' } }).sort({ createdAt: -1 });
     res.json(posts);
   } catch (err) {
     console.error('GET /posts/group/:groupId —', err.message);
@@ -21,7 +22,7 @@ router.get('/group/:groupId', async (req, res) => {
  * POST /api/posts/group/:groupId
  * Create a new post in a specific community.
  */
-router.post('/group/:groupId', async (req, res) => {
+router.post('/group/:groupId', auth, async (req, res) => {
   try {
     const { groupId } = req.params;
     const { content, topic, contentNote, isAnonymous } = req.body;
@@ -41,6 +42,7 @@ router.post('/group/:groupId', async (req, res) => {
       contentNote: contentNote ? contentNote.trim() : 'None',
       isAnonymous: isAnonymous !== false, // default to true if not explicitly false
       authorName: isAnonymous !== false ? 'Anonymous Member' : 'Member',
+      authorId: req.user.id,
       likes: 0,
       commentsCount: 0,
     });

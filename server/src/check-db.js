@@ -1,7 +1,9 @@
 import dotenv from 'dotenv';
+import dns from 'dns';
 import mongoose from 'mongoose';
 
 dotenv.config();
+dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 if (!process.env.MONGODB_URI) {
   throw new Error('MONGODB_URI is required. Set it in server/.env first.');

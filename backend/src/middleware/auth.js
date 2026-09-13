@@ -1,6 +1,10 @@
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
-module.exports = (req, res, next) => {
+const JWT_SECRET = process.env.JWT_SECRET || 'mind-mate-development-secret';
+
+module.exports = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Unauthorized. No token provided.' });
@@ -11,29 +15,31 @@ module.exports = (req, res, next) => {
     return res.status(401).json({ error: 'Unauthorized. Empty token.' });
   }
 
-  let userId = '';
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    const userId = payload.sub;
 
-  // If token looks like a JWT (contains three base64 parts separated by dots)
-  if (token.includes('.') && token.split('.').length === 3) {
-    try {
-      const payloadBase64 = token.split('.')[1];
-      const decodedPayload = JSON.parse(
-        Buffer.from(payloadBase64, 'base64').toString('utf-8')
-      );
-      userId = decodedPayload.id || decodedPayload.userId || decodedPayload.sub;
-    } catch (e) {
-      return res.status(401).json({ error: 'Unauthorized. Malformed JWT token.' });
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(401).json({ error: 'Unauthorized. Invalid token subject.' });
     }
-  } else {
-    // Otherwise treat the token directly as the userId (which should be a valid ObjectId)
-    userId = token;
-  }
 
-  if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
-    return res.status(401).json({ error: 'Unauthorized. Invalid user ID.' });
-  }
+    // Prefer live role/profile from DB when available. Login lives on `server/`,
+    // so a valid JWT is enough to authenticate even if this process cannot
+    // resolve the user document (shared-DB lag, partial sync, etc.).
+    const user = await User.findById(userId).select('_id role fullName email');
+    const roleFromToken =
+      payload.role === 'moderator' || payload.role === 'admin' || payload.role === 'user'
+        ? payload.role
+        : 'user';
 
-  // Attach authenticated user information to request
-  req.user = { id: userId };
-  next();
+    req.user = {
+      id: userId,
+      role: user?.role || roleFromToken,
+      fullName: user?.fullName,
+      email: user?.email,
+    };
+    return next();
+  } catch (error) {
+    return res.status(401).json({ error: 'Unauthorized. Invalid or expired token.' });
+  }
 };
