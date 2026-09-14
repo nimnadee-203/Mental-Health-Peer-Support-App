@@ -38,6 +38,9 @@ jest.mock('../backend/src/models/TrustedContact', () => {
   (MockTrustedContact as any).findOne = mockFindOne;
   (MockTrustedContact as any).deleteOne = mockDeleteOne;
   
+  return MockTrustedContact;
+});
+
 jest.mock('../backend/src/models/User', () => ({
   findById: jest.fn().mockReturnValue({
     select: jest.fn().mockResolvedValue({
