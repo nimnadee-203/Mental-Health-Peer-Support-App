@@ -45,14 +45,11 @@ describe('AuthScreen Input Validations', () => {
     const root = renderer!.root;
 
     // Toggle to signup mode
-    const createAccountButton = root
-      .findAllByType(Text)
-      .find(t => t.props.children === 'Create Account');
-
-    expect(createAccountButton).toBeTruthy();
+    const toggleModeButton = root.findByProps({ testID: 'auth-toggle-mode-button' });
+    expect(toggleModeButton).toBeTruthy();
 
     await ReactTestRenderer.act(async () => {
-      createAccountButton!.parent!.props.onPress();
+      toggleModeButton.props.onPress();
     });
 
     const nameInput = root.findByProps({ testID: 'signup-name-input' });

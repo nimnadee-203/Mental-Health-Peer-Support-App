@@ -642,7 +642,7 @@ function ActivitiesScreen({
     const calmMusicUri =
       Image.resolveAssetSource(
         require('../assets/audio/calm.mp3'),
-      ).uri;
+      )?.uri || '';
 
     const sound = new Sound(
       calmMusicUri,

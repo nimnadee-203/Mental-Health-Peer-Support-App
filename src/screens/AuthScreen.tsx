@@ -260,6 +260,7 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
             <Pressable
               accessibilityRole="button"
               onPress={() => handleToggleMode(isSignup ? 'login' : 'signup')}
+              testID="auth-toggle-mode-button"
             >
               <Text style={styles.footerAction}>
                 {isSignup ? 'Log In' : 'Create Account'}

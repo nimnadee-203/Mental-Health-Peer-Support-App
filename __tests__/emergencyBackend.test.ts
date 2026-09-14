@@ -1,4 +1,5 @@
-import mongoose from 'mongoose';
+import mockMongoose from 'mongoose';
+const jwt = require('jsonwebtoken');
 
 // Mock mongoose models
 jest.mock('../backend/src/models/EmergencyRequest', () => {
@@ -10,7 +11,7 @@ jest.mock('../backend/src/models/EmergencyRequest', () => {
     this.type = data.type;
     this.status = data.status || 'PENDING';
     this.description = data.description;
-    this._id = new mongoose.Types.ObjectId('64b7f8e8f8e8f8e8f8e8f8e8');
+    this._id = new mockMongoose.Types.ObjectId('64b7f8e8f8e8f8e8f8e8f8e8');
     this.save = jest.fn().mockResolvedValue(this);
   }
   
@@ -30,15 +31,23 @@ jest.mock('../backend/src/models/TrustedContact', () => {
     this.name = data.name;
     this.phone = data.phone;
     this.relationship = data.relationship;
-    this._id = new mongoose.Types.ObjectId('64b7f8e8f8e8f8e8f8e8f8f9');
+    this._id = new mockMongoose.Types.ObjectId('64b7f8e8f8e8f8e8f8e8f8f9');
     this.save = jest.fn().mockResolvedValue(this);
   }
   
   (MockTrustedContact as any).findOne = mockFindOne;
   (MockTrustedContact as any).deleteOne = mockDeleteOne;
   
-  return MockTrustedContact;
-});
+jest.mock('../backend/src/models/User', () => ({
+  findById: jest.fn().mockReturnValue({
+    select: jest.fn().mockResolvedValue({
+      _id: '64b7f8e8f8e8f8e8f8e8f8ea',
+      role: 'user',
+      fullName: 'Test User',
+      email: 'test@example.com',
+    }),
+  }),
+}));
 
 const EmergencyRequest = require('../backend/src/models/EmergencyRequest');
 const TrustedContact = require('../backend/src/models/TrustedContact');
@@ -60,7 +69,8 @@ function getRouteStack(router: any, path: string, method: string) {
 describe('Backend Emergency & Trusted Contact APIs', () => {
   const mockUserId = '64b7f8e8f8e8f8e8f8e8f8ea';
   const otherUserId = '64b7f8e8f8e8f8e8f8e8f8eb';
-  const mockAuthHeader = `Bearer ${mockUserId}`;
+  const jwtSecret = process.env.JWT_SECRET || 'mind-mate-development-secret';
+  const mockAuthHeader = `Bearer ${jwt.sign({ sub: mockUserId, role: 'user' }, jwtSecret)}`;
 
   let req: any;
   let res: any;
@@ -93,7 +103,7 @@ describe('Backend Emergency & Trusted Contact APIs', () => {
       };
 
       // Run authentication middleware
-      authMiddleware(req, res, next);
+      await authMiddleware(req, res, next);
       expect(req.user).toBeDefined();
       expect(req.user.id).toBe(mockUserId);
 
@@ -120,7 +130,7 @@ describe('Backend Emergency & Trusted Contact APIs', () => {
         description: 'Help needed',
       };
 
-      authMiddleware(req, res, next);
+      await authMiddleware(req, res, next);
       await handler(req, res);
 
       expect(res.status).toHaveBeenCalledWith(400);
@@ -138,7 +148,7 @@ describe('Backend Emergency & Trusted Contact APIs', () => {
         description: '',
       };
 
-      authMiddleware(req, res, next);
+      await authMiddleware(req, res, next);
       await handler(req, res);
 
       expect(res.status).toHaveBeenCalledWith(400);
@@ -151,7 +161,7 @@ describe('Backend Emergency & Trusted Contact APIs', () => {
 
       req.headers.authorization = undefined;
 
-      authMiddleware(req, res, next);
+      await authMiddleware(req, res, next);
 
       expect(res.status).toHaveBeenCalledWith(401);
       expect(res.json).toHaveBeenCalledWith({ error: 'Unauthorized. No token provided.' });
@@ -173,7 +183,7 @@ describe('Backend Emergency & Trusted Contact APIs', () => {
         sort: jest.fn().mockResolvedValue(mockRequests),
       });
 
-      authMiddleware(req, res, next);
+      await authMiddleware(req, res, next);
       await handler(req, res);
 
       expect(res.json).toHaveBeenCalledWith(mockRequests);
@@ -202,7 +212,7 @@ describe('Backend Emergency & Trusted Contact APIs', () => {
       };
       EmergencyRequest.findById.mockResolvedValue(mockRequest);
 
-      authMiddleware(req, res, next);
+      await authMiddleware(req, res, next);
       await handler(req, res);
 
       expect(mockRequest.status).toBe('RESOLVED');
@@ -228,7 +238,7 @@ describe('Backend Emergency & Trusted Contact APIs', () => {
       };
       EmergencyRequest.findById.mockResolvedValue(mockRequest);
 
-      authMiddleware(req, res, next);
+      await authMiddleware(req, res, next);
       await handler(req, res);
 
       expect(res.status).toHaveBeenCalledWith(403);
@@ -245,7 +255,7 @@ describe('Backend Emergency & Trusted Contact APIs', () => {
       req.params = { id: 'req_123' };
       req.body = { status: 'INVALID_STATUS' };
 
-      authMiddleware(req, res, next);
+      await authMiddleware(req, res, next);
       await handler(req, res);
 
       expect(res.status).toHaveBeenCalledWith(400);
@@ -262,7 +272,7 @@ describe('Backend Emergency & Trusted Contact APIs', () => {
       req.headers.authorization = mockAuthHeader;
       TrustedContact.findOne.mockResolvedValue(null);
 
-      authMiddleware(req, res, next);
+      await authMiddleware(req, res, next);
       await handler(req, res);
 
       expect(res.status).toHaveBeenCalledWith(404);
@@ -283,7 +293,7 @@ describe('Backend Emergency & Trusted Contact APIs', () => {
 
       TrustedContact.findOne.mockResolvedValue(null);
 
-      authMiddleware(req, res, next);
+      await authMiddleware(req, res, next);
       await handler(req, res);
 
       expect(res.status).toHaveBeenCalledWith(201);
@@ -314,7 +324,7 @@ describe('Backend Emergency & Trusted Contact APIs', () => {
 
       TrustedContact.findOne.mockResolvedValue({ userId: mockUserId });
 
-      authMiddleware(req, res, next);
+      await authMiddleware(req, res, next);
       await handler(req, res);
 
       expect(res.status).toHaveBeenCalledWith(400);
@@ -331,7 +341,7 @@ describe('Backend Emergency & Trusted Contact APIs', () => {
       req.headers.authorization = mockAuthHeader;
       TrustedContact.deleteOne.mockResolvedValue({ deletedCount: 1 });
 
-      authMiddleware(req, res, next);
+      await authMiddleware(req, res, next);
       await handler(req, res);
 
       expect(res.json).toHaveBeenCalledWith({ success: true });
