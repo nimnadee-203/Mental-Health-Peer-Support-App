@@ -64,15 +64,20 @@ function HomeScreen({ onOpenProfile }: HomeScreenProps) {
     fetchProfileData();
   }, [fetchProfileData]);
 
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timer = setTimeout(() => {
+      setToastMessage(null);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [toastMessage]);
+
   const handleSelectMood = (moodLabel: string, emoji: string) => {
     setSelectedMood(moodLabel);
     if (!loggedMoods.includes(moodLabel)) {
       setLoggedMoods(prev => [...prev, moodLabel]);
     }
     setToastMessage(`Checked in as ${moodLabel} ${emoji}`);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 3000);
   };
 
   // Dynamic calculations for Today's Check-in
