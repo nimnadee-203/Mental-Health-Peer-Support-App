@@ -81,8 +81,23 @@ type GroupsView =
 const INITIAL_COMMUNITIES: Community[] = [
   {
     _id: '1',
-    name: 'Anxiety & Stress Support',
+    name: 'Student Stress Support',
+    category: 'Academic Pressure',
+    topics: ['Stress', 'Academic pressure'],
+    emoji: '📚',
+    bgColor: '#EFF6FF',
+    description:
+      'Manage exam pressure, deadlines, and study burnout with peer advice.',
+    guidelines: 'Share strategies constructively.',
+    memberCount: 1540,
+    memberAvatarColors: ['#3B82F6', '#60A5FA', '#93C5FD'],
+    isJoined: false,
+  },
+  {
+    _id: '2',
+    name: 'Anxiety Support Circle',
     category: 'Stress & Anxiety',
+    topics: ['Anxiety', 'Stress'],
     emoji: '🌿',
     bgColor: '#E6F4EA',
     description:
@@ -93,9 +108,52 @@ const INITIAL_COMMUNITIES: Community[] = [
     isJoined: false,
   },
   {
-    _id: '2',
+    _id: '3',
+    name: 'Relationship Support',
+    category: 'Relationships',
+    topics: ['Relationships', 'Relationship problems'],
+    emoji: '🤝',
+    bgColor: '#FCE7F3',
+    description:
+      'Discuss family dynamics, friendships, and relationship boundaries.',
+    guidelines: 'Respect privacy and offer empathy.',
+    memberCount: 960,
+    memberAvatarColors: ['#EC4899', '#F472B6', '#FBCFE8'],
+    isJoined: false,
+  },
+  {
+    _id: '4',
+    name: 'Grief Support Group',
+    category: 'Grief',
+    topics: ['Grief', 'Loss'],
+    emoji: '🕯️',
+    bgColor: '#F3F4F6',
+    description:
+      'Compassionate listening and peer comfort for navigating loss.',
+    guidelines: 'Gentle, compassionate space.',
+    memberCount: 680,
+    memberAvatarColors: ['#6B7280', '#9CA3AF', '#D1D5DB'],
+    isJoined: false,
+  },
+  {
+    _id: '5',
+    name: 'Self-Confidence Group',
+    category: 'Self-Care',
+    topics: ['Self-confidence', 'General wellbeing'],
+    emoji: '✨',
+    bgColor: '#FEF3C7',
+    description:
+      'Building self-worth, overcoming imposter syndrome, and personal growth.',
+    guidelines: 'Encouraging and uplifting discussions.',
+    memberCount: 1210,
+    memberAvatarColors: ['#F59E0B', '#FBBF24', '#FDE68A'],
+    isJoined: false,
+  },
+  {
+    _id: '6',
     name: 'Daily Mindfulness & Healing',
     category: 'Mindfulness',
+    topics: ['Mindfulness', 'General wellbeing'],
     emoji: '🧘',
     bgColor: '#E8F0FE',
     description:
@@ -106,9 +164,10 @@ const INITIAL_COMMUNITIES: Community[] = [
     isJoined: false,
   },
   {
-    _id: '3',
+    _id: '7',
     name: 'Depression Recovery Peers',
     category: 'Depression',
+    topics: ['Depression', 'Self-Care', 'Loneliness'],
     emoji: '☀️',
     bgColor: '#FEF3C7',
     description:

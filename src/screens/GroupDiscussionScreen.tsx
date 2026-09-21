@@ -21,6 +21,7 @@ export interface Community {
   _id: string;
   name: string;
   category: string;
+  topics?: string[];
   emoji: string;
   bgColor: string;
   description: string;

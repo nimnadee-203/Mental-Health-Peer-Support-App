@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  ScrollView,
   Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
+import { getAuthUserId } from '../../api/authStore';
+import { getUserProfile } from '../../api/profileApi';
+import { getRecommendedCommunities, RecommendationResult } from '../../utils/recommendationEngine';
 import type { Community } from '../GroupDiscussionScreen';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -15,7 +18,9 @@ interface GroupsHomeScreenProps {
   joinedIds: string[];
   onGroupPress: (community: Community) => void;
   onCreateGroup: () => void;
+  userInterestsOverride?: string[];
 }
+
 const CATEGORIES = [
   'All',
   'General Wellbeing',
@@ -27,16 +32,38 @@ const CATEGORIES = [
   'Depression',
 ];
 
-
 // ─── Component ────────────────────────────────────────────────────────────────
 const GroupsHomeScreen = ({
   communities,
   joinedIds,
   onGroupPress,
   onCreateGroup,
+  userInterestsOverride,
 }: GroupsHomeScreenProps) => {
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [userInterests, setUserInterests] = useState<string[]>(
+    userInterestsOverride || [],
+  );
+
+  const fetchUserInterests = useCallback(async () => {
+    if (userInterestsOverride) return;
+    const userId = getAuthUserId();
+    if (!userId) return;
+
+    try {
+      const profile = await getUserProfile(userId);
+      if (profile && profile.interests) {
+        setUserInterests(profile.interests);
+      }
+    } catch {
+      // Ignore errors if profile loading fails
+    }
+  }, [userInterestsOverride]);
+
+  useEffect(() => {
+    fetchUserInterests();
+  }, [fetchUserInterests]);
 
   const joinedCommunities = communities.filter(c => joinedIds.includes(c._id));
 
@@ -51,18 +78,23 @@ const GroupsHomeScreen = ({
     return matchesCategory && matchesSearch;
   });
 
+  const recommendedResults: RecommendationResult[] = getRecommendedCommunities(
+    userInterests,
+    communities,
+  );
+
   return (
     <View style={styles.container}>
-
       {/* Header */}
       <View style={styles.headerRow}>
         <Text style={styles.title}>Find Your Community</Text>
         <Pressable
-  style={styles.createButton}
-  onPress={onCreateGroup}
->
-  <Text style={styles.createButtonText}>+ Create</Text>
-</Pressable>
+          style={styles.createButton}
+          onPress={onCreateGroup}
+          testID="create-group-button"
+        >
+          <Text style={styles.createButtonText}>+ Create</Text>
+        </Pressable>
       </View>
 
       <Text style={styles.subtitle}>
@@ -76,6 +108,7 @@ const GroupsHomeScreen = ({
         placeholderTextColor="#8A94A6"
         value={searchQuery}
         onChangeText={setSearchQuery}
+        testID="groups-search-input"
       />
 
       {/* Category Tabs */}
@@ -83,10 +116,16 @@ const GroupsHomeScreen = ({
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.categoryScroll}
-        contentContainerStyle={styles.categoryContainer}>
+        contentContainerStyle={styles.categoryContainer}
+      >
         {CATEGORIES.map(cat => (
           <Pressable key={cat} onPress={() => setActiveCategory(cat)}>
-            <Text style={[styles.categoryTab, activeCategory === cat && styles.activeCategory]}>
+            <Text
+              style={[
+                styles.categoryTab,
+                activeCategory === cat && styles.activeCategory,
+              ]}
+            >
               {cat}
             </Text>
           </Pressable>
@@ -97,28 +136,139 @@ const GroupsHomeScreen = ({
       <ScrollView
         style={styles.groupsScroll}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.groupsContainer}>
-
+        contentContainerStyle={styles.groupsContainer}
+      >
         {/* YOUR GROUPS */}
         {joinedCommunities.length > 0 && (
-          <>
+          <View testID="your-groups-section">
             <Text style={styles.sectionTitle}>YOUR GROUPS</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.yourGroupsRow}>
+              contentContainerStyle={styles.yourGroupsRow}
+            >
               {joinedCommunities.map(c => (
                 <Pressable
                   key={c._id}
                   style={[styles.yourGroupCard, { backgroundColor: c.bgColor }]}
-                  onPress={() => onGroupPress(c)}>
+                  onPress={() => onGroupPress(c)}
+                >
                   <Text style={styles.yourGroupEmoji}>{c.emoji}</Text>
-                  <Text style={styles.yourGroupName} numberOfLines={2}>{c.name}</Text>
-                  <Text style={styles.yourGroupMembers}>{c.memberCount} members</Text>
+                  <Text style={styles.yourGroupName} numberOfLines={2}>
+                    {c.name}
+                  </Text>
+                  <Text style={styles.yourGroupMembers}>
+                    {c.memberCount} members
+                  </Text>
                 </Pressable>
               ))}
             </ScrollView>
-          </>
+          </View>
+        )}
+
+        {/* RECOMMENDED FOR YOU */}
+        {recommendedResults.length > 0 && searchQuery.trim() === '' && (
+          <View testID="recommended-groups-section">
+            <Text style={styles.sectionTitle}>RECOMMENDED FOR YOU</Text>
+
+            {recommendedResults.map(({ community, score, matchingTopics }) => {
+              const isJoined = joinedIds.includes(community._id);
+              return (
+                <Pressable
+                  key={`rec-${community._id}`}
+                  style={styles.recommendedGroupCard}
+                  onPress={() => onGroupPress(community)}
+                  testID={`recommended-group-card-${community._id}`}
+                >
+                  <View style={styles.groupTop}>
+                    <View
+                      style={[
+                        styles.groupImage,
+                        { backgroundColor: community.bgColor },
+                      ]}
+                    >
+                      <Text style={styles.groupImageText}>{community.emoji}</Text>
+                    </View>
+                    <View style={styles.groupInfo}>
+                      <View style={styles.badgeRow}>
+                        <Text style={styles.groupCategory}>
+                          {community.category.toUpperCase()}
+                        </Text>
+                        <View style={styles.recommendationBadge}>
+                          <Text style={styles.recommendationBadgeText}>
+                            ⭐ Recommended
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.groupTitle}>{community.name}</Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.groupDescription}>
+                    {community.description}
+                  </Text>
+
+                  {/* Recommendation explanation string */}
+                  <View style={styles.recommendationReasonBox}>
+                    <Text style={styles.recommendationReasonText}>
+                      {`Why recommended: Matches ${score} ${
+                        score === 1 ? 'of your interest' : 'of your interests'
+                      }`}
+                    </Text>
+                    {matchingTopics && matchingTopics.length > 0 && (
+                      <View style={styles.matchedTopicsRow}>
+                        {matchingTopics.map(topic => (
+                          <View key={topic} style={styles.matchedTopicChip}>
+                            <Text style={styles.matchedTopicChipText}>
+                              ✓ {topic}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.groupBottom}>
+                    <View style={styles.avatarStack}>
+                      {community.memberAvatarColors
+                        .slice(0, 3)
+                        .map((color, i) => (
+                          <View
+                            key={i}
+                            style={[
+                              styles.miniAvatar,
+                              {
+                                backgroundColor: color,
+                                marginLeft: i === 0 ? 0 : -8,
+                              },
+                            ]}
+                          />
+                        ))}
+                      <Text style={styles.memberCountText}>
+                        {community.memberCount} members
+                      </Text>
+                    </View>
+
+                    <View
+                      style={[
+                        styles.joinBadge,
+                        isJoined && styles.joinBadgeJoined,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.joinBadgeText,
+                          isJoined && styles.joinBadgeTextJoined,
+                        ]}
+                      >
+                        {isJoined ? 'Joined ✓' : 'Join'}
+                      </Text>
+                    </View>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
         )}
 
         {/* ALL COMMUNITIES */}
@@ -130,46 +280,67 @@ const GroupsHomeScreen = ({
             <Pressable
               key={community._id}
               style={styles.groupCard}
-              onPress={() => onGroupPress(community)}>
-
+              onPress={() => onGroupPress(community)}
+            >
               <View style={styles.groupTop}>
-                <View style={[styles.groupImage, { backgroundColor: community.bgColor }]}>
+                <View
+                  style={[
+                    styles.groupImage,
+                    { backgroundColor: community.bgColor },
+                  ]}
+                >
                   <Text style={styles.groupImageText}>{community.emoji}</Text>
                 </View>
                 <View style={styles.groupInfo}>
-                  <Text style={styles.groupCategory}>{community.category.toUpperCase()}</Text>
+                  <Text style={styles.groupCategory}>
+                    {community.category.toUpperCase()}
+                  </Text>
                   <Text style={styles.groupTitle}>{community.name}</Text>
                 </View>
               </View>
 
-              <Text style={styles.groupDescription}>{community.description}</Text>
+              <Text style={styles.groupDescription}>
+                {community.description}
+              </Text>
 
               <View style={styles.groupBottom}>
-                {/* Member avatars */}
                 <View style={styles.avatarStack}>
                   {community.memberAvatarColors.slice(0, 3).map((color, i) => (
                     <View
                       key={i}
                       style={[
                         styles.miniAvatar,
-                        { backgroundColor: color, marginLeft: i === 0 ? 0 : -8 },
+                        {
+                          backgroundColor: color,
+                          marginLeft: i === 0 ? 0 : -8,
+                        },
                       ]}
                     />
                   ))}
-                  <Text style={styles.memberCountText}>{community.memberCount} members</Text>
+                  <Text style={styles.memberCountText}>
+                    {community.memberCount} members
+                  </Text>
                 </View>
 
-                <View style={[styles.joinBadge, isJoined && styles.joinBadgeJoined]}>
-                  <Text style={[styles.joinBadgeText, isJoined && styles.joinBadgeTextJoined]}>
+                <View
+                  style={[
+                    styles.joinBadge,
+                    isJoined && styles.joinBadgeJoined,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.joinBadgeText,
+                      isJoined && styles.joinBadgeTextJoined,
+                    ]}
+                  >
                     {isJoined ? 'Joined ✓' : 'Join'}
                   </Text>
                 </View>
               </View>
-
             </Pressable>
           );
         })}
-
       </ScrollView>
     </View>
   );
@@ -294,6 +465,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E8ECF2',
   },
+  recommendedGroupCard: {
+    backgroundColor: '#FAF5FF',
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1.5,
+    borderColor: '#C084FC',
+  },
   groupTop: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -312,12 +491,28 @@ const styles = StyleSheet.create({
   groupInfo: {
     flex: 1,
   },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
   groupCategory: {
     fontSize: 10,
     fontWeight: '700',
     color: '#2673FF',
-    marginBottom: 4,
     letterSpacing: 0.3,
+  },
+  recommendationBadge: {
+    backgroundColor: '#F3E8FF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  recommendationBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#7E22CE',
   },
   groupTitle: {
     fontSize: 15,
@@ -329,6 +524,36 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: '#667085',
     marginTop: 10,
+  },
+  recommendationReasonBox: {
+    marginTop: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E9D5FF',
+  },
+  recommendationReasonText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#6B21A8',
+  },
+  matchedTopicsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 6,
+  },
+  matchedTopicChip: {
+    backgroundColor: '#F3E8FF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  matchedTopicChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#7E22CE',
   },
   groupBottom: {
     flexDirection: 'row',
