@@ -30,16 +30,40 @@ router.get('/reports', ...moderatorsOnly, async (req, res) => {
   try {
     const query = {};
     if (req.query.status && req.query.status !== 'all') query.status = req.query.status;
+    if (typeof req.query.search === 'string' && req.query.search.trim()) {
+      const search = req.query.search.trim();
+      const searchFields = [
+        { targetContentPreview: { $regex: search, $options: 'i' } },
+        { targetAuthor: { $regex: search, $options: 'i' } },
+        { category: { $regex: search, $options: 'i' } },
+      ];
+      if (mongoose.Types.ObjectId.isValid(search)) searchFields.push({ _id: search });
+      query.$or = searchFields;
+    }
     const reports = await Report.find(query).sort({ createdAt: -1 }).limit(100).lean();
+    const postIds = reports.filter(report => report.targetType === 'Post').map(report => report.targetId);
+    const posts = await Post.find({ _id: { $in: postIds } }).select('_id moderationStatus').lean();
+    const postStatus = new Map(posts.map(post => [post._id.toString(), post.moderationStatus]));
+    reports.forEach(report => {
+      report.currentPostStatus = report.targetType === 'Post' ? postStatus.get(report.targetId) || 'unavailable' : 'unavailable';
+    });
     return res.json({ reports });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to load moderation reports.' });
   }
 });
 
-router.get('/history', ...moderatorsOnly, async (_req, res) => {
+router.get('/history', ...moderatorsOnly, async (req, res) => {
   try {
-    const history = await ModerationAudit.find().sort({ createdAt: -1 }).limit(100).lean();
+    const query = req.query.reportId ? { reportId: req.query.reportId } : {};
+    const history = await ModerationAudit.find(query)
+      .populate('moderatorId', 'fullName')
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean();
+    history.forEach(entry => {
+      entry.moderator = entry.moderatorId;
+    });
     return res.json({ history });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to load moderation history.' });
@@ -54,7 +78,13 @@ router.patch('/reports/:id', ...moderatorsOnly, async (req, res) => {
     }
     const report = await Report.findByIdAndUpdate(
       req.params.id,
-      { status, reviewedBy: req.user.id, reviewedAt: new Date(), moderatorAction: status },
+      {
+        status,
+        reviewedBy: req.user.id,
+        reviewedAt: new Date(),
+        moderatorAction: status,
+        ...(typeof req.body.reason === 'string' ? { moderationNote: req.body.reason.trim() } : {}),
+      },
       { new: true, runValidators: true },
     );
     if (!report) return res.status(404).json({ error: 'Report not found.' });
@@ -64,7 +94,7 @@ router.patch('/reports/:id', ...moderatorsOnly, async (req, res) => {
       targetType: 'report',
       targetId: report._id.toString(),
       reportId: report._id,
-      reason: status,
+      reason: typeof req.body.reason === 'string' ? req.body.reason.trim() : status,
     });
     return res.json({ report });
   } catch (error) {

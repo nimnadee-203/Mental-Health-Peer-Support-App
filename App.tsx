@@ -580,7 +580,7 @@ function App() {
             onBack={() => changeTab('Home')}
             onNavigateToAuth={() => setActiveScreen('auth')}
             onOpenModeration={
-              getAuthRole() === 'user' ? undefined : () => setActiveScreen('moderation')
+              getAuthRole() === 'moderator' ? () => setActiveScreen('moderation') : undefined
             }
             onLogout={() => {
               setAuthUserId(null);
@@ -639,7 +639,7 @@ function App() {
         />
       ) : activeScreen === 'moderation' ? (
         <ModeratorDashboardScreen
-          role={getAuthRole() === 'admin' ? 'admin' : 'moderator'}
+          role="moderator"
           onBack={() => setActiveScreen('home')}
         />
       ) : activeScreen === 'onboarding' ? (

@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const moderationAuditSchema = new mongoose.Schema(
   {
-    moderatorId: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
+    moderatorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     action: {
       type: String,
       enum: ['DISMISS_REPORT', 'HIDE_POST', 'RESTORE_POST', 'WARN_USER', 'UPDATE_REPORT'],
