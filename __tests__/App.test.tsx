@@ -51,7 +51,7 @@ test('renders the home screen content and the full shared bottom navigation', as
   expect(navTextLabels).toContain('Resources');
   expect(navTextLabels).toContain('Groups');
   expect(navTextLabels).toContain('Messages');
-  expect(navTextLabels).toContain('Profile');
+  expect(navTextLabels).toContain('Activities');
 
   await ReactTestRenderer.act(() => {
     homeComponent!.unmount();

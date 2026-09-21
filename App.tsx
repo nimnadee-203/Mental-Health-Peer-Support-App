@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { StatusBar, useColorScheme, View } from 'react-native';
+import { Pressable, StatusBar, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import BottomNavigation from './src/components/BottomNavigation';
@@ -189,7 +189,7 @@ function App() {
   // ── Tab Navigation ─────────────────────────────────────────────────────────
 
   const [activeTab, setActiveTab] = useState<
-    'Home' | 'Resources' | 'Groups' | 'Messages' | 'Profile'
+    'Home' | 'Resources' | 'Groups' | 'Messages' | 'Activities' | 'Profile'
   >('Home');
 
   // ── Resources Navigation ───────────────────────────────────────────────────
@@ -293,13 +293,14 @@ function App() {
   // ── Tab Change ─────────────────────────────────────────────────────────────
 
   const changeTab = (
-    tab: 'Home' | 'Resources' | 'Groups' | 'Messages' | 'Profile',
+    tab: 'Home' | 'Resources' | 'Groups' | 'Messages' | 'Activities' | 'Profile',
   ) => {
     setActiveTab(tab);
 
     // Close resource-related screens
     setIsArticleOpen(false);
-    setIsActivityOpen(false);
+    setIsActivityOpen(tab === 'Activities');
+    setSelectedActivity(undefined);
     setIsEmergencyOpen(false);
     setIsCreateResourceOpen(false);
 
@@ -409,7 +410,7 @@ function App() {
 
   const hideBottomNav =
     isArticleOpen ||
-    isActivityOpen ||
+    (isActivityOpen && !!selectedActivity) ||
     isEmergencyOpen ||
     isCreateResourceOpen ||
     isGroupDeepView;
@@ -572,6 +573,11 @@ function App() {
           </View>
         );
 
+      // ── Activities ─────────────────────────────────────────────────────────
+
+      case 'Activities':
+        return null;
+
       // ── Profile ────────────────────────────────────────────────────────────
 
       case 'Profile':
@@ -594,7 +600,7 @@ function App() {
 
       case 'Home':
       default:
-        return <HomeScreen onOpenProfile={() => changeTab('Profile')} />;
+        return <HomeScreen />;
     }
   }, [
     activeTab,
@@ -665,6 +671,15 @@ function App() {
         <>
           {screen}
 
+          <Pressable
+            accessibilityLabel="Open profile"
+            accessibilityRole="button"
+            onPress={() => changeTab('Profile')}
+            style={styles.profileShortcut}
+          >
+            <Text style={styles.profileShortcutText}>P</Text>
+          </Pressable>
+
           {!hideBottomNav && (
             <BottomNavigation activeTab={activeTab} onChangeTab={changeTab} />
           )}
@@ -675,3 +690,30 @@ function App() {
 }
 
 export default App;
+
+const styles = StyleSheet.create({
+  profileShortcut: {
+    alignItems: 'center',
+    backgroundColor: '#E6F4EA',
+    borderColor: '#FFFFFF',
+    borderRadius: 22,
+    borderWidth: 2,
+    elevation: 5,
+    height: 44,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 18,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 5,
+    top: 12,
+    width: 44,
+    zIndex: 20,
+  },
+  profileShortcutText: {
+    color: '#276A5A',
+    fontSize: 17,
+    fontWeight: '900',
+  },
+});
