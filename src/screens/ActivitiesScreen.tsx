@@ -2631,7 +2631,9 @@ function ActivitiesScreen({
         }
         keyboardShouldPersistTaps="handled"
       >
-        <Pressable
+        {activity ? <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Back to activities"
           onPress={() => {
             if (soundRef.current) {
               soundRef.current.stop();
@@ -2642,28 +2644,13 @@ function ActivitiesScreen({
           }}
           style={styles.backButton}
         >
-          <View
-            style={
-              styles.backButtonCircle
-            }
-          >
-            <Text
-              style={
-                styles.backButtonArrow
-              }
-            >
-              ←
-            </Text>
+          <View style={styles.backButtonCircle}>
+            <Text style={styles.backButtonArrow}>←</Text>
           </View>
+          <Text style={styles.backButtonText}>Back</Text>
+        </Pressable> : null}
 
-          <Text
-            style={styles.backButtonText}
-          >
-            Back
-          </Text>
-        </Pressable>
-
-        <View style={styles.activityCard}>
+        <View style={[styles.activityCard, !activity && styles.activitiesLandingSurface]}>
           {!activity &&
             renderAllActivities()}
 
@@ -2758,6 +2745,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.09,
     shadowRadius: 20,
     elevation: 5,
+  },
+
+  activitiesLandingSurface: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderRadius: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    shadowOpacity: 0,
+    elevation: 0,
   },
 
   /* =======================================================

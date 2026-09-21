@@ -37,7 +37,7 @@ const groundingTools = [
 ];
 
 type HomeScreenProps = {
-  onOpenProfile: () => void;
+  onOpenProfile?: () => void;
 };
 
 function HomeScreen({ onOpenProfile }: HomeScreenProps) {
@@ -97,8 +97,6 @@ function HomeScreen({ onOpenProfile }: HomeScreenProps) {
   const greetingText =
     hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const firstName = profile?.fullName ? profile.fullName.split(' ')[0] : 'there';
-  const avatarLetter = (profile?.fullName || 'P').trim().charAt(0).toUpperCase() || 'P';
-
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -108,14 +106,6 @@ function HomeScreen({ onOpenProfile }: HomeScreenProps) {
             <Text style={styles.greeting}>{`${greetingText}, ${firstName}`}</Text>
             <Text style={styles.title}>Patient Stories</Text>
           </View>
-          <Pressable
-            accessibilityRole="button"
-            testID="home-profile-avatar"
-            style={styles.avatar}
-            onPress={onOpenProfile}
-          >
-            <Text style={styles.avatarText}>{avatarLetter}</Text>
-          </Pressable>
         </View>
 
         {/* Hero Section */}
