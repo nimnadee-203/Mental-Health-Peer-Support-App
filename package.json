@@ -5,19 +5,27 @@
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
+    "web": "npx expo start --web",
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest",
     "postinstall": "patch-package"
   },
   "dependencies": {
+    "@expo/metro-runtime": "~57.0.16",
+    "@expo/vector-icons": "^15.0.2",
     "@react-native/new-app-screen": "0.86.2",
+    "babel-preset-expo": "~57.0.0",
+    "expo": "~57.0.24",
+    "expo-av": "^16.0.8",
+    "expo-image-picker": "~57.0.19",
     "react": "19.2.3",
+    "react-dom": "19.2.3",
     "react-native": "0.86.2",
     "react-native-linear-gradient": "^2.8.3",
-    
     "react-native-safe-area-context": "^5.5.2",
-    "react-native-sound": "^0.13.0"
+    "react-native-sound": "^0.13.0",
+    "react-native-web": "^0.21.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
