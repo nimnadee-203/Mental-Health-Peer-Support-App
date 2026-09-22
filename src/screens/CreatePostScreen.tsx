@@ -243,6 +243,7 @@ export default function CreatePostScreen({
             ]}
             onPress={handleSubmit}
             disabled={!isFormValid || isSubmitting}
+            testID="submit-post-button"
           >
             <LinearGradient
               colors={
