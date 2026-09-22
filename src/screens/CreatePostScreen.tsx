@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -13,30 +12,34 @@ import {
   Text,
   TextInput,
   View,
+  Image,
+  Animated,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
-import type { Community } from './GroupDiscussionScreen';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Video, ResizeMode } from 'expo-av';
+import * as ImagePicker from 'expo-image-picker';
 
 import { COMMUNITY_API_BASE } from '../config/api';
 import { clearAuthSession, getAuthToken } from '../api/authStore';
+import type { Community } from './GroupDiscussionScreen';
 
 const REQUEST_TIMEOUT_MS = 10000;
 
-const TOPICS = [
-  'General',
-  'Study & Focus',
-  'Sleep',
-  'Breaks & Rest',
-  'Sharing',
-  'Asking for support',
+const TOPICS: { label: string; emoji: string }[] = [
+  { label: 'General', emoji: '💬' },
+  { label: 'Study & Focus', emoji: '📚' },
+  { label: 'Sleep', emoji: '🌙' },
+  { label: 'Breaks & Rest', emoji: '☕' },
+  { label: 'Sharing', emoji: '🤝' },
+  { label: 'Asking for support', emoji: '🫂' },
 ];
 
-const CONTENT_NOTES = [
-  'None',
-  'Anxiety / stress',
-  'Grief / loss',
-  'Academic pressure',
-  'Sensitive topic',
+const CONTENT_NOTES: { label: string; emoji: string }[] = [
+  { label: 'None', emoji: '—' },
+  { label: 'Anxiety / stress', emoji: '😰' },
+  { label: 'Grief / loss', emoji: '🌧️' },
+  { label: 'Academic pressure', emoji: '📝' },
+  { label: 'Sensitive topic', emoji: '⚠️' },
 ];
 
 interface CreatePostScreenProps {
@@ -45,227 +48,322 @@ interface CreatePostScreenProps {
   onPostCreated: () => void;
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-export default function CreatePostScreen({
-  community,
-  onBack,
-  onPostCreated,
-}: CreatePostScreenProps) {
+// ─── Step indicator ───────────────────────────────────────────────────────────
+function StepDot({ active, done }: { active: boolean; done: boolean }) {
+  return (
+    <View style={[dotStyles.dot, active && dotStyles.dotActive, done && dotStyles.dotDone]}>
+      {done && <Text style={dotStyles.check}>✓</Text>}
+    </View>
+  );
+}
+
+const dotStyles = StyleSheet.create({
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E0E1EC' },
+  dotActive: { width: 22, backgroundColor: '#5A5AD8', borderRadius: 4 },
+  dotDone: { backgroundColor: '#22C55E' },
+  check: { display: 'none' },
+});
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
+export default function CreatePostScreen({ community, onBack, onPostCreated }: CreatePostScreenProps) {
   const [content, setContent] = useState('');
   const [topic, setTopic] = useState('General');
   const [contentNote, setContentNote] = useState('None');
   const [isAnonymous, setIsAnonymous] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [charFocus, setCharFocus] = useState(false);
 
-  const isFormValid = content.trim().length >= 3 && topic;
+  const progressWidth = useRef(new Animated.Value(0)).current;
+
+  const isFormValid = content.trim().length >= 3 && !!topic;
+
+  // Animate character counter bar
+  const updateProgress = (text: string) => {
+    setContent(text);
+    Animated.timing(progressWidth, {
+      toValue: Math.min(text.length / 500, 1),
+      duration: 100,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      allowsEditing: true,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets?.length > 0) {
+      setSelectedImage(result.assets[0].uri);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!isFormValid || isSubmitting) return;
-
     setIsSubmitting(true);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
     try {
+      let uploadedImageUrl: string | null = null;
+
+      if (selectedImage) {
+        const formData = new FormData();
+        if (Platform.OS === 'web') {
+          const response = await fetch(selectedImage);
+          const blob = await response.blob();
+          const actualMime = blob.type || 'image/jpeg';
+          let ext = actualMime.split('/')[1] || 'jpg';
+          if (ext === 'quicktime') ext = 'mov';
+          formData.append('media', new File([blob], `upload.${ext}`, { type: actualMime }));
+        } else {
+          const filename = selectedImage.split('/').pop() || 'upload.jpg';
+          let ext = (filename.split('.').pop() || 'jpg').toLowerCase();
+          if (!ext || ext === filename.toLowerCase()) ext = 'jpg';
+          const isVideo = ['mp4', 'mov', 'webm', 'avi', 'mkv'].includes(ext);
+          const mimeType = isVideo ? `video/${ext === 'mov' ? 'quicktime' : ext}` : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+          formData.append('media', { uri: selectedImage, name: filename, type: mimeType } as any);
+        }
+
+        const uploadRes = await fetch(`${COMMUNITY_API_BASE}/upload`, { method: 'POST', body: formData });
+        if (!uploadRes.ok) throw new Error(`Upload failed: ${await uploadRes.text()}`);
+        const uploadData = await uploadRes.json();
+        uploadedImageUrl = `${COMMUNITY_API_BASE.replace('/api', '')}${uploadData.url}`;
+      }
+
       const encodedGroupId = encodeURIComponent(community._id);
-      const response = await fetch(
-        `${COMMUNITY_API_BASE}/posts/group/${encodedGroupId}`,
-        {
-          method: 'POST',
-          signal: controller.signal,
-          headers: {
-            'Content-Type': 'application/json',
-            ...(getAuthToken()
-              ? { Authorization: `Bearer ${getAuthToken()}` }
-              : {}),
-          },
-          body: JSON.stringify({
-            content: content.trim(),
-            topic,
-            contentNote,
-            isAnonymous,
-          }),
+      const response = await fetch(`${COMMUNITY_API_BASE}/posts/group/${encodedGroupId}`, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {}),
         },
-      );
+        body: JSON.stringify({ content: content.trim(), topic, contentNote, isAnonymous, imageUrl: uploadedImageUrl }),
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        const requestError = new Error(errorData?.error || 'Failed to create post');
-        (requestError as any).status = response.status;
-        throw requestError;
+        const err = new Error(errorData?.error || 'Failed to create post') as any;
+        err.status = response.status;
+        throw err;
       }
 
       onPostCreated();
     } catch (error: any) {
-      console.error('Post creation error:', error);
       if (error?.status === 401) {
         clearAuthSession();
-        Alert.alert(
-          'Session expired',
-          'Please log in again before creating a post.',
-        );
+        Alert.alert('Session expired', 'Please log in again before creating a post.');
+        return;
       }
-      const message =
-        error?.name === 'AbortError'
-          ? 'The server took too long to respond. Please try again.'
-          : error?.message ||
-            'Something went wrong while submitting your post. Please check your connection and try again.';
-      if (error?.status !== 401) {
-        Alert.alert('Could not post', message, [{ text: 'OK' }]);
-      }
+      const message = error?.name === 'AbortError'
+        ? 'The server took too long to respond. Please try again.'
+        : error?.message || 'Something went wrong while submitting your post.';
+      Alert.alert('Could not post', message);
     } finally {
       clearTimeout(timeoutId);
       setIsSubmitting(false);
     }
   };
 
+  const charPercent = Math.min(content.length / 500, 1);
+  const progressColor = charPercent > 0.8 ? '#EF4444' : charPercent > 0.5 ? '#F59E0B' : '#5A5AD8';
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.container}
-      >
-        {/* HEADER */}
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+
+        {/* ── HEADER ─────────────────────────────────────────────────────── */}
         <View style={styles.header}>
-          <Pressable style={styles.backButton} onPress={onBack}>
+          <Pressable style={styles.backBtn} onPress={onBack} hitSlop={10}>
             <Text style={styles.backIcon}>←</Text>
+          </Pressable>
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>New Post</Text>
+            <Text style={styles.headerSub} numberOfLines={1}>
+              {community.emoji} {community.name}
+            </Text>
+          </View>
+          <Pressable
+            style={[styles.postBtn, !isFormValid && styles.postBtnDisabled]}
+            onPress={handleSubmit}
+            disabled={!isFormValid || isSubmitting}
+          >
+            {isSubmitting
+              ? <ActivityIndicator size="small" color="#FFFFFF" />
+              : <Text style={[styles.postBtnText, !isFormValid && styles.postBtnTextDisabled]}>Post</Text>
+            }
           </Pressable>
         </View>
 
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.pageTitle}>Share with the community</Text>
-          <Text style={styles.pageSubtitle}>
-            You can share anonymously. Only post what you feel comfortable
-            sharing.
-          </Text>
 
-          <View style={styles.warningCard}>
-            <Text style={styles.warningEmoji}>🔒</Text>
-            <Text style={styles.warningText}>
-              Please avoid sharing personal contact information or identifying
-              details.
+          {/* ── PRIVACY BANNER ─────────────────────────────────────────────── */}
+          <View style={styles.privacyBanner}>
+            <Text style={styles.privacyEmoji}>🔒</Text>
+            <Text style={styles.privacyText}>
+              Never share personal contact info. Be kind — this is a safe space.
             </Text>
           </View>
 
-          {/* MESSAGE INPUT */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Your message</Text>
+          {/* ── COMPOSER ───────────────────────────────────────────────────── */}
+          <View style={styles.composerCard}>
+            {/* User row */}
+            <View style={styles.composerUserRow}>
+              <View style={styles.composerAvatar}><Text style={{ fontSize: 20 }}>😊</Text></View>
+              <View>
+                <Text style={styles.composerName}>
+                  {isAnonymous ? 'Anonymous Member' : 'You'}
+                </Text>
+                <View style={[styles.audiencePill]}>
+                  <Text style={styles.audienceEmoji}>🌐</Text>
+                  <Text style={styles.audienceText}>Community</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Text input */}
             <TextInput
-              style={styles.textArea}
-              placeholder="Share what's on your mind..."
-              placeholderTextColor="rgba(45, 45, 58, 0.5)"
+              style={styles.composerInput}
+              placeholder="What's on your mind? Share something with the community…"
+              placeholderTextColor="#C0C0D8"
               multiline
               textAlignVertical="top"
               value={content}
-              onChangeText={setContent}
+              onChangeText={updateProgress}
+              onFocus={() => setCharFocus(true)}
+              onBlur={() => setCharFocus(false)}
+              autoFocus
             />
-            <Text style={styles.charCount}>{content.length} characters</Text>
+
+            {/* Media preview */}
+            {selectedImage && (
+              <View style={styles.mediaPreview}>
+                {selectedImage.match(/\.(mp4|mov|webm)$/i) ? (
+                  <Video source={{ uri: selectedImage }} style={styles.mediaImg} useNativeControls resizeMode={ResizeMode.COVER} isLooping />
+                ) : (
+                  <Image source={{ uri: selectedImage }} style={styles.mediaImg} resizeMode="cover" />
+                )}
+                <Pressable style={styles.mediaRemove} onPress={() => setSelectedImage(null)}>
+                  <Text style={styles.mediaRemoveText}>✕</Text>
+                </Pressable>
+              </View>
+            )}
+
+            {/* Character progress */}
+            <View style={styles.composerFooter}>
+              <Pressable style={styles.mediaBtn} onPress={pickImage}>
+                <Text style={styles.mediaBtnIcon}>🖼️</Text>
+                <Text style={styles.mediaBtnText}>Media</Text>
+              </Pressable>
+              <View style={styles.charSection}>
+                <View style={styles.charBar}>
+                  <Animated.View
+                    style={[
+                      styles.charBarFill,
+                      {
+                        width: progressWidth.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+                        backgroundColor: progressColor,
+                      },
+                    ]}
+                  />
+                </View>
+                <Text style={[styles.charCount, { color: charPercent > 0.8 ? '#EF4444' : '#B0B0C8' }]}>
+                  {content.length}/500
+                </Text>
+              </View>
+            </View>
           </View>
 
-          {/* TOPIC SELECTION */}
+          {/* ── TOPIC ──────────────────────────────────────────────────────── */}
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Topic</Text>
-            <View style={styles.pillsContainer}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Topic</Text>
+              <Text style={styles.sectionRequired}>required</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillRow}>
               {TOPICS.map(t => {
-                const isSelected = topic === t;
+                const isSelected = topic === t.label;
                 return (
                   <Pressable
-                    key={t}
+                    key={t.label}
                     style={[styles.pill, isSelected && styles.pillSelected]}
-                    onPress={() => setTopic(t)}
+                    onPress={() => setTopic(t.label)}
                   >
-                    <Text
-                      style={[
-                        styles.pillText,
-                        isSelected && styles.pillTextSelected,
-                      ]}
-                    >
-                      {t}
-                    </Text>
+                    <Text style={styles.pillEmoji}>{t.emoji}</Text>
+                    <Text style={[styles.pillText, isSelected && styles.pillTextSelected]}>{t.label}</Text>
                   </Pressable>
                 );
               })}
-            </View>
+            </ScrollView>
           </View>
 
-          {/* CONTENT NOTE SELECTION */}
+          {/* ── CONTENT NOTE ───────────────────────────────────────────────── */}
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Content note (optional)</Text>
-            <View style={styles.pillsContainer}>
-              {CONTENT_NOTES.map(note => {
-                const isSelected = contentNote === note;
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Content note</Text>
+              <Text style={styles.sectionOptional}>optional</Text>
+            </View>
+            <Text style={styles.sectionHint}>Let others know if this post touches a sensitive topic</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillRow}>
+              {CONTENT_NOTES.map(n => {
+                const isSelected = contentNote === n.label;
                 return (
                   <Pressable
-                    key={note}
+                    key={n.label}
                     style={[styles.pill, isSelected && styles.pillNoteSelected]}
-                    onPress={() => setContentNote(note)}
+                    onPress={() => setContentNote(n.label)}
                   >
-                    <Text
-                      style={[
-                        styles.pillText,
-                        isSelected && styles.pillNoteTextSelected,
-                      ]}
-                    >
-                      {note}
-                    </Text>
+                    <Text style={styles.pillEmoji}>{n.emoji}</Text>
+                    <Text style={[styles.pillText, isSelected && styles.pillNoteTextSelected]}>{n.label}</Text>
                   </Pressable>
                 );
               })}
-            </View>
+            </ScrollView>
           </View>
 
-          {/* ANONYMOUS TOGGLE */}
-          <View style={styles.toggleContainer}>
-            <View style={styles.toggleTextContainer}>
-              <Text style={styles.toggleTitle}>Post anonymously</Text>
-              <Text style={styles.toggleSubtitle}>
-                Your name will not be shown
-              </Text>
+          {/* ── ANONYMOUS TOGGLE ───────────────────────────────────────────── */}
+          <Pressable style={styles.anonCard} onPress={() => setIsAnonymous(v => !v)}>
+            <View style={styles.anonLeft}>
+              <View style={[styles.anonIconWrap, { backgroundColor: isAnonymous ? '#EEEEFF' : '#F2F3F8' }]}>
+                <Text style={{ fontSize: 18 }}>{isAnonymous ? '🎭' : '😊'}</Text>
+              </View>
+              <View>
+                <Text style={styles.anonTitle}>
+                  {isAnonymous ? 'Posting anonymously' : 'Posting with your name'}
+                </Text>
+                <Text style={styles.anonSub}>
+                  {isAnonymous ? 'Your identity is hidden from others' : 'Community members will see your name'}
+                </Text>
+              </View>
             </View>
-            <Switch
-              trackColor={{ false: '#E8E8F0', true: '#2D2D3A' }}
-              thumbColor={'#FFFFFF'}
-              ios_backgroundColor="#E8E8F0"
-              onValueChange={setIsAnonymous}
-              value={isAnonymous}
-            />
-          </View>
+            <View style={[styles.toggle, isAnonymous && styles.toggleOn]}>
+              <View style={[styles.toggleThumb, isAnonymous && styles.toggleThumbOn]} />
+            </View>
+          </Pressable>
 
-          {/* SUBMIT BUTTON */}
+          {/* ── POST BUTTON (bottom) ────────────────────────────────────────── */}
           <Pressable
-            style={[
-              styles.submitButtonContainer,
-              !isFormValid && styles.submitButtonDisabled,
-            ]}
+            style={[styles.submitBtn, !isFormValid && styles.submitBtnDisabled]}
             onPress={handleSubmit}
             disabled={!isFormValid || isSubmitting}
           >
-            <LinearGradient
-              colors={
-                isFormValid ? ['#C5DFF8', '#C8EDD5'] : ['#F7F7FB', '#F7F7FB']
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.submitButtonGradient}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color="#2D2D3A" />
-              ) : (
-                <Text
-                  style={[
-                    styles.submitButtonText,
-                    !isFormValid && styles.submitButtonTextDisabled,
-                  ]}
-                >
-                  {content.trim().length > 0 ? 'Post' : 'Write something first'}
-                </Text>
-              )}
-            </LinearGradient>
+            {isSubmitting ? (
+              <ActivityIndicator color={isFormValid ? '#FFFFFF' : '#B0B0C8'} />
+            ) : (
+              <Text style={[styles.submitBtnText, !isFormValid && styles.submitBtnTextDisabled]}>
+                {content.trim().length > 0 ? '✓ Share with Community' : 'Write something first…'}
+              </Text>
+            )}
           </Pressable>
+
+          <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -274,201 +372,164 @@ export default function CreatePostScreen({
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#FFF',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#FFF',
-  },
+  safeArea: { flex: 1, backgroundColor: '#F5F5FA' },
+
+  // Header
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 12,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    backgroundColor: '#F7F7FB',
-    borderWidth: 1.5,
-    borderColor: '#E8E8F0',
-    borderRadius: 12,
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F1F8',
+    gap: 12,
   },
-  backIcon: {
-    fontSize: 18,
-    color: '#6B6B80',
-    fontWeight: '600',
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 72,
-  },
-  pageTitle: {
-    fontFamily: 'Nunito',
-    fontWeight: '800',
-    fontSize: 22,
-    lineHeight: 33,
-    letterSpacing: -0.44,
-    color: '#2D2D3A',
-    marginTop: 12,
-  },
-  pageSubtitle: {
-    fontFamily: 'Nunito',
-    fontWeight: '500',
-    fontSize: 14,
-    lineHeight: 21,
-    color: '#6B6B80',
-    marginTop: 6,
-  },
-  warningCard: {
+  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F2F3F8', alignItems: 'center', justifyContent: 'center' },
+  backIcon: { fontSize: 18, color: '#1A1A2E', fontWeight: '700' },
+  headerCenter: { flex: 1 },
+  headerTitle: { fontSize: 17, fontWeight: '800', color: '#0D0D1A', letterSpacing: -0.3 },
+  headerSub: { fontSize: 11, color: '#A0A0B8', fontWeight: '500', marginTop: 1 },
+  postBtn: { backgroundColor: '#5A5AD8', paddingHorizontal: 20, paddingVertical: 9, borderRadius: 20, minWidth: 60, alignItems: 'center' },
+  postBtnDisabled: { backgroundColor: '#E8EAEF' },
+  postBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+  postBtnTextDisabled: { color: '#B0B0C8' },
+
+  scrollContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 },
+
+  // Privacy banner
+  privacyBanner: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: 12,
-    gap: 8,
-    backgroundColor: '#F7F7FB',
-    borderWidth: 1.5,
-    borderColor: '#E8E8F0',
-    borderRadius: 14,
-    marginTop: 24,
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#F8F5FF',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E4DAFF',
   },
-  warningEmoji: {
-    fontSize: 14,
-    marginTop: 2,
-  },
-  warningText: {
-    flex: 1,
-    fontFamily: 'Nunito',
-    fontWeight: '500',
-    fontSize: 12,
-    lineHeight: 18,
-    color: '#6B6B80',
-  },
-  section: {
-    marginTop: 24,
-  },
-  sectionLabel: {
-    fontFamily: 'Nunito',
-    fontWeight: '700',
-    fontSize: 13,
-    lineHeight: 20,
-    color: '#2D2D3A',
-    marginBottom: 8,
-  },
-  textArea: {
-    height: 150,
-    backgroundColor: '#F7F7FB',
-    borderWidth: 1.5,
-    borderColor: '#E8E8F0',
-    borderRadius: 14,
+  privacyEmoji: { fontSize: 15 },
+  privacyText: { flex: 1, fontSize: 12, color: '#5A3A9A', fontWeight: '500', lineHeight: 18 },
+
+  // Composer card
+  composerCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
     padding: 16,
-    fontFamily: 'Nunito',
-    fontWeight: '500',
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#ECEEF8',
+    shadowColor: '#5A5AD8',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  composerUserRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+  composerAvatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#C8E6FA', alignItems: 'center', justifyContent: 'center' },
+  composerName: { fontSize: 14, fontWeight: '700', color: '#1A1A2E' },
+  audiencePill: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3, backgroundColor: '#EEEEFF', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, alignSelf: 'flex-start' },
+  audienceEmoji: { fontSize: 10 },
+  audienceText: { fontSize: 10, fontWeight: '700', color: '#5A5AD8' },
+  composerInput: {
+    minHeight: 130,
     fontSize: 15,
-    color: '#2D2D3A',
+    color: '#1A1A2E',
+    lineHeight: 24,
+    fontWeight: '400',
+    marginBottom: 14,
   },
-  charCount: {
-    fontFamily: 'Nunito',
-    fontWeight: '500',
-    fontSize: 12,
-    lineHeight: 18,
-    color: '#A0A0B8',
-    textAlign: 'right',
-    marginTop: 6,
+  mediaPreview: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 14,
+    position: 'relative',
   },
-  pillsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  mediaImg: { width: '100%', height: 200, borderRadius: 12 },
+  mediaRemove: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  mediaRemoveText: { color: '#FFF', fontSize: 12, fontWeight: '800' },
+  composerFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  mediaBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F2F3F8', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20 },
+  mediaBtnIcon: { fontSize: 14 },
+  mediaBtnText: { fontSize: 12, fontWeight: '700', color: '#6B6B80' },
+  charSection: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  charBar: { width: 72, height: 4, borderRadius: 2, backgroundColor: '#F0F1F8', overflow: 'hidden' },
+  charBarFill: { height: '100%', borderRadius: 2 },
+  charCount: { fontSize: 11, fontWeight: '600' },
+
+  // Section
+  section: { marginBottom: 14 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  sectionTitle: { fontSize: 13, fontWeight: '800', color: '#1A1A2E', letterSpacing: -0.1 },
+  sectionRequired: { fontSize: 10, fontWeight: '700', color: '#EF4444', backgroundColor: '#FEE2E2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  sectionOptional: { fontSize: 10, fontWeight: '700', color: '#6B7280', backgroundColor: '#F3F4F6', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  sectionHint: { fontSize: 12, color: '#A0A0B8', fontWeight: '500', marginBottom: 10 },
+  pillRow: { flexDirection: 'row', gap: 8, paddingVertical: 4, paddingRight: 16 },
   pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: '#E8E8F0',
-    borderRadius: 17,
-    paddingVertical: 6,
+    borderColor: '#E8EAEF',
+    borderRadius: 20,
+    paddingVertical: 8,
     paddingHorizontal: 14,
   },
-  pillSelected: {
-    backgroundColor: '#2D2D3A',
-    borderColor: '#2D2D3A',
-  },
-  pillText: {
-    fontFamily: 'Nunito',
-    fontWeight: '700',
-    fontSize: 13,
-    color: '#6B6B80',
-  },
-  pillTextSelected: {
-    color: '#FFFFFF',
-  },
-  pillNoteSelected: {
-    backgroundColor: '#FDDCB5',
-    borderColor: '#FDDCB5',
-  },
-  pillNoteTextSelected: {
-    color: '#2D2D3A',
-  },
-  toggleContainer: {
+  pillSelected: { backgroundColor: '#1A1A2E', borderColor: '#1A1A2E' },
+  pillNoteSelected: { backgroundColor: '#FFF7ED', borderColor: '#F59E0B' },
+  pillEmoji: { fontSize: 14 },
+  pillText: { fontSize: 13, fontWeight: '600', color: '#6B6B80' },
+  pillTextSelected: { color: '#FFFFFF', fontWeight: '700' },
+  pillNoteTextSelected: { color: '#92400E', fontWeight: '700' },
+
+  // Anonymous card
+  anonCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 14,
-    backgroundColor: '#F7F7FB',
-    borderWidth: 1.5,
-    borderColor: '#E8E8F0',
+    backgroundColor: '#FFFFFF',
     borderRadius: 14,
-    marginTop: 20,
-    marginBottom: 28,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#ECEEF8',
   },
-  toggleTextContainer: {
-    flex: 1,
-  },
-  toggleTitle: {
-    fontFamily: 'Nunito',
-    fontWeight: '700',
-    fontSize: 14,
-    lineHeight: 21,
-    color: '#2D2D3A',
-  },
-  toggleSubtitle: {
-    fontFamily: 'Nunito',
-    fontWeight: '500',
-    fontSize: 12,
-    lineHeight: 18,
-    color: '#6B6B80',
-    marginTop: 2,
-  },
-  submitButtonContainer: {
-    height: 56,
-    borderRadius: 28,
-    shadowColor: '#C5DFF8',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 24,
+  anonLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  anonIconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  anonTitle: { fontSize: 14, fontWeight: '700', color: '#1A1A2E' },
+  anonSub: { fontSize: 11, color: '#A0A0B8', fontWeight: '500', marginTop: 2 },
+  toggle: { width: 48, height: 26, borderRadius: 13, backgroundColor: '#E0E1EC', justifyContent: 'center', paddingHorizontal: 3 },
+  toggleOn: { backgroundColor: '#5A5AD8' },
+  toggleThumb: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 2, elevation: 2 },
+  toggleThumbOn: { alignSelf: 'flex-end' },
+
+  // Submit button
+  submitBtn: {
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#5A5AD8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#5A5AD8',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
     elevation: 8,
   },
-  submitButtonDisabled: {
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  submitButtonGradient: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 28,
-  },
-  submitButtonText: {
-    fontFamily: 'Nunito',
-    fontWeight: '800',
-    fontSize: 17,
-    lineHeight: 26,
-    letterSpacing: -0.17,
-    color: '#2D2D3A',
-  },
-  submitButtonTextDisabled: {
-    color: '#A0A0B8',
-  },
+  submitBtnDisabled: { backgroundColor: '#E8EAEF', shadowOpacity: 0, elevation: 0 },
+  submitBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', letterSpacing: -0.2 },
+  submitBtnTextDisabled: { color: '#B0B0C8' },
 });
