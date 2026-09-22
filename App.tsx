@@ -27,6 +27,7 @@ import GroupDiscussionScreen, {
 } from './src/screens/GroupDiscussionScreen';
 import PostDetailScreen from './src/screens/PostDetailScreen';
 import CreatePostScreen from './src/screens/CreatePostScreen';
+import FeelingPickerScreen from './src/screens/FeelingPickerScreen';
 import CreateGroupScreen from './src/screens/Groups/CreateGroupScreen';
 
 import EmergencySupportScreen from './src/screens/EmergencySupportScreen';
@@ -76,6 +77,7 @@ type GroupsView =
   | 'discussion'
   | 'postDetail'
   | 'createPost'
+  | 'selectFeeling'
   | 'createGroup';
 
 // ─── Community Data ───────────────────────────────────────────────────────────
@@ -348,6 +350,11 @@ function App() {
     setGroupsView('createPost');
   };
 
+  const handleSelectFeeling = (community: Community) => {
+    setSelectedCommunity(community);
+    setGroupsView('selectFeeling');
+  };
+
   const handleCreateGroup = () => {
     setGroupsView('createGroup');
   };
@@ -371,6 +378,7 @@ function App() {
     (groupsView === 'discussion' ||
       groupsView === 'postDetail' ||
       groupsView === 'createPost' ||
+      groupsView === 'selectFeeling' ||
       groupsView === 'createGroup');
 
   const isInChatView = activeTab === 'Messages' && messagesView === 'chat';
@@ -456,6 +464,7 @@ function App() {
             community={selectedCommunity}
             onBack={handleBackToDetail}
             onCreatePost={handleCreatePost}
+            onSelectFeeling={handleSelectFeeling}
             onPostPress={handlePostPress}
             onOpenEmergencySupport={handleOpenEmergencySupport}
           />
@@ -477,6 +486,17 @@ function App() {
       if (groupsView === 'createPost' && selectedCommunity) {
         return (
           <CreatePostScreen
+            community={selectedCommunity}
+            onBack={handleBackToDiscussion}
+            onPostCreated={handleBackToDiscussion}
+          />
+        );
+      }
+
+      // Feeling Picker
+      if (groupsView === 'selectFeeling' && selectedCommunity) {
+        return (
+          <FeelingPickerScreen
             community={selectedCommunity}
             onBack={handleBackToDiscussion}
             onPostCreated={handleBackToDiscussion}
