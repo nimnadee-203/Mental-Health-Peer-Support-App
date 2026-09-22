@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -12,11 +12,13 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Video, ResizeMode } from 'expo-av';
 import type { Post } from './GroupDiscussionScreen';
 
 import { API_BASE } from '../config/api';
 import ReportModal from '../components/ReportModal';
+import SharePostModal from '../components/SharePostModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface Comment {
@@ -70,6 +72,7 @@ export default function PostDetailScreen({
   const [isPostHidden, setIsPostHidden] = useState(false);
   const [hiddenCommentIds, setHiddenCommentIds] = useState<string[]>([]);
   const [blockedAuthors, setBlockedAuthors] = useState<string[]>([]);
+  const [sharingPost, setSharingPost] = useState<Post | null>(null);
 
   useEffect(() => {
     fetchComments();
@@ -231,6 +234,23 @@ export default function PostDetailScreen({
 
               <View style={styles.postContentContainer}>
                 <Text style={styles.postContent}>{post.content}</Text>
+                {post.imageUrl && (
+                  post.imageUrl.match(/\.(mp4|mov|webm|avi|mkv)$/i) ? (
+                    <Video
+                      source={{ uri: post.imageUrl }}
+                      style={styles.postImage}
+                      useNativeControls
+                      resizeMode={ResizeMode.COVER}
+                      isLooping
+                    />
+                  ) : (
+                    <Image
+                      source={{ uri: post.imageUrl }}
+                      style={styles.postImage}
+                      resizeMode="cover"
+                    />
+                  )
+                )}
               </View>
 
               <View style={styles.postActions}>
@@ -243,6 +263,12 @@ export default function PostDetailScreen({
                   <Text style={styles.actionCount}>{comments.length}</Text>
                 </View>
                 <View style={styles.flexSpacer} />
+                <Pressable
+                  style={styles.reportIconButton}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  onPress={() => setSharingPost(post)}>
+                  <Text style={styles.reportIcon}>📤</Text>
+                </Pressable>
                 <Pressable
                   style={styles.reportIconButton}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -371,6 +397,16 @@ export default function PostDetailScreen({
           />
         )}
 
+        {/* SHARE MODAL */}
+        {sharingPost && (
+          <SharePostModal
+            visible={!!sharingPost}
+            post={sharingPost}
+            groupId={post.groupId}
+            onClose={() => setSharingPost(null)}
+          />
+        )}
+
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -493,8 +529,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito',
     fontWeight: '500',
     fontSize: 16,
-    lineHeight: 26,
+    lineHeight: 24,
     color: '#2D2D3A',
+  },
+  postImage: {
+    width: '100%',
+    height: 250,
+    borderRadius: 14,
+    marginTop: 16,
   },
   postActions: {
     flexDirection: 'row',

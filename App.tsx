@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { StatusBar, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import BottomNavigation from './src/components/BottomNavigation';
 
@@ -194,6 +195,27 @@ function App() {
   }, []);
 
   useEffect(() => {
+    const loadJoinedGroups = async () => {
+      const userId = getAuthUserId();
+      if (!userId) {
+        setJoinedGroupIds([]);
+        return;
+      }
+      try {
+        const stored = await AsyncStorage.getItem(`@joined_groups_${userId}`);
+        if (stored) {
+          setJoinedGroupIds(JSON.parse(stored));
+        } else {
+          setJoinedGroupIds([]);
+        }
+      } catch (err) {
+        console.warn('Failed to load joined groups:', err);
+      }
+    };
+    loadJoinedGroups();
+  }, [activeScreen]); // Reload when screen changes (e.g., after login)
+
+  useEffect(() => {
     let isMounted = true;
 
     getResources()
@@ -329,10 +351,17 @@ function App() {
     setGroupsView('detail');
   };
 
-  const handleJoinGroup = (communityId: string) => {
-    setJoinedGroupIds(prev =>
-      prev.includes(communityId) ? prev : [...prev, communityId],
-    );
+  const handleJoinGroup = async (communityId: string) => {
+    const userId = getAuthUserId();
+    setJoinedGroupIds(prev => {
+      const next = prev.includes(communityId) ? prev : [...prev, communityId];
+      if (userId) {
+        AsyncStorage.setItem(`@joined_groups_${userId}`, JSON.stringify(next)).catch(err =>
+          console.warn('Failed to save joined groups:', err)
+        );
+      }
+      return next;
+    });
   };
 
   const handleEnterCommunity = (community: Community) => {
@@ -573,6 +602,7 @@ function App() {
             }
             onLogout={() => {
               setAuthUserId(null);
+              setJoinedGroupIds([]);
               setActiveScreen('auth');
               setActiveTab('Home');
             }}

@@ -15,6 +15,7 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { COMMUNITY_API_BASE } from '../config/api';
 import ReportModal from '../components/ReportModal';
+import SharePostModal from '../components/SharePostModal';
 
 const REQUEST_TIMEOUT_MS = 10000;
 
@@ -155,8 +156,8 @@ const teamSt = StyleSheet.create({
 });
 
 // ─── PostCard ─────────────────────────────────────────────────────────────────
-function PostCard({ post, isLiked, onLike, onPress, onReport }: {
-  post: Post; isLiked: boolean; onLike: () => void; onPress: () => void; onReport: () => void;
+function PostCard({ post, isLiked, onLike, onPress, onReport, onShare }: {
+  post: Post; isLiked: boolean; onLike: () => void; onPress: () => void; onReport: () => void; onShare: () => void;
 }) {
   const [bg, fg] = getAvatarColors(post.authorName);
   // Show real name only when NOT anonymous, else show 'Anonymous'
@@ -252,7 +253,7 @@ function PostCard({ post, isLiked, onLike, onPress, onReport }: {
           <Text style={postSt.actionLabel}>Comment</Text>
         </Pressable>
         <View style={postSt.actionSep} />
-        <Pressable style={postSt.actionBtn}>
+        <Pressable style={postSt.actionBtn} onPress={e => { e?.stopPropagation?.(); onShare(); }}>
           <Feather name="share-2" size={16} color="#9CA3AF" />
           <Text style={postSt.actionLabel}>Share</Text>
         </Pressable>
@@ -302,6 +303,7 @@ export default function GroupDiscussionScreen({
   const [team, setTeam] = useState<CommunityTeam>({ moderators: [], professionals: [] });
   const [teamLoading, setTeamLoading] = useState(true);
   const [reportingPost, setReportingPost] = useState<Post | null>(null);
+  const [sharingPost, setSharingPost] = useState<Post | null>(null);
   const [hiddenPostIds, setHiddenPostIds] = useState<string[]>([]);
   const [blockedAuthors, setBlockedAuthors] = useState<string[]>([]);
   const [likedPostIds, setLikedPostIds] = useState<string[]>([]);
@@ -540,6 +542,7 @@ export default function GroupDiscussionScreen({
                 onLike={() => handleLike(post._id)}
                 onPress={() => onPostPress(post)}
                 onReport={() => setReportingPost(post)}
+                onShare={() => setSharingPost(post)}
               />
             );
           })
@@ -559,6 +562,15 @@ export default function GroupDiscussionScreen({
           onClose={() => setReportingPost(null)}
           onReportSuccess={action => handleReportAction(action, reportingPost)}
           onOpenEmergencySupport={onOpenEmergencySupport}
+        />
+      )}
+
+      {sharingPost && (
+        <SharePostModal
+          visible={!!sharingPost}
+          post={sharingPost}
+          groupId={community._id}
+          onClose={() => setSharingPost(null)}
         />
       )}
     </SafeAreaView>
