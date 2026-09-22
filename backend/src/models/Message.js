@@ -24,8 +24,13 @@ const messageSchema = new mongoose.Schema(
 
     text: {
       type: String,
-      required: true,
+      default: '',
       trim: true,
+    },
+
+    mediaUrl: {
+      type: String,
+      default: null,
     },
 
     // true  → bubble appears on the right (current user's message)

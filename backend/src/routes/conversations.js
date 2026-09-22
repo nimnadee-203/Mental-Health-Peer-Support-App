@@ -4,10 +4,13 @@ const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 
 // ── GET /api/conversations ────────────────────────────────────────────────────
-// Returns all conversations sorted by most-recent message first.
-router.get('/', async (_req, res) => {
+// Returns all conversations sorted by most-recent message first. If userId is provided, filter by participants.
+router.get('/', async (req, res) => {
   try {
-    const conversations = await Conversation.find()
+    const { userId } = req.query;
+    const query = userId ? { participants: { $in: [userId] } } : {};
+    
+    const conversations = await Conversation.find(query)
       .sort({ lastMessageAt: -1, createdAt: -1 })
       .lean();
     res.json(conversations);
@@ -58,10 +61,10 @@ router.get('/:id/messages', async (req, res) => {
 // Sends a new message and updates the conversation's lastMessage snapshot.
 router.post('/:id/messages', async (req, res) => {
   try {
-    const { senderName, text, isOwn } = req.body;
+    const { senderName, text, isOwn, mediaUrl } = req.body;
 
-    if (!senderName || !text) {
-      return res.status(400).json({ error: 'senderName and text are required' });
+    if (!senderName || (!text && !mediaUrl)) {
+      return res.status(400).json({ error: 'senderName and either text or mediaUrl are required' });
     }
 
     const sentAt = new Date();
@@ -70,15 +73,18 @@ router.post('/:id/messages', async (req, res) => {
     const message = await Message.create({
       conversationId: req.params.id,
       senderName,
-      text,
+      text: text || '',
+      mediaUrl: mediaUrl || null,
       isOwn: isOwn ?? true,
       sentAt,
     });
 
     // Update the conversation's last-message snapshot and clear unread count
     // (in a real app unreadCount would only be reset for the reading user)
+    const snapshotText = text ? text : (mediaUrl ? 'Sent an attachment' : '');
+    
     await Conversation.findByIdAndUpdate(req.params.id, {
-      lastMessageText: text,
+      lastMessageText: snapshotText,
       lastMessageSender: senderName,
       lastMessageAt: sentAt,
       unreadCount: 0,
