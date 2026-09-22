@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { StatusBar, useColorScheme, View } from 'react-native';
+import { Pressable, StatusBar, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -86,8 +86,23 @@ type GroupsView =
 const INITIAL_COMMUNITIES: Community[] = [
   {
     _id: '1',
-    name: 'Anxiety & Stress Support',
+    name: 'Student Stress Support',
+    category: 'Academic Pressure',
+    topics: ['Stress', 'Academic pressure'],
+    emoji: '📚',
+    bgColor: '#EFF6FF',
+    description:
+      'Manage exam pressure, deadlines, and study burnout with peer advice.',
+    guidelines: 'Share strategies constructively.',
+    memberCount: 1540,
+    memberAvatarColors: ['#3B82F6', '#60A5FA', '#93C5FD'],
+    isJoined: false,
+  },
+  {
+    _id: '2',
+    name: 'Anxiety Support Circle',
     category: 'Stress & Anxiety',
+    topics: ['Anxiety', 'Stress'],
     emoji: '🌿',
     bgColor: '#E6F4EA',
     description:
@@ -98,9 +113,52 @@ const INITIAL_COMMUNITIES: Community[] = [
     isJoined: false,
   },
   {
-    _id: '2',
+    _id: '3',
+    name: 'Relationship Support',
+    category: 'Relationships',
+    topics: ['Relationships', 'Relationship problems'],
+    emoji: '🤝',
+    bgColor: '#FCE7F3',
+    description:
+      'Discuss family dynamics, friendships, and relationship boundaries.',
+    guidelines: 'Respect privacy and offer empathy.',
+    memberCount: 960,
+    memberAvatarColors: ['#EC4899', '#F472B6', '#FBCFE8'],
+    isJoined: false,
+  },
+  {
+    _id: '4',
+    name: 'Grief Support Group',
+    category: 'Grief',
+    topics: ['Grief', 'Loss'],
+    emoji: '🕯️',
+    bgColor: '#F3F4F6',
+    description:
+      'Compassionate listening and peer comfort for navigating loss.',
+    guidelines: 'Gentle, compassionate space.',
+    memberCount: 680,
+    memberAvatarColors: ['#6B7280', '#9CA3AF', '#D1D5DB'],
+    isJoined: false,
+  },
+  {
+    _id: '5',
+    name: 'Self-Confidence Group',
+    category: 'Self-Care',
+    topics: ['Self-confidence', 'General wellbeing'],
+    emoji: '✨',
+    bgColor: '#FEF3C7',
+    description:
+      'Building self-worth, overcoming imposter syndrome, and personal growth.',
+    guidelines: 'Encouraging and uplifting discussions.',
+    memberCount: 1210,
+    memberAvatarColors: ['#F59E0B', '#FBBF24', '#FDE68A'],
+    isJoined: false,
+  },
+  {
+    _id: '6',
     name: 'Daily Mindfulness & Healing',
     category: 'Mindfulness',
+    topics: ['Mindfulness', 'General wellbeing'],
     emoji: '🧘',
     bgColor: '#E8F0FE',
     description:
@@ -111,9 +169,10 @@ const INITIAL_COMMUNITIES: Community[] = [
     isJoined: false,
   },
   {
-    _id: '3',
+    _id: '7',
     name: 'Depression Recovery Peers',
     category: 'Depression',
+    topics: ['Depression', 'Self-Care', 'Loneliness'],
     emoji: '☀️',
     bgColor: '#FEF3C7',
     description:
@@ -135,7 +194,7 @@ function App() {
   // ── Tab Navigation ─────────────────────────────────────────────────────────
 
   const [activeTab, setActiveTab] = useState<
-    'Home' | 'Resources' | 'Groups' | 'Messages' | 'Profile'
+    'Home' | 'Resources' | 'Groups' | 'Messages' | 'Activities' | 'Profile'
   >('Home');
 
   // ── Resources Navigation ───────────────────────────────────────────────────
@@ -278,13 +337,14 @@ function App() {
 
   // ── Tab Change ──────────────────────────────────────────────────────────────
   const changeTab = (
-    tab: 'Home' | 'Resources' | 'Groups' | 'Messages' | 'Profile',
+    tab: 'Home' | 'Resources' | 'Groups' | 'Messages' | 'Activities' | 'Profile',
   ) => {
     setActiveTab(tab);
 
     // Close resource-related screens
     setIsArticleOpen(false);
-    setIsActivityOpen(false);
+    setIsActivityOpen(tab === 'Activities');
+    setSelectedActivity(undefined);
     setIsEmergencyOpen(false);
     setIsCreateResourceOpen(false);
 
@@ -414,7 +474,7 @@ function App() {
 
   const hideBottomNav =
     isArticleOpen ||
-    isActivityOpen ||
+    (isActivityOpen && !!selectedActivity) ||
     isEmergencyOpen ||
     isCreateResourceOpen ||
     isGroupDeepView ||
@@ -590,6 +650,11 @@ function App() {
           />
         );
 
+      // ── Activities ─────────────────────────────────────────────────────────
+
+      case 'Activities':
+        return null;
+
       // ── Profile ────────────────────────────────────────────────────────────
 
       case 'Profile':
@@ -598,7 +663,7 @@ function App() {
             onBack={() => changeTab('Home')}
             onNavigateToAuth={() => setActiveScreen('auth')}
             onOpenModeration={
-              getAuthRole() === 'user' ? undefined : () => setActiveScreen('moderation')
+              getAuthRole() === 'moderator' ? () => setActiveScreen('moderation') : undefined
             }
             onLogout={() => {
               setAuthUserId(null);
@@ -613,7 +678,7 @@ function App() {
 
       case 'Home':
       default:
-        return <HomeScreen onOpenProfile={() => changeTab('Profile')} />;
+        return <HomeScreen />;
     }
   }, [
     activeTab,
@@ -660,7 +725,7 @@ function App() {
         />
       ) : activeScreen === 'moderation' ? (
         <ModeratorDashboardScreen
-          role={getAuthRole() === 'admin' ? 'admin' : 'moderator'}
+          role="moderator"
           onBack={() => setActiveScreen('home')}
         />
       ) : activeScreen === 'onboarding' ? (
@@ -686,6 +751,15 @@ function App() {
         <>
           {screen}
 
+          <Pressable
+            accessibilityLabel="Open profile"
+            accessibilityRole="button"
+            onPress={() => changeTab('Profile')}
+            style={styles.profileShortcut}
+          >
+            <Text style={styles.profileShortcutText}>P</Text>
+          </Pressable>
+
           {!hideBottomNav && (
             <BottomNavigation
               activeTab={activeTab}
@@ -700,3 +774,30 @@ function App() {
 }
 
 export default App;
+
+const styles = StyleSheet.create({
+  profileShortcut: {
+    alignItems: 'center',
+    backgroundColor: '#E6F4EA',
+    borderColor: '#FFFFFF',
+    borderRadius: 22,
+    borderWidth: 2,
+    elevation: 5,
+    height: 44,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 18,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 5,
+    top: 12,
+    width: 44,
+    zIndex: 20,
+  },
+  profileShortcutText: {
+    color: '#276A5A',
+    fontSize: 17,
+    fontWeight: '900',
+  },
+});

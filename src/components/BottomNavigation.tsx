@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
-type TabName = 'Home' | 'Resources' | 'Groups' | 'Messages' | 'Profile';
+type TabName = 'Home' | 'Resources' | 'Groups' | 'Messages' | 'Activities';
 
 type BottomNavigationProps = {
   activeTab: TabName;
@@ -11,11 +11,11 @@ type BottomNavigationProps = {
 };
 
 const navItems: Array<{ label: TabName; icon: string; activeIcon: string }> = [
-  { label: 'Home',      icon: '⌂',  activeIcon: '⌂'  },
-  { label: 'Resources', icon: '✦',  activeIcon: '✦'  },
-  { label: 'Groups',    icon: '◎',  activeIcon: '◎'  },
-  { label: 'Messages',  icon: '✉',  activeIcon: '✉'  },
-  { label: 'Profile',   icon: '◌',  activeIcon: '◌'  },
+  { label: 'Home',       icon: '⌂', activeIcon: '⌂' },
+  { label: 'Resources',  icon: '✦', activeIcon: '✦' },
+  { label: 'Groups',     icon: '◎', activeIcon: '◎' },
+  { label: 'Messages',   icon: '✉', activeIcon: '✉' },
+  { label: 'Activities', icon: '✦', activeIcon: '✦' },
 ];
 
 // ─── Single Nav Tab ───────────────────────────────────────────────────────────

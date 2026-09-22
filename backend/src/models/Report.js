@@ -65,6 +65,12 @@ const reportSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    moderationNote: {
+      type: String,
+      default: '',
+      trim: true,
+      maxlength: 500,
+    },
     status: {
       type: String,
       enum: ['pending', 'under_review', 'resolved', 'dismissed'],

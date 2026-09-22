@@ -5,13 +5,30 @@ export type ModerationStatus = 'pending' | 'under_review' | 'resolved' | 'dismis
 
 export interface ModerationReport {
   _id: string;
+  targetType: 'Post' | 'Comment';
   category: string;
   reasonNote?: string;
   targetContentPreview?: string;
   targetId: string;
   targetAuthor?: string;
   targetAuthorId?: string;
+  moderationNote?: string;
+  moderatorAction?: string;
+  reviewedAt?: string;
+  currentPostStatus?: 'visible' | 'hidden' | 'unavailable';
   status: ModerationStatus;
+  createdAt: string;
+}
+
+export interface ModerationHistoryEntry {
+  _id: string;
+  action: string;
+  targetType: string;
+  targetId: string;
+  reportId?: string;
+  reason?: string;
+  moderatorId?: string | { fullName?: string };
+  moderator?: { fullName?: string };
   createdAt: string;
 }
 
@@ -50,26 +67,35 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export const getModerationStats = () =>
   request<{ stats: ModerationStats }>('/moderation/stats');
 
-export const getModerationReports = (status = 'all') =>
+export const getModerationReports = (status = 'all', search = '') =>
   request<{ reports: ModerationReport[] }>(
-    `/moderation/reports${status === 'all' ? '' : `?status=${status}`}`,
+    `/moderation/reports?${[
+      status !== 'all' ? `status=${encodeURIComponent(status)}` : '',
+      search.trim() ? `search=${encodeURIComponent(search.trim())}` : '',
+    ].filter(Boolean).join('&')}`,
   );
 
-export const updateModerationReport = (id: string, status: ModerationStatus) =>
+export const updateModerationReport = (id: string, status: ModerationStatus, reason = '') =>
   request<{ report: ModerationReport }>(`/moderation/reports/${id}`, {
     method: 'PATCH',
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, reason }),
   });
 
 export const moderatePost = (
   id: string,
   action: 'hide' | 'restore',
   reportId?: string,
+  reason = '',
 ) =>
   request(`/moderation/posts/${id}/${action}`, {
     method: 'PATCH',
-    body: JSON.stringify({ reportId }),
+    body: JSON.stringify({ reportId, reason }),
   });
+
+export const getModerationHistory = (reportId?: string) =>
+  request<{ history: ModerationHistoryEntry[] }>(
+    `/moderation/history${reportId ? `?reportId=${encodeURIComponent(reportId)}` : ''}`,
+  );
 
 export const getModerationUsers = () =>
   request<{ users: ModerationUser[] }>('/moderation/users');
