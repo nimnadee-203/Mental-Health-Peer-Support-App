@@ -238,8 +238,7 @@ function App() {
 
   const [groupsView, setGroupsView] = useState<GroupsView>('home');
 
-  const [communities, setCommunities] =
-    useState<Community[]>(INITIAL_COMMUNITIES);
+  const [communities, setCommunities] = useState<Community[]>([]);
 
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(
     null,
@@ -308,13 +307,14 @@ function App() {
       }
 
       const data = JSON.parse(text);
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setCommunities(data);
       } else {
-        setCommunities(INITIAL_COMMUNITIES);
+        setCommunities([]);
       }
     } catch (error) {
-      setCommunities(INITIAL_COMMUNITIES);
+      console.warn('Failed to fetch communities:', error);
+      setCommunities([]);
     }
   };
 
