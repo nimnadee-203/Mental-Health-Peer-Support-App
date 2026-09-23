@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { AUTH_API_BASE } from '../config/api';
+import { AUTH_BASE } from '../config/api';
 import { getAuthToken } from '../api/authStore';
 import { UserProfile } from '../types/user';
 
@@ -39,7 +39,7 @@ export default function AdminUsersScreen({ onBack }: AdminUsersScreenProps) {
     setError(null);
     try {
       const token = await getAuthToken();
-      const res = await fetch(`${AUTH_API_BASE}/admin/users`, {
+      const res = await fetch(`${AUTH_BASE}/auth/admin/users`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error('Failed to fetch users');
@@ -65,7 +65,7 @@ export default function AdminUsersScreen({ onBack }: AdminUsersScreenProps) {
     setCreating(true);
     try {
       const token = await getAuthToken();
-      const res = await fetch(`${AUTH_API_BASE}/admin/users`, {
+      const res = await fetch(`${AUTH_BASE}/auth/admin/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

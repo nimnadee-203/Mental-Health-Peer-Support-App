@@ -15,12 +15,13 @@ import { getAuthToken } from '../api/authStore';
 import AdminUsersScreen from './AdminUsersScreen';
 import AdminActivitiesScreen from './AdminActivitiesScreen';
 import AdminSettingsScreen from './AdminSettingsScreen';
+import AdminCommunitiesScreen from './AdminCommunitiesScreen';
 
 type AdminDashboardScreenProps = {
   onBack: () => void;
 };
 
-type AdminView = 'home' | 'users' | 'activities' | 'settings';
+type AdminView = 'home' | 'users' | 'activities' | 'settings' | 'communities';
 
 type AdminStats = {
   totalCommunities: number;
@@ -69,6 +70,10 @@ export default function AdminDashboardScreen({ onBack }: AdminDashboardScreenPro
 
   if (view === 'activities') {
     return <AdminActivitiesScreen onBack={() => setView('home')} />;
+  }
+
+  if (view === 'communities') {
+    return <AdminCommunitiesScreen onBack={() => setView('home')} />;
   }
 
   if (view === 'settings') {
@@ -134,6 +139,17 @@ export default function AdminDashboardScreen({ onBack }: AdminDashboardScreenPro
           <View style={styles.navContent}>
             <Text style={styles.navTitle}>Manage Users</Text>
             <Text style={styles.navDesc}>Create and manage users, professionals, and moderators.</Text>
+          </View>
+          <Feather name="chevron-right" size={20} color="#A0A0B8" />
+        </Pressable>
+
+        <Pressable style={styles.navCard} onPress={() => setView('communities')}>
+          <View style={[styles.navIcon, { backgroundColor: '#E6F4EA' }]}>
+            <Feather name="grid" size={20} color="#34D399" />
+          </View>
+          <View style={styles.navContent}>
+            <Text style={styles.navTitle}>Manage Communities</Text>
+            <Text style={styles.navDesc}>Create, update, and moderate communities.</Text>
           </View>
           <Feather name="chevron-right" size={20} color="#A0A0B8" />
         </Pressable>

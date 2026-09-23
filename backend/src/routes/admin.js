@@ -94,4 +94,88 @@ router.get('/activities', auth, requireAdmin, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/admin/communities
+ * Retrieves all communities.
+ */
+router.get('/communities', auth, requireAdmin, async (req, res) => {
+  try {
+    const communities = await Community.find().sort({ createdAt: -1 }).lean();
+    res.json(communities);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch communities.' });
+  }
+});
+
+/**
+ * POST /api/admin/communities
+ * Creates a new community.
+ */
+router.post('/communities', auth, requireAdmin, async (req, res) => {
+  try {
+    const { name, category, emoji, bgColor, description, guidelines, isPrivate } = req.body;
+    
+    if (!name || !category || !description) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const newCommunity = await Community.create({
+      name,
+      category,
+      emoji: emoji || '🌐',
+      bgColor: bgColor || '#E6F4EA',
+      description,
+      guidelines: guidelines || '',
+      isPrivate: !!isPrivate,
+      memberCount: 0,
+      memberAvatarColors: [],
+    });
+
+    res.status(201).json(newCommunity);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create community.' });
+  }
+});
+
+/**
+ * PUT /api/admin/communities/:id
+ * Updates an existing community.
+ */
+router.put('/communities/:id', auth, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    
+    const community = await Community.findByIdAndUpdate(id, updates, { new: true });
+    
+    if (!community) {
+      return res.status(404).json({ error: 'Community not found' });
+    }
+    
+    res.json(community);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update community.' });
+  }
+});
+
+/**
+ * DELETE /api/admin/communities/:id
+ * Deletes a community.
+ */
+router.delete('/communities/:id', auth, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const community = await Community.findByIdAndDelete(id);
+    
+    if (!community) {
+      return res.status(404).json({ error: 'Community not found' });
+    }
+    
+    res.json({ success: true, message: 'Community deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete community.' });
+  }
+});
+
 module.exports = router;
