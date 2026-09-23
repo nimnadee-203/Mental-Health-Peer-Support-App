@@ -12,6 +12,7 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import SplashScreen from './src/screens/SplashScreen';
 import WelcomeScreen from './src/screens/WelcomeScreen';
 import ModeratorDashboardScreen from './src/screens/ModeratorDashboardScreen';
+import AdminDashboardScreen from './src/screens/AdminDashboardScreen';
 
 import ResourcesScreen from './src/screens/ResourcesScreen';
 import ResourceArticleScreen from './src/screens/ResourceArticleScreen';
@@ -51,7 +52,8 @@ type AppScreen =
   | 'onboarding'
   | 'home'
   | 'profile'
-  | 'moderation';
+  | 'moderation'
+  | 'adminDashboard';
 
 type ResourcesScreenProps = {
   onOpenArticle: (article: ResourceArticle) => void;
@@ -665,6 +667,9 @@ function App() {
             onOpenModeration={
               getAuthRole() === 'moderator' ? () => setActiveScreen('moderation') : undefined
             }
+            onOpenAdminDashboard={
+              getAuthRole() === 'admin' ? () => setActiveScreen('adminDashboard') : undefined
+            }
             onLogout={() => {
               setAuthUserId(null);
               setJoinedGroupIds([]);
@@ -726,6 +731,10 @@ function App() {
       ) : activeScreen === 'moderation' ? (
         <ModeratorDashboardScreen
           role="moderator"
+          onBack={() => setActiveScreen('home')}
+        />
+      ) : activeScreen === 'adminDashboard' ? (
+        <AdminDashboardScreen
           onBack={() => setActiveScreen('home')}
         />
       ) : activeScreen === 'onboarding' ? (

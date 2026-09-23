@@ -20,11 +20,12 @@ type ProfileScreenProps = {
   onNavigateToAuth?: () => void;
   onLogout?: () => void;
   onOpenModeration?: () => void;
+  onOpenAdminDashboard?: () => void;
 };
 
 const DEFAULT_INTERESTS = ['Anxiety support', 'Mindfulness', 'Daily journaling'];
 
-function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration }: ProfileScreenProps) {
+function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration, onOpenAdminDashboard }: ProfileScreenProps) {
   const [userId, setUserId] = useState<string | null>(getAuthUserId());
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -211,6 +212,12 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration }:
         {onOpenModeration ? (
           <Pressable style={styles.moderationButton} onPress={onOpenModeration}>
             <Text style={styles.moderationButtonText}>Open Moderation</Text>
+          </Pressable>
+        ) : null}
+
+        {profile?.role === 'admin' && onOpenAdminDashboard ? (
+          <Pressable style={styles.adminButton} onPress={onOpenAdminDashboard}>
+            <Text style={styles.adminButtonText}>Admin Dashboard</Text>
           </Pressable>
         ) : null}
 
@@ -589,6 +596,22 @@ const styles = StyleSheet.create({
   },
   moderationButtonText: {
     color: '#276A5A',
+    fontWeight: '800',
+  },
+  adminButton: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 16,
+    alignItems: 'center',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  adminButtonText: {
+    color: '#FFFFFF',
     fontWeight: '800',
   },
   content: {
