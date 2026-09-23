@@ -6,10 +6,11 @@ const userSchema = new mongoose.Schema(
     email: String,
     role: {
       type: String,
-      enum: ['user', 'moderator', 'admin'],
+      enum: ['user', 'moderator', 'admin', 'professional'],
       default: 'user',
       index: true,
     },
+    medicalExperience: String,
   },
   { collection: 'users' },
 );

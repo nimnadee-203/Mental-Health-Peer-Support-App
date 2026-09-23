@@ -37,9 +37,13 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['user', 'moderator', 'admin'],
+      enum: ['user', 'moderator', 'admin', 'professional'],
       default: 'user',
       index: true,
+    },
+    medicalExperience: {
+      type: String,
+      trim: true,
     },
     bio: {
       type: String,
@@ -95,6 +99,7 @@ const buildUserProfile = user => ({
   fullName: user.fullName,
   email: user.email,
   role: user.role || 'user',
+  medicalExperience: user.medicalExperience,
   bio: user.bio,
   interests: user.interests,
   stats: user.stats,
@@ -190,6 +195,66 @@ app.post('/auth/login', async (request, response) => {
     });
   } catch (error) {
     return response.status(500).json({ message: 'Could not log in.' });
+  }
+});
+
+// Admin Route: Get all users
+app.get('/auth/admin/users', async (request, response) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader) return response.status(401).json({ message: 'Unauthorized' });
+    
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, jwtSecret);
+    
+    if (decoded.role !== 'admin') {
+      return response.status(403).json({ message: 'Forbidden: Admins only' });
+    }
+
+    const users = await User.find().sort({ createdAt: -1 });
+    return response.json(users.map(buildUserProfile));
+  } catch (error) {
+    return response.status(500).json({ message: 'Could not fetch users' });
+  }
+});
+
+// Admin Route: Create user (including professional)
+app.post('/auth/admin/users', async (request, response) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader) return response.status(401).json({ message: 'Unauthorized' });
+    
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, jwtSecret);
+    
+    if (decoded.role !== 'admin') {
+      return response.status(403).json({ message: 'Forbidden: Admins only' });
+    }
+
+    const { fullName, email, password, role, medicalExperience } = request.body;
+    
+    if (!fullName || !email || !password || !role) {
+      return response.status(400).json({ message: 'Missing required fields' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const existingUser = await User.findOne({ email: cleanEmail });
+    if (existingUser) {
+      return response.status(409).json({ message: 'User already exists' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const user = await User.create({
+      fullName: fullName.trim(),
+      email: cleanEmail,
+      passwordHash,
+      role,
+      medicalExperience: role === 'professional' ? medicalExperience?.trim() : undefined,
+    });
+
+    return response.status(201).json(buildUserProfile(user));
+  } catch (error) {
+    return response.status(500).json({ message: 'Could not create user' });
   }
 });
 
