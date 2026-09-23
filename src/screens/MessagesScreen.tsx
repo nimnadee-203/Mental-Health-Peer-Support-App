@@ -71,7 +71,7 @@ function formatTimestamp(isoString: string | null): string {
 function ConversationRow({ conversation, onPress }: { conversation: Conversation; onPress: () => void }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const isUnread = conversation.unreadCount > 0;
-  const displayName = conversation.type === 'group' ? conversation.groupName : conversation.peerName;
+  const displayName = (conversation.type === 'group' ? conversation.groupName : conversation.peerName) || 'Unknown';
 
   const handlePressIn = () => Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true, speed: 50 }).start();
   const handlePressOut = () => Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 50 }).start();
@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14, fontWeight: '500', color: '#6B6B80', marginTop: 4 },
   searchContainer: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 10 },
   searchInputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F5FA', borderRadius: 12, paddingHorizontal: 14, height: 44 },
-  searchInput: { flex: 1, fontSize: 15, color: '#2D2D3A', padding: 0 },
+  searchInput: { flex: 1, fontSize: 15, color: '#2D2D3A', padding: 0, outlineStyle: 'none' } as any,
   listWrapper: { flex: 1 },
   list: { flex: 1 },
   listContent: { paddingBottom: 100 }, // space for fab
@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
   avatarEmoji: { fontSize: 22 },
   onlineDot: { position: 'absolute', width: 12, height: 12, borderRadius: 6, backgroundColor: '#22C55E', borderWidth: 2, borderColor: '#FFFFFF', right: 0, top: 0 },
   rowContent: { flex: 1 },
-  nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   name: { fontWeight: '700', fontSize: 15, color: '#0D0D1A', flex: 1, marginRight: 8 },
   nameUnread: { fontWeight: '800' },
   timestamp: { fontWeight: '500', fontSize: 11, color: '#A0A0B8' },

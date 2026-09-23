@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
   inputBar: { paddingHorizontal: 16, paddingVertical: 12, paddingBottom: Platform.OS === 'ios' ? 24 : 12, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.04)' },
   inputContainer: { flexDirection: 'row', alignItems: 'flex-end', backgroundColor: '#F7F7FA', borderRadius: 24, paddingHorizontal: 6, paddingVertical: 6, borderWidth: 1, borderColor: '#EFEFF4' },
   attachBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginBottom: 2 },
-  input: { flex: 1, paddingHorizontal: 8, paddingTop: 10, paddingBottom: 10, fontSize: 15, color: '#0D0D1A', maxHeight: 120, minHeight: 40 },
+  input: { flex: 1, paddingHorizontal: 8, paddingTop: 10, paddingBottom: 10, fontSize: 15, color: '#0D0D1A', maxHeight: 120, minHeight: 40, outlineStyle: 'none' } as any,
   sendBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#5A5AD8', justifyContent: 'center', alignItems: 'center', marginBottom: 2, shadowColor: '#5A5AD8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4 },
   sendBtnDisabled: { backgroundColor: '#D1D1E0', shadowOpacity: 0, elevation: 0 },
 });
