@@ -152,6 +152,12 @@ export default function AdminCommunitiesScreen({ onBack }: AdminCommunitiesScree
         <View style={{ padding: 20 }}>
           <Text style={{ color: '#EF4444' }}>{error}</Text>
         </View>
+      ) : communities.length === 0 ? (
+        <View style={{ padding: 40, alignItems: 'center' }}>
+          <Feather name="grid" size={48} color="#D1D5DB" style={{ marginBottom: 16 }} />
+          <Text style={{ fontSize: 18, fontWeight: '700', color: '#6B6B80', marginBottom: 8 }}>No Communities Yet</Text>
+          <Text style={{ fontSize: 14, color: '#9CA3AF', textAlign: 'center' }}>Click the + button at the top right to create the first community.</Text>
+        </View>
       ) : (
         <ScrollView contentContainerStyle={styles.list}>
           {communities.map(comm => (
