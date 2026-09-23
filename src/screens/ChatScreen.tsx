@@ -321,24 +321,26 @@ export default function ChatScreen({ conversation, onBack }: ChatScreenProps) {
 
         {/* Input bar */}
         <View style={styles.inputBar}>
-          <Pressable style={styles.attachBtn} onPress={handlePickImage} disabled={sending}>
-            <Feather name="image" size={18} color="#6B6B80" />
-          </Pressable>
-          <TextInput
-            style={styles.input}
-            placeholder="Write a message…"
-            placeholderTextColor="#A0A0B8"
-            value={inputText}
-            onChangeText={setInputText}
-            multiline
-            blurOnSubmit={false}
-          />
-          <Pressable
-            style={[styles.sendBtn, (!inputText.trim() && !selectedImage || sending) && styles.sendBtnDisabled]}
-            onPress={handleSend}
-            disabled={(!inputText.trim() && !selectedImage) || sending}>
-            <Feather name="send" size={16} color="#FFFFFF" />
-          </Pressable>
+          <View style={styles.inputContainer}>
+            <Pressable style={styles.attachBtn} onPress={handlePickImage} disabled={sending}>
+              <Feather name="paperclip" size={20} color="#8A8A9E" />
+            </Pressable>
+            <TextInput
+              style={styles.input}
+              placeholder="Type a message..."
+              placeholderTextColor="#A0A0B8"
+              value={inputText}
+              onChangeText={setInputText}
+              multiline
+              blurOnSubmit={false}
+            />
+            <Pressable
+              style={[styles.sendBtn, (!inputText.trim() && !selectedImage || sending) && styles.sendBtnDisabled]}
+              onPress={handleSend}
+              disabled={(!inputText.trim() && !selectedImage) || sending}>
+              <Feather name="arrow-up" size={18} color="#FFFFFF" />
+            </Pressable>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -386,9 +388,10 @@ const styles = StyleSheet.create({
   previewImage: { width: 60, height: 60, borderRadius: 8 },
   previewRemoveBtn: { position: 'absolute', top: -6, right: -6, backgroundColor: '#FF3B30', width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFFFFF' },
   
-  inputBar: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 16, paddingVertical: 12, paddingBottom: Platform.OS === 'ios' ? 16 : 12, borderTopWidth: 1, borderTopColor: '#F0F1F8', backgroundColor: '#FFFFFF', gap: 10 },
-  attachBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#F8F9FC', justifyContent: 'center', alignItems: 'center', marginBottom: 1 },
-  input: { flex: 1, backgroundColor: '#F8F9FC', borderRadius: 20, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10, fontSize: 14, color: '#0D0D1A', maxHeight: 100, minHeight: 40, borderWidth: 1, borderColor: '#ECEEF8' },
-  sendBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#5A5AD8', justifyContent: 'center', alignItems: 'center', marginBottom: 1 },
-  sendBtnDisabled: { backgroundColor: '#C0C0D8' },
+  inputBar: { paddingHorizontal: 16, paddingVertical: 12, paddingBottom: Platform.OS === 'ios' ? 24 : 12, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.04)' },
+  inputContainer: { flexDirection: 'row', alignItems: 'flex-end', backgroundColor: '#F7F7FA', borderRadius: 24, paddingHorizontal: 6, paddingVertical: 6, borderWidth: 1, borderColor: '#EFEFF4' },
+  attachBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginBottom: 2 },
+  input: { flex: 1, paddingHorizontal: 8, paddingTop: 10, paddingBottom: 10, fontSize: 15, color: '#0D0D1A', maxHeight: 120, minHeight: 40 },
+  sendBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#5A5AD8', justifyContent: 'center', alignItems: 'center', marginBottom: 2, shadowColor: '#5A5AD8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4 },
+  sendBtnDisabled: { backgroundColor: '#D1D1E0', shadowOpacity: 0, elevation: 0 },
 });
