@@ -286,7 +286,7 @@ export default function AdminUsersScreen({ onBack }: AdminUsersScreenProps) {
       {/* Create User Modal */}
       <Modal visible={creationMode !== null} animationType="slide" transparent>
         <SafeAreaView style={styles.modalOverlay}>
-          <ScrollView contentContainerStyle={styles.modalContent}>
+          <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
             <View style={styles.modalHeader}>
               <Pressable onPress={() => setCreationMode(null)} style={styles.modalClose}>
                 <Feather name="x" size={24} color="#0D0D1A" />
