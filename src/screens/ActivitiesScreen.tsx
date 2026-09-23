@@ -639,10 +639,10 @@ function ActivitiesScreen({
       return;
     }
 
-    const calmMusicUri =
-      Image.resolveAssetSource(
-        require('../assets/audio/calm.mp3'),
-      )?.uri || '';
+    let calmMusicUri: any = require('../assets/audio/calm.mp3');
+    if (typeof Image.resolveAssetSource === 'function') {
+      calmMusicUri = Image.resolveAssetSource(calmMusicUri)?.uri || '';
+    }
 
     const sound = new Sound(
       calmMusicUri,
