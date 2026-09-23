@@ -90,9 +90,11 @@ function ConversationRow({ conversation, onPress }: { conversation: Conversation
           {/* Avatar */}
           <View style={styles.avatarWrapper}>
             <View style={[avatarStyle, { backgroundColor: conversation.avatarBgColor, borderWidth: conversation.avatarIsCircle ? 0 : 1.5, borderColor: conversation.avatarBgColor }]}>
-              <Text style={styles.avatarEmoji}>
-                {conversation.type === 'group' ? conversation.groupEmoji : conversation.avatarEmoji}
-              </Text>
+              <Feather 
+                name={conversation.type === 'group' ? 'users' : 'user'} 
+                size={20} 
+                color="#5A5AD8" 
+              />
             </View>
             {conversation.isOnline && <View style={styles.onlineDot} />}
           </View>

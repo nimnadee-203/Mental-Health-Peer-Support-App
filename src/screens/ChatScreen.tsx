@@ -67,11 +67,11 @@ function isSameDay(a: string, b: string): boolean {
 interface BubbleProps {
   message: Message;
   showSender: boolean;
-  senderEmoji: string;
+  isGroup: boolean;
   senderBg: string;
 }
 
-function MessageBubble({ message, showSender, senderEmoji, senderBg }: BubbleProps) {
+function MessageBubble({ message, showSender, isGroup, senderBg }: BubbleProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(10)).current;
 
@@ -122,7 +122,7 @@ function MessageBubble({ message, showSender, senderEmoji, senderBg }: BubblePro
       <View style={styles.peerAvatarCol}>
         {showSender ? (
           <View style={[styles.peerAvatar, { backgroundColor: senderBg }]}>
-            <Text style={styles.peerAvatarEmoji}>{senderEmoji}</Text>
+            <Feather name={isGroup ? 'users' : 'user'} size={16} color="#5A5AD8" />
           </View>
         ) : (
           <View style={styles.peerAvatarPlaceholder} />
@@ -260,7 +260,7 @@ export default function ChatScreen({ conversation, onBack }: ChatScreenProps) {
             <Feather name="arrow-left" size={18} color="#0D0D1A" />
           </Pressable>
           <View style={[avatarIsCircle ? styles.headerAvatarCircle : styles.headerAvatarSquare, { backgroundColor: avatarBg }]}>
-            <Text style={styles.headerAvatarEmoji}>{avatarEmoji}</Text>
+            <Feather name={conversation.type === 'group' ? 'users' : 'user'} size={20} color="#5A5AD8" />
           </View>
           <View style={styles.headerInfo}>
             <Text style={styles.headerName} numberOfLines={1}>{displayName}</Text>
@@ -292,7 +292,7 @@ export default function ChatScreen({ conversation, onBack }: ChatScreenProps) {
                       <View style={styles.dateSepLine} />
                     </View>
                   )}
-                  <MessageBubble message={msg} showSender={showSender} senderEmoji={avatarEmoji} senderBg={avatarBg} />
+                  <MessageBubble message={msg} showSender={showSender} isGroup={conversation.type === 'group'} senderBg={avatarBg} />
                 </React.Fragment>
               );
             })}

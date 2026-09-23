@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 
 type TabName = 'Home' | 'Resources' | 'Groups' | 'Messages' | 'Activities';
 
@@ -10,17 +11,17 @@ type BottomNavigationProps = {
   unreadMessages?: number;
 };
 
-const navItems: Array<{ label: TabName; icon: string; activeIcon: string }> = [
-  { label: 'Home',       icon: '⌂', activeIcon: '⌂' },
-  { label: 'Resources',  icon: '✦', activeIcon: '✦' },
-  { label: 'Groups',     icon: '◎', activeIcon: '◎' },
-  { label: 'Messages',   icon: '✉', activeIcon: '✉' },
-  { label: 'Activities', icon: '✦', activeIcon: '✦' },
+const navItems: Array<{ label: TabName; icon: keyof typeof Feather.glyphMap; activeIcon: keyof typeof Feather.glyphMap }> = [
+  { label: 'Home',       icon: 'home', activeIcon: 'home' },
+  { label: 'Resources',  icon: 'compass', activeIcon: 'compass' },
+  { label: 'Groups',     icon: 'users', activeIcon: 'users' },
+  { label: 'Messages',   icon: 'message-circle', activeIcon: 'message-circle' },
+  { label: 'Activities', icon: 'activity', activeIcon: 'activity' },
 ];
 
 // ─── Single Nav Tab ───────────────────────────────────────────────────────────
 interface NavTabProps {
-  item: { label: TabName; icon: string; activeIcon: string };
+  item: { label: TabName; icon: keyof typeof Feather.glyphMap; activeIcon: keyof typeof Feather.glyphMap };
   isActive: boolean;
   onPress: () => void;
   badgeCount?: number;
@@ -65,9 +66,11 @@ function NavTab({ item, isActive, onPress, badgeCount }: NavTabProps) {
         ]}>
         {/* Icon */}
         <View style={styles.iconArea}>
-          <Text style={[styles.navIcon, isActive && styles.navIconActive]}>
-            {isActive ? item.activeIcon : item.icon}
-          </Text>
+          <Feather
+            name={isActive ? item.activeIcon : item.icon}
+            size={22}
+            color={isActive ? '#FFFFFF' : '#A0A0B8'}
+          />
 
           {/* Unread badge */}
           {showBadge && (
@@ -117,23 +120,25 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 12,
-    paddingBottom: 18,
+    paddingHorizontal: 16,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 16,
     backgroundColor: 'transparent',
   },
   navBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    paddingVertical: 6,
-    paddingHorizontal: 6,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.10,
-    shadowRadius: 16,
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    borderRadius: 32,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    shadowColor: '#0D0D1A',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
     elevation: 8,
+    borderWidth: 1,
+    borderColor: '#ECEEF8',
   },
 
   // ── Tab ───────────────────────────────────────────────────────────────────
@@ -145,45 +150,42 @@ const styles = StyleSheet.create({
   iconWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    minWidth: 52,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 24,
+    minWidth: 54,
   },
   iconWrapperActive: {
-    backgroundColor: '#EBF3FF',
+    backgroundColor: '#5A5AD8',
+    shadowColor: '#5A5AD8',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
 
   // ── Icon + badge ──────────────────────────────────────────────────────────
   iconArea: {
     position: 'relative',
-    width: 24,
-    height: 24,
+    width: 26,
+    height: 26,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  navIcon: {
-    fontSize: 17,
-    color: '#9EA6B4',
-    lineHeight: 24,
-  },
-  navIconActive: {
-    color: '#2673FF',
   },
 
   // Unread badge
   badge: {
     position: 'absolute',
-    top: -5,
-    right: -8,
-    backgroundColor: '#EF4444',
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    paddingHorizontal: 3,
+    top: -4,
+    right: -6,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: '#FFFFFF',
   },
   badgeText: {
@@ -195,14 +197,14 @@ const styles = StyleSheet.create({
 
   // ── Label ─────────────────────────────────────────────────────────────────
   navLabel: {
-    marginTop: 3,
+    marginTop: 4,
     fontSize: 10,
-    fontWeight: '600',
-    color: '#9EA6B4',
+    fontWeight: '700',
+    color: '#A0A0B8',
   },
   navLabelActive: {
-    color: '#2673FF',
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontWeight: '800',
   },
 });
 
