@@ -20,6 +20,8 @@ const emergencyRouter = require('./routes/emergency');
 const trustedContactRouter = require('./routes/trustedContact');
 const resourcesRouter = require('./routes/resources');
 const moderationRouter = require('./routes/moderation');
+const uploadRouter = require('./routes/upload');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -28,6 +30,7 @@ const MONGO_URI = process.env.MONGODB_URI;
 // ── Middleware ──────────────────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ── Routes ──────────────────────────────────────────────────────────────────
 app.use('/api/posts', postsRouter);
@@ -39,6 +42,7 @@ app.use('/api/emergency', emergencyRouter);
 app.use('/api/trusted-contact', trustedContactRouter);
 app.use('/api/resources', resourcesRouter);
 app.use('/api/moderation', moderationRouter);
+app.use('/api/upload', uploadRouter);
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date() }));
 
@@ -53,9 +57,26 @@ mongoose
   })
   .then(() => {
     console.log('✅  Connected to MongoDB Atlas');
-    app.listen(PORT, () =>
+    const server = app.listen(PORT, () =>
       console.log(`🚀  Server running on http://localhost:${PORT}`),
     );
+
+    // ── Graceful shutdown (fixes EADDRINUSE on nodemon restart) ────────────
+    const shutdown = (signal) => {
+      console.log(`\n⚙️  ${signal} received — closing server gracefully...`);
+      server.close(() => {
+        mongoose.connection.close(false).then(() => {
+          console.log('✅  Server and DB connection closed.');
+          process.exit(0);
+        });
+      });
+    };
+
+    // nodemon sends SIGUSR2 before restarting on Windows
+    process.once('SIGUSR2', () => shutdown('SIGUSR2'));
+    // Standard termination signals
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT',  () => shutdown('SIGINT'));
   })
   .catch(err => {
     console.error('❌  MongoDB connection error:', err.message);

@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { setAuthSession } from '../api/authStore';
-import { API_BASE } from '../config/api';
+import { AUTH_BASE } from '../config/api';
 
 type AuthMode = 'login' | 'signup';
 
@@ -26,7 +26,7 @@ interface FieldErrors {
   password?: string;
 }
 
-const API_BASE_URL = API_BASE;
+const API_BASE_URL = AUTH_BASE;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function AuthScreen({ onAuthenticated }: AuthScreenProps) {

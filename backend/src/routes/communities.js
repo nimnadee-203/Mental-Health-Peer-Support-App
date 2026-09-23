@@ -1,6 +1,24 @@
 const express = require('express');
 const router = express.Router();
 const Community = require('../models/Community');
+const User = require('../models/User');
+
+/**
+ * GET /api/communities/team
+ * Returns all moderators and admins (as professionals) — public, no auth needed.
+ */
+router.get('/team', async (_req, res) => {
+  try {
+    const [moderators, professionals] = await Promise.all([
+      User.find({ role: 'moderator' }).select('fullName role').lean(),
+      User.find({ role: 'admin' }).select('fullName role').lean(),
+    ]);
+    res.json({ moderators, professionals });
+  } catch (err) {
+    console.error('Error fetching community team:', err);
+    res.status(500).json({ error: 'Failed to fetch community team' });
+  }
+});
 
 /**
  * GET /api/communities
