@@ -215,10 +215,24 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration, o
           </Pressable>
         ) : null}
 
+        {/* Admin Area */}
         {profile?.role === 'admin' && onOpenAdminDashboard ? (
-          <Pressable style={styles.adminButton} onPress={onOpenAdminDashboard}>
-            <Text style={styles.adminButtonText}>Admin Dashboard</Text>
-          </Pressable>
+          <View style={styles.adminSectionWrapper}>
+            <Pressable style={styles.adminPremiumCard} onPress={onOpenAdminDashboard}>
+              <View style={styles.adminCardLeft}>
+                <View style={styles.adminIconWrapper}>
+                  <Feather name="shield" size={22} color="#FFFFFF" />
+                </View>
+                <View>
+                  <Text style={styles.adminCardTitle}>Admin & Settings</Text>
+                  <Text style={styles.adminCardSub}>Manage system & users</Text>
+                </View>
+              </View>
+              <View style={styles.adminCardRight}>
+                <Feather name="chevron-right" size={20} color="#5A5AD8" />
+              </View>
+            </Pressable>
+          </View>
         ) : null}
 
         {/* Loading Indicator */}
@@ -598,21 +612,55 @@ const styles = StyleSheet.create({
     color: '#276A5A',
     fontWeight: '800',
   },
-  adminButton: {
-    backgroundColor: '#3B82F6',
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 16,
-    alignItems: 'center',
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+  adminSectionWrapper: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
-  adminButtonText: {
-    color: '#FFFFFF',
+  adminPremiumCard: {
+    backgroundColor: '#F3F4FB',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#E6E8F4',
+  },
+  adminCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  adminIconWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#5A5AD8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    shadowColor: '#5A5AD8',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  adminCardTitle: {
+    color: '#0D0D1A',
     fontWeight: '800',
+    fontSize: 16,
+    marginBottom: 2,
+  },
+  adminCardSub: {
+    color: '#6B6B80',
+    fontSize: 13,
+  },
+  adminCardRight: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#E6E8F4',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   content: {
     padding: 20,

@@ -14,12 +14,13 @@ import { getAuthToken } from '../api/authStore';
 
 import AdminUsersScreen from './AdminUsersScreen';
 import AdminActivitiesScreen from './AdminActivitiesScreen';
+import AdminSettingsScreen from './AdminSettingsScreen';
 
 type AdminDashboardScreenProps = {
   onBack: () => void;
 };
 
-type AdminView = 'home' | 'users' | 'activities';
+type AdminView = 'home' | 'users' | 'activities' | 'settings';
 
 type AdminStats = {
   totalCommunities: number;
@@ -68,6 +69,10 @@ export default function AdminDashboardScreen({ onBack }: AdminDashboardScreenPro
 
   if (view === 'activities') {
     return <AdminActivitiesScreen onBack={() => setView('home')} />;
+  }
+
+  if (view === 'settings') {
+    return <AdminSettingsScreen onBack={() => setView('home')} />;
   }
 
   return (
@@ -140,6 +145,17 @@ export default function AdminDashboardScreen({ onBack }: AdminDashboardScreenPro
           <View style={styles.navContent}>
             <Text style={styles.navTitle}>System Activities</Text>
             <Text style={styles.navDesc}>Monitor emergency requests and content reports.</Text>
+          </View>
+          <Feather name="chevron-right" size={20} color="#A0A0B8" />
+        </Pressable>
+
+        <Pressable style={styles.navCard} onPress={() => setView('settings')}>
+          <View style={[styles.navIcon, { backgroundColor: '#FEE2E2' }]}>
+            <Feather name="settings" size={20} color="#EF4444" />
+          </View>
+          <View style={styles.navContent}>
+            <Text style={styles.navTitle}>System Settings</Text>
+            <Text style={styles.navDesc}>Configure app behavior, maintenance, and rules.</Text>
           </View>
           <Feather name="chevron-right" size={20} color="#A0A0B8" />
         </Pressable>
