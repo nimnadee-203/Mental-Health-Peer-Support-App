@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { getAuthUserId, setAuthUserId } from '../api/authStore';
 import { getUserProfile, updateUserProfile } from '../api/profileApi';
 import { MessagingOption, UserProfile, VisibilityOption } from '../types/user';
@@ -270,6 +271,11 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration, o
             <Pressable style={styles.retryButton} onPress={fetchProfile}>
               <Text style={styles.retryButtonText}>Retry</Text>
             </Pressable>
+            {onLogout && (
+              <Pressable style={[styles.retryButton, { backgroundColor: '#FEE2E2', marginTop: 10 }]} onPress={onLogout}>
+                <Text style={[styles.retryButtonText, { color: '#EF4444' }]}>Log Out</Text>
+              </Pressable>
+            )}
           </View>
         ) : profile ? (
           /* Logged-In User Profile Layout */
