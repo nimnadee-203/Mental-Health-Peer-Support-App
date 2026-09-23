@@ -258,6 +258,75 @@ app.post('/auth/admin/users', async (request, response) => {
   }
 });
 
+// Admin Route: Update user role/experience
+app.put('/auth/admin/users/:userId', async (request, response) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader) return response.status(401).json({ message: 'Unauthorized' });
+    
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, jwtSecret);
+    
+    if (decoded.role !== 'admin') {
+      return response.status(403).json({ message: 'Forbidden: Admins only' });
+    }
+
+    const { userId } = request.params;
+    const { role, medicalExperience } = request.body;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return response.status(400).json({ message: 'Invalid user ID.' });
+    }
+
+    // Admins cannot change another admin's role here, but we can keep it simple.
+    // For now, allow basic updates.
+    const updates = { role };
+    if (role === 'professional') {
+      updates.medicalExperience = medicalExperience?.trim() || '';
+    } else {
+      updates.$unset = { medicalExperience: 1 };
+    }
+
+    const user = await User.findByIdAndUpdate(userId, updates, { new: true });
+    if (!user) return response.status(404).json({ message: 'User not found' });
+
+    return response.json(buildUserProfile(user));
+  } catch (error) {
+    return response.status(500).json({ message: 'Could not update user' });
+  }
+});
+
+// Admin Route: Delete user
+app.delete('/auth/admin/users/:userId', async (request, response) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader) return response.status(401).json({ message: 'Unauthorized' });
+    
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, jwtSecret);
+    
+    if (decoded.role !== 'admin') {
+      return response.status(403).json({ message: 'Forbidden: Admins only' });
+    }
+
+    const { userId } = request.params;
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return response.status(400).json({ message: 'Invalid user ID.' });
+    }
+    
+    // Prevent admin from deleting themselves
+    if (userId === decoded.sub) {
+      return response.status(400).json({ message: 'Cannot delete yourself' });
+    }
+
+    const user = await User.findByIdAndDelete(userId);
+    if (!user) return response.status(404).json({ message: 'User not found' });
+
+    return response.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    return response.status(500).json({ message: 'Could not delete user' });
+  }
+});
 app.get('/profile/:userId', async (request, response) => {
   try {
     const { userId } = request.params;
