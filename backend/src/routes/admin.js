@@ -133,6 +133,7 @@ router.post('/communities', auth, requireAdmin, async (req, res) => {
 
     res.status(201).json(newCommunity);
   } catch (err) {
+    console.error('POST /admin/communities error:', err);
     res.status(500).json({ error: 'Failed to create community.' });
   }
 });
