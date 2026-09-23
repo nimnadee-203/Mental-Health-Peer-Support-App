@@ -21,6 +21,7 @@ const trustedContactRouter = require('./routes/trustedContact');
 const resourcesRouter = require('./routes/resources');
 const moderationRouter = require('./routes/moderation');
 const uploadRouter = require('./routes/upload');
+const adminRouter = require('./routes/admin');
 const path = require('path');
 
 const app = express();
@@ -43,6 +44,7 @@ app.use('/api/trusted-contact', trustedContactRouter);
 app.use('/api/resources', resourcesRouter);
 app.use('/api/moderation', moderationRouter);
 app.use('/api/upload', uploadRouter);
+app.use('/api/admin', adminRouter);
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date() }));
 
