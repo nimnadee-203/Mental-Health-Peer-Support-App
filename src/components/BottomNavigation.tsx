@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
-type TabName = 'Home' | 'Resources' | 'Groups' | 'Messages' | 'Activities';
+type TabName = 'Home' | 'Resources' | 'Groups' | 'Messages' | 'Activities' | 'Profile';
 
 type BottomNavigationProps = {
   activeTab: TabName;

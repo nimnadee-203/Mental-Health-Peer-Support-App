@@ -35,8 +35,8 @@ import CreateGroupScreen from './src/screens/Groups/CreateGroupScreen';
 import EmergencySupportScreen from './src/screens/EmergencySupportScreen';
 import MessagesScreen, { Conversation } from './src/screens/MessagesScreen';
 import ChatScreen from './src/screens/ChatScreen';
-import { COMMUNITY_API_BASE } from './src/config/api';
-import { getAuthRole, getAuthUserId, setAuthUserId } from './src/api/authStore';
+import { API_BASE, COMMUNITY_API_BASE } from './src/config/api';
+import { getAuthRole, getAuthUserId, setAuthUserId, loadAuthSession } from './src/api/authStore';
 import {
   createResource as createResourceRequest,
   getResources,
@@ -415,6 +415,8 @@ function App() {
 
   const handleJoinGroup = async (communityId: string) => {
     const userId = getAuthUserId();
+    
+    // Optimistic local update
     setJoinedGroupIds(prev => {
       const next = prev.includes(communityId) ? prev : [...prev, communityId];
       if (userId) {
@@ -424,6 +426,22 @@ function App() {
       }
       return next;
     });
+
+    // Backend update
+    if (userId) {
+      try {
+        await fetch(`${API_BASE}/communities/${communityId}/join`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId }),
+        });
+        
+        // Refresh communities to get the updated member count
+        fetchCommunities();
+      } catch (err) {
+        console.warn('Failed to join community on backend:', err);
+      }
+    }
   };
 
   const handleEnterCommunity = (community: Community) => {
@@ -708,8 +726,9 @@ function App() {
     communities,
   ]);
 
-  const handleSplashFinish = useCallback(() => {
-    setActiveScreen('welcome');
+  const handleSplashFinish = useCallback(async () => {
+    const hasSession = await loadAuthSession();
+    setActiveScreen(hasSession ? 'home' : 'welcome');
   }, []);
 
   // ── App UI ──────────────────────────────────────────────────────────────────

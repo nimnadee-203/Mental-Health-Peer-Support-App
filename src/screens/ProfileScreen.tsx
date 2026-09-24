@@ -171,6 +171,20 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration, o
   };
 
   const handleConfirmLogout = () => {
+    if (typeof window !== 'undefined' && (window as any).confirm) {
+      if ((window as any).confirm('Are you sure you want to log out of your account?')) {
+        setAuthUserId(null);
+        setProfile(null);
+        setUserId(null);
+        if (onLogout) {
+          onLogout();
+        } else if (onNavigateToAuth) {
+          onNavigateToAuth();
+        }
+      }
+      return;
+    }
+
     Alert.alert('Log Out', 'Are you sure you want to log out of your account?', [
       { text: 'Cancel', style: 'cancel' },
       {
