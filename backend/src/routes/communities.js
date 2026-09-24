@@ -11,7 +11,7 @@ router.get('/team', async (_req, res) => {
   try {
     const [moderators, professionals] = await Promise.all([
       User.find({ role: 'moderator' }).select('fullName role').lean(),
-      User.find({ role: 'admin' }).select('fullName role').lean(),
+      User.find({ role: { $in: ['admin', 'professional'] } }).select('fullName role').lean(),
     ]);
     res.json({ moderators, professionals });
   } catch (err) {
@@ -26,8 +26,15 @@ router.get('/team', async (_req, res) => {
  */
 router.get('/', async (_req, res) => {
   try {
-    const communities = await Community.find().sort({ createdAt: -1 });
-    res.json(communities);
+    const communities = await Community.find().sort({ createdAt: -1 }).lean();
+    
+    // Map to include real memberCount based on members array
+    const mapped = communities.map(c => ({
+      ...c,
+      memberCount: c.members ? c.members.length : 0, // Force real member count
+    }));
+
+    res.json(mapped);
   } catch (err) {
     console.error('Error fetching communities:', err);
     res.status(500).json({ error: 'Failed to fetch communities' });
@@ -78,6 +85,51 @@ router.post('/', async (req, res) => {
   } catch (err) {
     console.error('Error creating community:', err);
     res.status(400).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/communities/:id/join
+ */
+router.post('/:id/join', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: 'User ID is required' });
+
+    const community = await Community.findById(req.params.id);
+    if (!community) return res.status(404).json({ error: 'Community not found' });
+
+    if (!community.members) community.members = [];
+    if (!community.members.includes(userId)) {
+      community.members.push(userId);
+      await community.save();
+    }
+
+    res.json({ success: true, memberCount: community.members.length });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to join community' });
+  }
+});
+
+/**
+ * POST /api/communities/:id/leave
+ */
+router.post('/:id/leave', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: 'User ID is required' });
+
+    const community = await Community.findById(req.params.id);
+    if (!community) return res.status(404).json({ error: 'Community not found' });
+
+    if (community.members && community.members.includes(userId)) {
+      community.members = community.members.filter(id => id !== userId);
+      await community.save();
+    }
+
+    res.json({ success: true, memberCount: community.members.length });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to leave community' });
   }
 });
 

@@ -18,6 +18,7 @@ import type { Post } from './GroupDiscussionScreen';
 
 import { API_BASE } from '../config/api';
 import ReportModal from '../components/ReportModal';
+import { getAuthUserId } from '../api/authStore';
 import SharePostModal from '../components/SharePostModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -28,6 +29,7 @@ export interface Comment {
   authorName: string;
   likes: number;
   createdAt: string;
+  likedBy?: string[];
 }
 
 interface PostDetailScreenProps {
@@ -61,6 +63,7 @@ export default function PostDetailScreen({
   const [isLoading, setIsLoading] = useState(true);
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [likedCommentIds, setLikedCommentIds] = useState<string[]>([]);
 
   // Reporting and moderation state
   const [reportingTarget, setReportingTarget] = useState<{
@@ -83,8 +86,14 @@ export default function PostDetailScreen({
       const encodedPostId = encodeURIComponent(post._id);
       const response = await fetch(`${API_BASE}/comments/post/${encodedPostId}`);
       if (!response.ok) throw new Error('Failed to fetch comments');
-      const data = await response.json();
+      const data: Comment[] = await response.json();
       setComments(data);
+      
+      const currentUserId = getAuthUserId() || 'mock-user-1';
+      const initialLiked = data
+        .filter(c => c.likedBy && c.likedBy.includes(currentUserId))
+        .map(c => c._id);
+      setLikedCommentIds(initialLiked);
     } catch (error) {
       console.error(error);
     } finally {
@@ -134,27 +143,33 @@ export default function PostDetailScreen({
   };
 
   const handleLikeComment = async (commentId: string) => {
+    const isLiked = likedCommentIds.includes(commentId);
+    
     // Optimistic update
+    setLikedCommentIds(prev => isLiked ? prev.filter(id => id !== commentId) : [...prev, commentId]);
     setComments(prev =>
-      prev.map(c => (c._id === commentId ? { ...c, likes: c.likes + 1 } : c))
+      prev.map(c => (c._id === commentId ? { ...c, likes: isLiked ? Math.max(0, c.likes - 1) : c.likes + 1 } : c))
     );
+    
     try {
+      const currentUserId = getAuthUserId() || 'mock-user-1';
       const res = await fetch(`${API_BASE}/comments/${commentId}/like`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: 'mock-user-1' }),
+        body: JSON.stringify({ userId: currentUserId }),
       });
       if (res.ok) {
         const updated = await res.json();
-        // Sync with actual server value (handles toggle correctly)
+        // Sync with actual server value
         setComments(prev =>
           prev.map(c => (c._id === commentId ? { ...c, likes: updated.likes } : c))
         );
       }
     } catch (error) {
       // Rollback optimistic update on network failure
+      setLikedCommentIds(prev => isLiked ? [...prev, commentId] : prev.filter(id => id !== commentId));
       setComments(prev =>
-        prev.map(c => (c._id === commentId ? { ...c, likes: Math.max(0, c.likes - 1) } : c))
+        prev.map(c => (c._id === commentId ? { ...c, likes: isLiked ? c.likes + 1 : Math.max(0, c.likes - 1) } : c))
       );
       console.error('Failed to like comment:', error);
     }
@@ -347,8 +362,8 @@ export default function PostDetailScreen({
                         <Pressable
                           style={styles.likeButton}
                           onPress={() => handleLikeComment(comment._id)}>
-                          <Text style={styles.actionEmoji}>💛</Text>
-                          <Text style={styles.likeCountText}>{comment.likes}</Text>
+                          <Text style={styles.actionEmoji}>{likedCommentIds.includes(comment._id) ? '💖' : '🤍'}</Text>
+                          <Text style={[styles.likeCountText, likedCommentIds.includes(comment._id) && { color: '#E11D48' }]}>{comment.likes}</Text>
                         </Pressable>
                       </View>
                     </View>

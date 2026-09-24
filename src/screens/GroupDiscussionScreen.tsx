@@ -16,6 +16,7 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COMMUNITY_API_BASE } from '../config/api';
 import ReportModal from '../components/ReportModal';
 import SharePostModal from '../components/SharePostModal';
+import { getAuthUserId } from '../api/authStore';
 
 const REQUEST_TIMEOUT_MS = 10000;
 
@@ -47,6 +48,7 @@ export interface Post {
   commentsCount: number;
   createdAt: string;
   imageUrl?: string;
+  likedBy?: string[];
 }
 
 interface TeamMember {
@@ -317,7 +319,14 @@ export default function GroupDiscussionScreen({
     try {
       const res = await fetch(`${COMMUNITY_API_BASE}/posts/group/${encodeURIComponent(community._id)}`, { signal: controller.signal });
       if (!res.ok) throw new Error('Failed to fetch posts');
-      setPosts(await res.json());
+      const fetchedPosts: Post[] = await res.json();
+      setPosts(fetchedPosts);
+      
+      const currentUserId = getAuthUserId() || 'mock-user-1';
+      const initialLiked = fetchedPosts
+        .filter(p => p.likedBy && p.likedBy.includes(currentUserId))
+        .map(p => p._id);
+      setLikedPostIds(initialLiked);
     } catch (e) {
       setLoadError('Could not load posts. Check the backend and try again.');
     } finally {
@@ -340,7 +349,8 @@ export default function GroupDiscussionScreen({
     setLikedPostIds(p => liked ? p.filter(i => i !== postId) : [...p, postId]);
     setPosts(p => p.map(x => x._id === postId ? { ...x, likes: liked ? Math.max(0, x.likes - 1) : x.likes + 1 } : x));
     try {
-      const r = await fetch(`${COMMUNITY_API_BASE}/posts/${postId}/like`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: 'mock-user-1' }) });
+      const currentUserId = getAuthUserId() || 'mock-user-1';
+      const r = await fetch(`${COMMUNITY_API_BASE}/posts/${postId}/like`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUserId }) });
       if (r.ok) { const u = await r.json(); setPosts(p => p.map(x => x._id === postId ? { ...x, likes: u.likes } : x)); }
     } catch { setLikedPostIds(p => liked ? [...p, postId] : p.filter(i => i !== postId)); }
   };

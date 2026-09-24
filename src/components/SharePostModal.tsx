@@ -222,7 +222,7 @@ export default function SharePostModal({ visible, post, groupId, onClose }: Shar
 
 const s = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFillObject as any },
+  backdrop: { ...(StyleSheet.absoluteFill as any) },
   sheet: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: Platform.OS === 'ios' ? 40 : 20, minHeight: 250 },
   dragHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#E0E0E0', alignSelf: 'center', marginBottom: 20 },
   

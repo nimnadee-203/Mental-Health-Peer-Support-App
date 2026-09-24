@@ -94,6 +94,33 @@ const userSchema = new mongoose.Schema(
 
 const User = mongoose.model('User', userSchema);
 
+const activityLogSchema = new mongoose.Schema(
+  {
+    type: String,
+    userEmail: String,
+    userName: String,
+    description: String,
+    metadata: mongoose.Schema.Types.Mixed,
+  },
+  { timestamps: true }
+);
+
+const ActivityLog = mongoose.model('ActivityLog', activityLogSchema);
+
+const logActivity = async (type, user, description, metadata = {}) => {
+  try {
+    await ActivityLog.create({
+      type,
+      userEmail: user.email,
+      userName: user.fullName,
+      description,
+      metadata,
+    });
+  } catch (err) {
+    console.error('Failed to log activity:', err.message);
+  }
+};
+
 const buildUserProfile = user => ({
   id: user._id,
   fullName: user.fullName,
@@ -163,6 +190,8 @@ app.post('/auth/signup', async (request, response) => {
     const passwordHash = await bcrypt.hash(password, 12);
     const user = await User.create({ fullName: cleanName, email: cleanEmail, passwordHash });
 
+    await logActivity('USER_CREATED', user, `User ${user.fullName} registered an account.`);
+
     return response.status(201).json({
       user: buildUserProfile(user),
       token: createToken(user),
@@ -188,6 +217,8 @@ app.post('/auth/login', async (request, response) => {
     if (!user || !passwordMatches) {
       return response.status(401).json({ message: 'Invalid email or password.' });
     }
+
+    await logActivity('LOGIN', user, `User ${user.fullName} logged in.`);
 
     return response.json({
       user: buildUserProfile(user),
@@ -252,6 +283,8 @@ app.post('/auth/admin/users', async (request, response) => {
       medicalExperience: role === 'professional' ? medicalExperience?.trim() : undefined,
     });
 
+    await logActivity('USER_CREATED', user, `Admin created ${role} account for ${user.fullName}.`);
+
     return response.status(201).json(buildUserProfile(user));
   } catch (error) {
     return response.status(500).json({ message: 'Could not create user' });
@@ -290,6 +323,8 @@ app.put('/auth/admin/users/:userId', async (request, response) => {
     const user = await User.findByIdAndUpdate(userId, updates, { new: true });
     if (!user) return response.status(404).json({ message: 'User not found' });
 
+    await logActivity('ROLE_CHANGE', user, `Admin changed role of ${user.fullName} to ${role}.`);
+
     return response.json(buildUserProfile(user));
   } catch (error) {
     return response.status(500).json({ message: 'Could not update user' });
@@ -321,6 +356,8 @@ app.delete('/auth/admin/users/:userId', async (request, response) => {
 
     const user = await User.findByIdAndDelete(userId);
     if (!user) return response.status(404).json({ message: 'User not found' });
+
+    await logActivity('USER_DELETED', user, `Admin deleted account for ${user.fullName}.`);
 
     return response.json({ message: 'User deleted successfully' });
   } catch (error) {
@@ -444,6 +481,7 @@ if (!process.env.MONGODB_URI) {
 mongoose
   .connect(process.env.MONGODB_URI, {
     serverSelectionTimeoutMS: 10000,
+    family: 4, // Force IPv4 to bypass Atlas DNS/IPv6 issues on Windows
   })
   .then(() => {
     app.listen(port, () => {
