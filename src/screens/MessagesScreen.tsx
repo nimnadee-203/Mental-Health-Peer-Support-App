@@ -11,6 +11,7 @@ import {
   Text,
   TextInput,
   View,
+  PanResponder,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -67,8 +68,52 @@ function formatTimestamp(isoString: string | null): string {
   }
 }
 
+// ─── SwipeableRow ────────────────────────────────────────────────────────────
+function SwipeableRow({ children, onDelete }: { children: React.ReactNode, onDelete: () => void }) {
+  const pan = useRef(new Animated.Value(0)).current;
+  const [isOpen, setIsOpen] = useState(false);
+  const SWIPE_THRESHOLD = -80;
+  const MAX_SWIPE = -120;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        let newX = isOpen ? SWIPE_THRESHOLD + gestureState.dx : gestureState.dx;
+        if (newX > 0) newX = 0;
+        if (newX < MAX_SWIPE) newX = MAX_SWIPE;
+        pan.setValue(newX);
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        if (gestureState.dx < -20) {
+          Animated.spring(pan, { toValue: SWIPE_THRESHOLD, useNativeDriver: true }).start();
+          setIsOpen(true);
+        } else {
+          Animated.spring(pan, { toValue: 0, useNativeDriver: true }).start();
+          setIsOpen(false);
+        }
+      },
+    })
+  ).current;
+
+  return (
+    <View style={{ position: 'relative', overflow: 'hidden' }}>
+      <View style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 80, backgroundColor: '#EF4444', justifyContent: 'center', alignItems: 'center' }}>
+        <Pressable onPress={onDelete} style={{ flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center' }}>
+          <Feather name="trash-2" size={24} color="#FFF" />
+        </Pressable>
+      </View>
+      <Animated.View style={{ transform: [{ translateX: pan }], backgroundColor: '#FFF' }} {...panResponder.panHandlers}>
+        {children}
+      </Animated.View>
+    </View>
+  );
+}
+
 // ─── ConversationRow ─────────────────────────────────────────────────────────
-function ConversationRow({ conversation, onPress }: { conversation: Conversation; onPress: () => void }) {
+function ConversationRow({ conversation, onPress, onDelete }: { conversation: Conversation; onPress: () => void, onDelete: () => void }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const isUnread = conversation.unreadCount > 0;
   const displayName = (conversation.type === 'group' ? conversation.groupName : conversation.peerName) || 'Unknown';
@@ -79,13 +124,14 @@ function ConversationRow({ conversation, onPress }: { conversation: Conversation
   const avatarStyle = conversation.avatarIsCircle ? styles.avatarCircle : styles.avatarSquare;
 
   return (
-    <Pressable
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      accessibilityRole="button"
-    >
-      <Animated.View style={[styles.rowOuter, { transform: [{ scale: scaleAnim }] }]}>
+    <SwipeableRow onDelete={onDelete}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        accessibilityRole="button"
+      >
+        <Animated.View style={[styles.rowOuter, { transform: [{ scale: scaleAnim }] }]}>
         <View style={styles.rowInner}>
           {/* Avatar */}
           <View style={styles.avatarWrapper}>
@@ -116,6 +162,7 @@ function ConversationRow({ conversation, onPress }: { conversation: Conversation
         </View>
       </Animated.View>
     </Pressable>
+    </SwipeableRow>
   );
 }
 
@@ -205,6 +252,20 @@ export default function MessagesScreen({ onOpenChat, onUnreadCountChange }: Mess
     }
   };
 
+  const handleDeleteConversation = async (id: string) => {
+    if (typeof window !== 'undefined' && (window as any).confirm) {
+      if (!(window as any).confirm('Are you sure you want to delete this chat?')) return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/conversations/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setConversations(prev => prev.filter(c => c._id !== id));
+      }
+    } catch (e) {
+      console.warn('Failed to delete chat:', e);
+    }
+  };
+
   const filtered = conversations.filter(c => {
     const name = c.type === 'group' ? c.groupName.toLowerCase() : c.peerName.toLowerCase();
     const msg = c.lastMessageText.toLowerCase();
@@ -266,7 +327,12 @@ export default function MessagesScreen({ onOpenChat, onUnreadCountChange }: Mess
               </View>
             ) : (
               filtered.map(conv => (
-                <ConversationRow key={conv._id} conversation={conv} onPress={() => onOpenChat(conv)} />
+                <ConversationRow 
+                  key={conv._id} 
+                  conversation={conv} 
+                  onPress={() => onOpenChat(conv)} 
+                  onDelete={() => handleDeleteConversation(conv._id)} 
+                />
               ))
             )}
           </ScrollView>
@@ -274,11 +340,9 @@ export default function MessagesScreen({ onOpenChat, onUnreadCountChange }: Mess
       )}
 
       {/* FAB */}
-      {filtered.length > 0 && (
-        <Pressable style={styles.fab} onPress={handleOpenNewChatModal}>
-          <Feather name="edit-2" size={20} color="#FFFFFF" />
-        </Pressable>
-      )}
+      <Pressable style={styles.fab} onPress={handleOpenNewChatModal}>
+        <Feather name="edit-2" size={24} color="#FFFFFF" />
+      </Pressable>
 
       {/* New Chat Modal */}
       <Modal visible={isNewChatModalOpen} animationType="slide" transparent={false} onRequestClose={() => setIsNewChatModalOpen(false)}>
@@ -337,13 +401,26 @@ export default function MessagesScreen({ onOpenChat, onUnreadCountChange }: Mess
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
-  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 4 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 4 },
   headerLeft: { flex: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   title: { fontSize: 24, fontWeight: '800', color: '#0D0D1A', letterSpacing: -0.48 },
   badge: { backgroundColor: '#5A5AD8', borderRadius: 12, minWidth: 24, height: 24, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 7 },
   badgeText: { fontSize: 12, fontWeight: '800', color: '#FFFFFF' },
   subtitle: { fontSize: 14, fontWeight: '500', color: '#6B6B80', marginTop: 4 },
+  newChatBtn: {
+    backgroundColor: '#5A5AD8',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#5A5AD8',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
   searchContainer: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 10 },
   searchInputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F5FA', borderRadius: 12, paddingHorizontal: 14, height: 44 },
   searchInput: { flex: 1, fontSize: 15, color: '#2D2D3A', padding: 0, outlineStyle: 'none' } as any,
@@ -374,7 +451,7 @@ const styles = StyleSheet.create({
   emptyBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#5A5AD8', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 24 },
   emptyBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
 
-  fab: { position: 'absolute', right: 20, bottom: 20, width: 56, height: 56, borderRadius: 28, backgroundColor: '#5A5AD8', alignItems: 'center', justifyContent: 'center', shadowColor: '#5A5AD8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
+  fab: { position: 'absolute', right: 20, bottom: 90, width: 56, height: 56, borderRadius: 28, backgroundColor: '#5A5AD8', alignItems: 'center', justifyContent: 'center', shadowColor: '#5A5AD8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
   
   modalHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F0F1F8' },
   modalCloseBtn: { padding: 4, marginRight: 12 },

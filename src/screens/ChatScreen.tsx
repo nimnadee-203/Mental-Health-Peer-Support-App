@@ -249,6 +249,23 @@ export default function ChatScreen({ conversation, onBack }: ChatScreenProps) {
     }
   }, [inputText, selectedImage, sending, conversation._id]);
 
+  const handleDeleteConversation = async () => {
+    if (typeof window !== 'undefined' && (window as any).confirm) {
+      if (!(window as any).confirm('Are you sure you want to delete this chat?')) return;
+    }
+    
+    try {
+      const res = await fetch(`${API_BASE}/conversations/${conversation._id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        onBack();
+      }
+    } catch (e) {
+      console.warn('Failed to delete chat:', e);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -265,11 +282,14 @@ export default function ChatScreen({ conversation, onBack }: ChatScreenProps) {
           <View style={styles.headerInfo}>
             <Text style={styles.headerName} numberOfLines={1}>{displayName}</Text>
             <Text style={styles.headerSub}>
-              {conversation.type === 'group' ? `${conversation.participants.length} members` : 'Community member'}
+              {conversation.type === 'group' 
+                ? `${conversation.participants.length} members` 
+                : (conversation.avatarBgColor === '#E8F0FF' ? 'Medical Professional' 
+                  : (conversation.avatarBgColor === '#EDE8FA' ? 'Moderator' : 'Community member'))}
             </Text>
           </View>
-          <Pressable style={styles.optionsBtn}>
-            <Feather name="more-vertical" size={18} color="#0D0D1A" />
+          <Pressable style={styles.optionsBtn} onPress={handleDeleteConversation}>
+            <Feather name="trash-2" size={18} color="#EF4444" />
           </Pressable>
         </View>
 
