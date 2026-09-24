@@ -1,0 +1,6 @@
+{
+  "delay": 1000,
+  "signal": "SIGUSR2",
+  "watch": ["src"],
+  "ext": "js,mjs,cjs,json"
+}

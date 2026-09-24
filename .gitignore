@@ -78,3 +78,11 @@ yarn-error.log
 
 # Backend secrets — never commit
 backend/.env
+atlas-credentials.env
+
+# Expo / Web Build Files
+.expo/
+app/
+dist/
+dev-bundle.js
+index.html
