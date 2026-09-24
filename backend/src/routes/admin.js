@@ -5,6 +5,7 @@ const Community = require('../models/Community');
 const EmergencyRequest = require('../models/EmergencyRequest');
 const Report = require('../models/Report');
 const User = require('../models/User'); // Used if we want to query total users in this DB
+const ActivityLog = require('../models/ActivityLog');
 
 /**
  * Middleware to check if user is admin
@@ -57,7 +58,12 @@ router.get('/activities', auth, requireAdmin, async (req, res) => {
     const recentReports = await Report.find()
       .sort({ createdAt: -1 })
       .limit(10)
-      .populate('reporterId', 'fullName')
+      .populate('reportedBy', 'fullName')
+      .lean();
+
+    const recentLogs = await ActivityLog.find()
+      .sort({ createdAt: -1 })
+      .limit(15)
       .lean();
 
     // Map emergencies to a uniform activity structure
@@ -77,15 +83,27 @@ router.get('/activities', auth, requireAdmin, async (req, res) => {
       type: 'REPORT',
       description: `Reported ${r.targetType}: ${r.reason}`,
       status: r.status,
-      user: r.reporterId ? r.reporterId.fullName : 'Unknown User',
+      user: r.reportedBy ? r.reportedBy.fullName : 'Unknown User',
       createdAt: r.createdAt,
       originalId: r._id
     }));
+    
+    // Map logs to uniform activity structure
+    const logActivities = recentLogs.map(l => ({
+      _id: `log_${l._id}`,
+      type: l.type,
+      description: l.description,
+      status: 'LOG',
+      user: l.userName,
+      email: l.userEmail,
+      createdAt: l.createdAt,
+      originalId: l._id
+    }));
 
     // Combine and sort
-    const activities = [...emergencyActivities, ...reportActivities]
+    const activities = [...emergencyActivities, ...reportActivities, ...logActivities]
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 15);
+      .slice(0, 30);
 
     res.json(activities);
   } catch (err) {
@@ -101,7 +119,14 @@ router.get('/activities', auth, requireAdmin, async (req, res) => {
 router.get('/communities', auth, requireAdmin, async (req, res) => {
   try {
     const communities = await Community.find().sort({ createdAt: -1 }).lean();
-    res.json(communities);
+    
+    // Map to include real memberCount based on members array
+    const mapped = communities.map(c => ({
+      ...c,
+      memberCount: c.members ? c.members.length : 0,
+    }));
+
+    res.json(mapped);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch communities.' });
   }

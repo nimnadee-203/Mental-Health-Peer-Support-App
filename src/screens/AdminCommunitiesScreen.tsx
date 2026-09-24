@@ -119,18 +119,19 @@ export default function AdminCommunitiesScreen({ onBack }: AdminCommunitiesScree
   };
 
   const handleDelete = async (id: string, commName: string) => {
-    if (window.confirm(`Are you sure you want to delete "${commName}"? This action cannot be undone.`)) {
-      try {
-        const token = await getAuthToken();
-        const res = await fetch(`${API_BASE}/admin/communities/${id}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error('Failed to delete community');
-        fetchCommunities();
-      } catch (err: any) {
-        Alert.alert('Error', err.message);
-      }
+    if (typeof window !== 'undefined' && (window as any).confirm) {
+      if (!(window as any).confirm(`Are you sure you want to delete "${commName}"? This action cannot be undone.`)) return;
+    }
+    try {
+      const token = await getAuthToken();
+      const res = await fetch(`${API_BASE}/admin/communities/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed to delete community');
+      fetchCommunities();
+    } catch (err: any) {
+      Alert.alert('Error', err.message);
     }
   };
 

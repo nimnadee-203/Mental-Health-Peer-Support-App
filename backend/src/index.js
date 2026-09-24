@@ -56,6 +56,7 @@ if (!MONGO_URI) {
 mongoose
   .connect(MONGO_URI || 'mongodb://127.0.0.1:27017/mhpss_db', {
     serverSelectionTimeoutMS: 10000,
+    family: 4, // Force IPv4 to bypass Atlas DNS/IPv6 issues on Windows
   })
   .then(() => {
     console.log('✅  Connected to MongoDB Atlas');

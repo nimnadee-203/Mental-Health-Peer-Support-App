@@ -76,7 +76,7 @@ export default function AdminUsersScreen({ onBack }: AdminUsersScreenProps) {
   };
 
   const openEditModal = (user: UserProfile) => {
-    setRole(user.role);
+    setRole(user.role || 'user');
     setMedicalExperience(user.medicalExperience || '');
     setEditUser(user);
   };
@@ -153,8 +153,10 @@ export default function AdminUsersScreen({ onBack }: AdminUsersScreenProps) {
   };
 
   const handleDeleteUser = async (id: string, name: string) => {
-    if (window.confirm && !window.confirm(`Are you sure you want to delete ${name}?`)) {
-      return; // Web fallback
+    if (typeof window !== 'undefined' && (window as any).confirm) {
+      if (!(window as any).confirm(`Are you sure you want to delete ${name}?`)) return;
+    } else {
+      // For native, we'd use Alert.alert with callbacks. For simplicity, we just proceed if window.confirm isn't there (or we can add Alert later).
     }
 
     setLoading(true);
@@ -243,7 +245,8 @@ export default function AdminUsersScreen({ onBack }: AdminUsersScreenProps) {
             <Text style={styles.emptyText}>No users found in this category.</Text>
           )}
           {filteredUsers.map(u => {
-            const colors = roleColors[u.role] || roleColors['user'];
+            const userRole = u.role || 'user';
+            const colors = roleColors[userRole] || roleColors['user'];
             const isPro = u.role === 'professional';
 
             return (
@@ -264,7 +267,7 @@ export default function AdminUsersScreen({ onBack }: AdminUsersScreenProps) {
                   )}
                   <View style={{ alignSelf: 'flex-start', marginTop: 6 }}>
                     <View style={[styles.roleBadge, { backgroundColor: colors.bg, borderColor: colors.border }]}>
-                      <Text style={[styles.roleText, { color: colors.text }]}>{u.role.toUpperCase()}</Text>
+                      <Text style={[styles.roleText, { color: colors.text }]}>{userRole.toUpperCase()}</Text>
                     </View>
                   </View>
                 </View>

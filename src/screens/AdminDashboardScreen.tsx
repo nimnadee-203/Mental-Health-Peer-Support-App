@@ -91,7 +91,8 @@ export default function AdminDashboardScreen({ onBack }: AdminDashboardScreenPro
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.sectionTitle}>System Overview</Text>
+        <View style={styles.fullWidthContainer}>
+          <Text style={styles.sectionTitle}>System Overview</Text>
         
         {loading && !stats ? (
           <ActivityIndicator style={{ marginTop: 20 }} color="#5A5AD8" />
@@ -176,6 +177,7 @@ export default function AdminDashboardScreen({ onBack }: AdminDashboardScreenPro
           <Feather name="chevron-right" size={20} color="#A0A0B8" />
         </Pressable>
 
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -187,16 +189,17 @@ const styles = StyleSheet.create({
   backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-start' },
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#0D0D1A' },
   content: { padding: 20 },
+  fullWidthContainer: { width: '100%' },
   sectionTitle: { fontSize: 20, fontWeight: '800', color: '#0D0D1A', marginBottom: 16 },
   errorText: { color: '#EF4444', marginTop: 10 },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  statCard: { width: '48%', backgroundColor: '#F8F9FC', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#ECEEF8' },
-  statIcon: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  statValue: { fontSize: 24, fontWeight: '900', color: '#0D0D1A' },
-  statLabel: { fontSize: 13, fontWeight: '600', color: '#8A8A9E', marginTop: 4 },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+  statCard: { minWidth: 200, flex: 1, backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#ECEEF8', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 12, elevation: 2 },
+  statIcon: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  statValue: { fontSize: 28, fontWeight: '900', color: '#0D0D1A' },
+  statLabel: { fontSize: 13, fontWeight: '700', color: '#8A8A9E', marginTop: 4 },
   
-  navCard: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#F8F9FC', borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: '#ECEEF8' },
-  navIcon: { width: 48, height: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
+  navCard: { flexDirection: 'row', alignItems: 'center', padding: 20, backgroundColor: '#FFFFFF', borderRadius: 20, marginBottom: 12, borderWidth: 1, borderColor: '#ECEEF8', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 12, elevation: 2 },
+  navIcon: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
   navContent: { flex: 1 },
   navTitle: { fontSize: 16, fontWeight: '800', color: '#0D0D1A', marginBottom: 4 },
   navDesc: { fontSize: 13, color: '#8A8A9E', lineHeight: 18, paddingRight: 10 },

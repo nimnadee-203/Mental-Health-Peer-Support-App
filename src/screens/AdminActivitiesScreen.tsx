@@ -18,7 +18,7 @@ type AdminActivitiesScreenProps = {
 
 type Activity = {
   _id: string;
-  type: 'EMERGENCY' | 'REPORT';
+  type: 'EMERGENCY' | 'REPORT' | 'LOGIN' | 'ROLE_CHANGE' | 'USER_CREATED' | 'USER_DELETED';
   description: string;
   status: string;
   user: string;
@@ -27,6 +27,7 @@ type Activity = {
 
 export default function AdminActivitiesScreen({ onBack }: AdminActivitiesScreenProps) {
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [activeFilter, setActiveFilter] = useState('All');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,6 +58,17 @@ export default function AdminActivitiesScreen({ onBack }: AdminActivitiesScreenP
     return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
+  const filteredActivities = activities.filter(a => {
+    if (activeFilter === 'All') return true;
+    if (activeFilter === 'Emergencies' && a.type === 'EMERGENCY') return true;
+    if (activeFilter === 'Reports' && a.type === 'REPORT') return true;
+    if (activeFilter === 'Users' && (a.type === 'USER_CREATED' || a.type === 'USER_DELETED' || a.type === 'ROLE_CHANGE')) return true;
+    if (activeFilter === 'Auth' && a.type === 'LOGIN') return true;
+    return false;
+  });
+
+  const FILTERS = ['All', 'Emergencies', 'Reports', 'Users', 'Auth'];
+
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.header}>
@@ -76,36 +88,71 @@ export default function AdminActivitiesScreen({ onBack }: AdminActivitiesScreenP
           <Text style={{ color: '#EF4444' }}>{error}</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.list}>
-          {activities.length === 0 ? (
-            <View style={styles.empty}>
-              <Text style={styles.emptyText}>No recent activities found.</Text>
+        <View style={{ flex: 1 }}>
+          <View style={styles.filterContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+              {FILTERS.map(f => (
+                <Pressable
+                  key={f}
+                  style={[styles.filterBtn, activeFilter === f && styles.filterBtnActive]}
+                  onPress={() => setActiveFilter(f)}
+                >
+                  <Text style={[styles.filterText, activeFilter === f && styles.filterTextActive]}>{f}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+          <ScrollView contentContainerStyle={styles.list}>
+            <View style={styles.fullWidthContainer}>
+              {filteredActivities.length === 0 ? (
+                <View style={styles.empty}>
+                  <Text style={styles.emptyText}>No activities match the selected filter.</Text>
+                </View>
+              ) : (
+                filteredActivities.map(a => {
+                  let badgeStyle = styles.badgeLog;
+                  let iconName = 'activity';
+                  let iconColor = '#6B7280';
+                  
+                  if (a.type === 'EMERGENCY') {
+                    badgeStyle = styles.badgeEm; iconName = 'alert-triangle'; iconColor = '#EF4444';
+                  } else if (a.type === 'REPORT') {
+                    badgeStyle = styles.badgeRep; iconName = 'flag'; iconColor = '#F59E0B';
+                  } else if (a.type === 'LOGIN') {
+                    badgeStyle = styles.badgeLog; iconName = 'log-in'; iconColor = '#2673FF';
+                  } else if (a.type === 'ROLE_CHANGE') {
+                    badgeStyle = styles.badgeRole; iconName = 'shield'; iconColor = '#7C67D6';
+                  } else if (a.type === 'USER_CREATED' || a.type === 'USER_DELETED') {
+                    badgeStyle = styles.badgeUser; iconName = a.type === 'USER_CREATED' ? 'user-plus' : 'user-minus'; iconColor = '#10B981';
+                  }
+
+                  return (
+                    <View key={a._id} style={styles.card}>
+                      <View style={styles.cardHeader}>
+                        <View style={[styles.typeBadge, badgeStyle]}>
+                          <Feather name={iconName as any} size={12} color={iconColor} />
+                          <Text style={[styles.typeText, {color: iconColor}]}>
+                            {a.type.replace('_', ' ')}
+                          </Text>
+                        </View>
+                        <Text style={styles.date}>{formatDate(a.createdAt)}</Text>
+                      </View>
+                      
+                      <Text style={styles.desc}>{a.description}</Text>
+                      
+                      <View style={styles.cardFooter}>
+                        <Text style={styles.user}><Feather name="user" size={12}/> {a.user}</Text>
+                        <View style={styles.statusBadge}>
+                          <Text style={styles.statusText}>{a.status}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
             </View>
-          ) : (
-            activities.map(a => (
-              <View key={a._id} style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <View style={[styles.typeBadge, a.type === 'EMERGENCY' ? styles.badgeEm : styles.badgeRep]}>
-                    <Feather name={a.type === 'EMERGENCY' ? 'alert-triangle' : 'flag'} size={12} color={a.type === 'EMERGENCY' ? '#EF4444' : '#F59E0B'} />
-                    <Text style={[styles.typeText, a.type === 'EMERGENCY' ? {color: '#EF4444'} : {color: '#F59E0B'}]}>
-                      {a.type}
-                    </Text>
-                  </View>
-                  <Text style={styles.date}>{formatDate(a.createdAt)}</Text>
-                </View>
-                
-                <Text style={styles.desc}>{a.description}</Text>
-                
-                <View style={styles.cardFooter}>
-                  <Text style={styles.user}><Feather name="user" size={12}/> {a.user}</Text>
-                  <View style={styles.statusBadge}>
-                    <Text style={styles.statusText}>{a.status}</Text>
-                  </View>
-                </View>
-              </View>
-            ))
-          )}
-        </ScrollView>
+          </ScrollView>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -117,7 +164,16 @@ const styles = StyleSheet.create({
   backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-start' },
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#0D0D1A' },
   refreshBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-end' },
+  
+  filterContainer: { borderBottomWidth: 1, borderBottomColor: '#F0F1F8', backgroundColor: '#FAFBFC' },
+  filterScroll: { paddingHorizontal: 20, paddingVertical: 12, gap: 10 },
+  filterBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#ECEEF8' },
+  filterBtnActive: { backgroundColor: '#0D0D1A', borderColor: '#0D0D1A' },
+  filterText: { fontSize: 13, fontWeight: '700', color: '#8A8A9E' },
+  filterTextActive: { color: '#FFFFFF' },
+
   list: { padding: 20, paddingBottom: 100 },
+  fullWidthContainer: { width: '100%' },
   empty: { alignItems: 'center', marginTop: 40 },
   emptyText: { color: '#8A8A9E', fontSize: 15 },
   
@@ -126,6 +182,9 @@ const styles = StyleSheet.create({
   typeBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   badgeEm: { backgroundColor: '#FEE2E2' },
   badgeRep: { backgroundColor: '#FEF3C7' },
+  badgeLog: { backgroundColor: '#E8F0FF' },
+  badgeRole: { backgroundColor: '#EDE8FA' },
+  badgeUser: { backgroundColor: '#ECFDF5' },
   typeText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
   date: { fontSize: 12, color: '#A0A0B8', fontWeight: '600' },
   
