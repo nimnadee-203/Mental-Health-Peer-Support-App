@@ -211,6 +211,9 @@ function App() {
   );
 
   const [isActivityOpen, setIsActivityOpen] = useState(false);
+  const [activityPreviousTab, setActivityPreviousTab] = useState<
+    'Home' | 'Resources' | 'Groups' | 'Messages' | 'Activities' | 'Profile'
+  >('Home');
 
   const [selectedActivity, setSelectedActivity] = useState<
     | 'breathing'
@@ -330,8 +333,8 @@ function App() {
       | 'digitalDetox'
       | 'healthyRoutine',
   ) => {
+    setActivityPreviousTab(activeTab);
     setSelectedActivity(activity);
-
     setIsActivityOpen(true);
   };
 
@@ -442,7 +445,7 @@ function App() {
           onSelectActivity={setSelectedActivity}
           onBack={() => {
             setIsActivityOpen(false);
-            setActiveTab('Resources');
+            setActiveTab(activityPreviousTab);
           }}
         />
       );
