@@ -3,6 +3,7 @@ const dns = require('dns');
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path');
 
 // Set DNS servers to Google DNS for reliable MongoDB Atlas SRV resolution
 try {
@@ -20,9 +21,11 @@ const emergencyRouter = require('./routes/emergency');
 const trustedContactRouter = require('./routes/trustedContact');
 const resourcesRouter = require('./routes/resources');
 const moderationRouter = require('./routes/moderation');
+
 const uploadRouter = require('./routes/upload');
 const adminRouter = require('./routes/admin');
-const path = require('path');
+const digitalDetoxRouter = require('./routes/digitalDetox');
+const journalsRouter = require('./routes/journals');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -43,14 +46,19 @@ app.use('/api/emergency', emergencyRouter);
 app.use('/api/trusted-contact', trustedContactRouter);
 app.use('/api/resources', resourcesRouter);
 app.use('/api/moderation', moderationRouter);
+
 app.use('/api/upload', uploadRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/digital-detox', digitalDetoxRouter);
+app.use('/api/journals', journalsRouter);
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date() }));
 
 // ── Connect & Start ─────────────────────────────────────────────────────────
 if (!MONGO_URI) {
-  console.warn('⚠️  MONGODB_URI is not defined. Please check your backend/.env file.');
+  console.warn(
+    '⚠️  MONGODB_URI is not defined. Please check your backend/.env file.',
+  );
 }
 
 mongoose
@@ -60,6 +68,7 @@ mongoose
   })
   .then(() => {
     console.log('✅  Connected to MongoDB Atlas');
+
     const server = app.listen(PORT, () =>
       console.log(`🚀  Server running on http://localhost:${PORT}`),
     );
@@ -67,6 +76,7 @@ mongoose
     // ── Graceful shutdown (fixes EADDRINUSE on nodemon restart) ────────────
     const shutdown = (signal) => {
       console.log(`\n⚙️  ${signal} received — closing server gracefully...`);
+
       server.close(() => {
         mongoose.connection.close(false).then(() => {
           console.log('✅  Server and DB connection closed.');
@@ -77,11 +87,12 @@ mongoose
 
     // nodemon sends SIGUSR2 before restarting on Windows
     process.once('SIGUSR2', () => shutdown('SIGUSR2'));
+
     // Standard termination signals
     process.on('SIGTERM', () => shutdown('SIGTERM'));
-    process.on('SIGINT',  () => shutdown('SIGINT'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
   })
-  .catch(err => {
+  .catch((err) => {
     console.error('❌  MongoDB connection error:', err.message);
     process.exit(1);
   });

@@ -15,6 +15,8 @@ import {
 } from 'react-native';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
+import DigitalDetoxChallengeScreen from './DigitalDetoxChallengeScreen';
+import JournalingScreen from './JournalingScreen';
 
 type ActivityType =
   | 'breathing'
@@ -474,16 +476,6 @@ const journalFocuses: JournalFocus[] = [
   },
 ];
 
-const digitalDetoxChecklist = [
-  'Take a few slow breaths',
-  'Look around your surroundings',
-  'Stretch your shoulders',
-  'Drink some water',
-  'Notice how you feel without checking your phone',
-];
-
-const DETOX_DURATION_SECONDS = 5 * 60;
-
 const healthyRoutineItems = [
   {
     id: 'water',
@@ -625,11 +617,19 @@ function ActivitiesScreen({
     let Sound: any;
 
     try {
+      const { NativeModules } = require('react-native');
+      if (!NativeModules || !NativeModules.RNSound) {
+        console.log('Calm music native module RNSound is unavailable');
+        setMusicAvailable(false);
+        return;
+      }
       Sound =
         require('react-native-sound')
           .default ??
         require('react-native-sound');
-      Sound.setCategory('Playback');
+      if (Sound && typeof Sound.setCategory === 'function') {
+        Sound.setCategory('Playback');
+      }
     } catch (error) {
       console.log(
         'Calm music is unavailable:',
@@ -2620,7 +2620,14 @@ function ActivitiesScreen({
      MAIN UI
   ======================================================= */
 
+  if (activity === 'journaling') {
+    return <JournalingScreen onBack={onBack} />;
+  }
+
   return (
+    activity === 'digitalDetox' ? (
+      <DigitalDetoxChallengeScreen onBack={onBack} />
+    ) : (
     <SafeAreaView style={styles.screen}>
       <ScrollView
         contentContainerStyle={
@@ -2661,12 +2668,10 @@ function ActivitiesScreen({
             'mindfulness' &&
             renderMindfulness()}
 
-          {activity ===
-            'journaling' &&
-            renderJournaling()}
         </View>
       </ScrollView>
     </SafeAreaView>
+    )
   );
 }
 

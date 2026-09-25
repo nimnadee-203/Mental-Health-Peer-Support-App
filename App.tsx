@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, StatusBar, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { BackHandler, Pressable, StatusBar, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -218,6 +218,9 @@ function App() {
   );
 
   const [isActivityOpen, setIsActivityOpen] = useState(false);
+  const [activityPreviousTab, setActivityPreviousTab] = useState<
+    'Home' | 'Resources' | 'Groups' | 'Messages' | 'Activities' | 'Profile'
+  >('Home');
 
   const [selectedActivity, setSelectedActivity] = useState<
     | 'breathing'
@@ -292,6 +295,78 @@ function App() {
       isMounted = false;
     };
   }, []);
+
+  // ── Android Hardware Back Button Handler ────────────────────────────────────
+
+  useEffect(() => {
+    const onBackPress = () => {
+      // 1. If emergency support is open
+      if (isEmergencyOpen) {
+        setIsEmergencyOpen(false);
+        return true;
+      }
+
+      // 2. If article detail is open
+      if (isArticleOpen) {
+        setIsArticleOpen(false);
+        return true;
+      }
+
+      // 3. If activity is open
+      if (isActivityOpen) {
+        setIsActivityOpen(false);
+        setActiveTab(activityPreviousTab);
+        return true;
+      }
+
+      // 4. If create resource is open
+      if (isCreateResourceOpen) {
+        setIsCreateResourceOpen(false);
+        return true;
+      }
+
+      // 5. If inside Groups sub-navigation
+      if (activeTab === 'Groups') {
+        if (groupsView === 'postDetail' || groupsView === 'createPost') {
+          setGroupsView('discussion');
+          return true;
+        }
+        if (groupsView === 'discussion' || groupsView === 'createGroup') {
+          setGroupsView('detail');
+          return true;
+        }
+        if (groupsView === 'detail') {
+          setGroupsView('home');
+          return true;
+        }
+      }
+
+      // 6. If on any tab other than Home, switch back to Home tab
+      if (activeScreen === 'home' && activeTab !== 'Home') {
+        changeTab('Home');
+        return true;
+      }
+
+      // 7. On Home tab with no overlays: allow default back (exits app)
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      onBackPress,
+    );
+
+    return () => subscription.remove();
+  }, [
+    isEmergencyOpen,
+    isArticleOpen,
+    isActivityOpen,
+    activityPreviousTab,
+    isCreateResourceOpen,
+    activeTab,
+    groupsView,
+    activeScreen,
+  ]);
 
   const fetchCommunities = async () => {
     try {
@@ -376,8 +451,8 @@ function App() {
       | 'digitalDetox'
       | 'healthyRoutine',
   ) => {
+    setActivityPreviousTab(activeTab);
     setSelectedActivity(activity);
-
     setIsActivityOpen(true);
   };
 
@@ -527,7 +602,7 @@ function App() {
           onSelectActivity={setSelectedActivity}
           onBack={() => {
             setIsActivityOpen(false);
-            setActiveTab('Resources');
+            setActiveTab(activityPreviousTab);
           }}
         />
       );
@@ -701,7 +776,16 @@ function App() {
 
       case 'Home':
       default:
-        return <HomeScreen />;
+        return (
+          <HomeScreen
+            onOpenProfile={() => changeTab('Profile')}
+            onOpenResources={() => changeTab('Resources')}
+            onOpenArticle={handleOpenArticle}
+            onOpenActivity={handleOpenActivity}
+            onOpenGroups={() => changeTab('Groups')}
+            onOpenEmergencySupport={handleOpenEmergencySupport}
+          />
+        );
     }
   }, [
     activeTab,
@@ -819,7 +903,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
     shadowRadius: 5,
-    top: 12,
+    top: 32,
     width: 44,
     zIndex: 20,
   },

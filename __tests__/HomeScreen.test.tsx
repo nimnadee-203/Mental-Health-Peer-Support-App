@@ -37,12 +37,12 @@ describe('HomeScreen Dynamic Check-in', () => {
 
     const root = renderer!.root;
 
-    // Select 'Calm' mood chip
-    const calmChip = root.findByProps({ testID: 'mood-Calm' });
-    expect(calmChip).toBeTruthy();
+    // Select 'Good' mood chip
+    const goodChip = root.findByProps({ testID: 'mood-Good' });
+    expect(goodChip).toBeTruthy();
 
     await ReactTestRenderer.act(async () => {
-      calmChip.props.onPress();
+      goodChip.props.onPress();
     });
 
     const texts = root
@@ -51,7 +51,7 @@ describe('HomeScreen Dynamic Check-in', () => {
       .flatMap(v => (Array.isArray(v) ? v : [v]))
       .join(' ');
 
-    expect(texts).toContain('Checked in as Calm 🌿');
-    expect(texts).toContain('Logged as Calm today');
+    expect(texts).toContain('Checked in as Good 😊');
+    expect(texts).toContain('Logged as Good today');
   });
 });

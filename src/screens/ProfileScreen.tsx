@@ -684,6 +684,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+    paddingTop: 32,
     paddingBottom: 100,
   },
   topBar: {
