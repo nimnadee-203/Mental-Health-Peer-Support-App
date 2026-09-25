@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,41 +11,47 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getAuthUserId } from '../api/authStore';
 import { getUserProfile } from '../api/profileApi';
 import { UserProfile } from '../types/user';
+import { ResourceArticle, resourceArticles } from '../types/ResourceArticle';
 
 const moods = [
-  { label: 'Calm', emoji: '🌿' },
-  { label: 'Anxious', emoji: '🌧️' },
-  { label: 'Hopeful', emoji: '☀️' },
-  { label: 'Grateful', emoji: '✨' },
-  { label: 'Tired', emoji: '🌙' },
-];
-
-const quickActions = [
-  { label: 'Journal', detail: 'Capture a private reflection', icon: 'J' },
-  { label: 'Find peers', detail: 'Browse people with shared experiences', icon: 'P' },
-  { label: 'Crisis help', detail: 'View emergency support options', icon: '!' },
-];
-
-const supportSpaces = [
-  { title: 'Anxiety support circle', members: '128 active today' },
-  { title: 'Recovery milestones', members: '76 active today' },
-];
-
-const groundingTools = [
-  { title: '2 min breathing', meta: 'Guided calm' },
-  { title: 'Gratitude prompt', meta: 'Quick reflection' },
-  { title: 'Body scan', meta: 'Release tension' },
+  { label: 'Very low', emoji: '😭', key: 'Very low' },
+  { label: 'Low', emoji: '😔', key: 'Low' },
+  { label: 'Okay', emoji: '😐', key: 'Okay' },
+  { label: 'Good', emoji: '😊', key: 'Good' },
+  { label: 'Great', emoji: '😁', key: 'Great' },
 ];
 
 type HomeScreenProps = {
   onOpenProfile?: () => void;
+  onOpenResources?: () => void;
+  onOpenArticle?: (article: ResourceArticle) => void;
+  onOpenActivity?: (
+    activity?:
+      | 'breathing'
+      | 'mindfulness'
+      | 'journaling'
+      | 'digitalDetox'
+      | 'healthyRoutine',
+  ) => void;
+  onOpenGroups?: () => void;
+  onOpenEmergencySupport?: () => void;
 };
 
-function HomeScreen({ onOpenProfile }: HomeScreenProps) {
+export default function HomeScreen({
+  onOpenProfile,
+  onOpenResources,
+  onOpenArticle,
+  onOpenActivity,
+  onOpenGroups,
+  onOpenEmergencySupport,
+}: HomeScreenProps) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [loggedMoods, setLoggedMoods] = useState<string[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [joinedGroups, setJoinedGroups] = useState<{ [key: string]: boolean }>({});
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const fetchProfileData = useCallback(async () => {
     const userId = getAuthUserId();
@@ -80,177 +87,392 @@ function HomeScreen({ onOpenProfile }: HomeScreenProps) {
     setToastMessage(`Checked in as ${moodLabel} ${emoji}`);
   };
 
-  // Dynamic calculations for Today's Check-in
-  const moodLogsCount = loggedMoods.length;
-  const peerRepliesCount = profile?.stats?.replies ?? 0;
-  const mindfulTime = moodLogsCount > 0 ? `${moodLogsCount * 5 + 5}m` : '0m';
+  const toggleGroupJoin = (groupName: string) => {
+    setJoinedGroups(prev => {
+      const isJoined = !prev[groupName];
+      setToastMessage(isJoined ? `Joined ${groupName}!` : `Left ${groupName}`);
+      return { ...prev, [groupName]: isJoined };
+    });
+  };
 
-  // Calculate Check-in Percentage
-  let checkInScore = 0;
-  if (moodLogsCount > 0) checkInScore += 50;
-  if (peerRepliesCount > 0) checkInScore += 25;
-  if (moodLogsCount > 0) checkInScore += 25;
-  checkInScore = Math.min(100, checkInScore);
-
-  // Time-based greeting
   const hour = new Date().getHours();
-  const greetingText =
+  const greetingTime =
     hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-  const firstName = profile?.fullName ? profile.fullName.split(' ')[0] : 'there';
+  const firstName = profile?.fullName ? profile.fullName.split(' ')[0] : 'Alex';
+
+  // Stress article for recommended section
+  const stressArticle = resourceArticles.find(
+    a => a.id === 'art-1' || a.title.toLowerCase().includes('stress'),
+  ) || resourceArticles[0];
+
   return (
-    <SafeAreaView style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>{`${greetingText}, ${firstName}`}</Text>
-            <Text style={styles.title}>Patient Stories</Text>
+    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Header Bar */}
+        <View style={styles.headerRow}>
+          <View style={styles.greetingContainer}>
+            <Text style={styles.subGreeting}>{greetingTime}</Text>
+            <Text style={styles.mainGreeting}>{`${greetingTime}, ${firstName} 👋`}</Text>
+            <Text style={styles.headerSubtitle}>How are you feeling today?</Text>
           </View>
-        </View>
 
-        {/* Hero Section */}
-        <View style={styles.hero}>
-          <Text style={styles.heroTitle}>Share your health journey</Text>
-          <Text style={styles.heroText}>
-            Write updates, read patient experiences, and find gentle support
-            from people who understand.
-          </Text>
-          <Pressable style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Create Post</Text>
-          </Pressable>
-        </View>
-
-        {/* Quick Actions Grid */}
-        <View style={styles.quickGrid}>
-          {quickActions.map(action => (
-            <Pressable key={action.label} style={styles.quickCard}>
-              <View style={styles.quickIcon}>
-                <Text style={styles.quickIconText}>{action.icon}</Text>
-              </View>
-              <Text style={styles.quickTitle}>{action.label}</Text>
-              <Text style={styles.quickDetail}>{action.detail}</Text>
+          <View style={styles.headerActions}>
+            <Pressable
+              style={styles.iconButton}
+              onPress={() => setShowNotifications(true)}
+              accessibilityLabel="Notifications"
+            >
+              <Text style={styles.iconEmoji}>🔔</Text>
+              <View style={styles.notificationBadge} />
             </Pressable>
-          ))}
-        </View>
 
-        {/* Today's Check-in Card (Dynamic) */}
-        <View style={styles.checkInPanel}>
-          <View style={styles.checkInHeader}>
-            <View>
-              <Text style={styles.checkInTitle}>Today's check-in</Text>
-              <Text style={styles.checkInSubtitle}>
-                {selectedMood
-                  ? `Logged as ${selectedMood} today`
-                  : 'Tap how you feel below to check in'}
-              </Text>
-            </View>
-            <Text style={styles.checkInScore}>{`${checkInScore}%`}</Text>
-          </View>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${checkInScore}%` }]} />
-          </View>
-          <View style={styles.checkInStats}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{moodLogsCount}</Text>
-              <Text style={styles.statLabel}>mood logs</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{mindfulTime}</Text>
-              <Text style={styles.statLabel}>mindful time</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{peerRepliesCount}</Text>
-              <Text style={styles.statLabel}>peer replies</Text>
-            </View>
+            <Pressable
+              style={styles.iconButton}
+              onPress={onOpenProfile}
+              accessibilityLabel="Profile"
+            >
+              <Text style={styles.iconEmoji}>😊</Text>
+            </Pressable>
           </View>
         </View>
 
         {/* Toast Feedback */}
-        {toastMessage ? (
+        {toastMessage && (
           <View style={styles.toastBox}>
             <Text style={styles.toastText}>{toastMessage}</Text>
           </View>
-        ) : null}
+        )}
 
-        {/* How Are You Feeling? (Interactive Mood Selection) */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>How are you feeling?</Text>
-        </View>
+        {/* Mood Tracker Hero Card */}
+        <View style={styles.moodHeroCard}>
+          <Text style={styles.moodHeroTitle}>How are you feeling today?</Text>
 
-        <View style={styles.moodRow}>
-          {moods.map(moodItem => {
-            const isSelected = selectedMood === moodItem.label;
-            return (
-              <Pressable
-                key={moodItem.label}
-                testID={`mood-${moodItem.label}`}
-                style={[styles.moodChip, isSelected && styles.moodChipSelected]}
-                onPress={() => handleSelectMood(moodItem.label, moodItem.emoji)}
-              >
-                <Text style={[styles.moodText, isSelected && styles.moodTextSelected]}>
-                  {`${moodItem.emoji} ${moodItem.label}`}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {/* Support Spaces */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Support spaces</Text>
-        </View>
-
-        <View style={styles.spaceList}>
-          {supportSpaces.map(space => (
-            <Pressable key={space.title} style={styles.spaceCard}>
-              <View style={styles.spaceAccent} />
-              <View style={styles.spaceContent}>
-                <Text style={styles.spaceTitle}>{space.title}</Text>
-                <Text style={styles.spaceMeta}>{space.members}</Text>
-              </View>
-              <Text style={styles.spaceArrow}>&gt;</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {/* Grounding Tools */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Grounding tools</Text>
-        </View>
-
-        <View style={styles.toolRow}>
-          {groundingTools.map(tool => (
-            <Pressable key={tool.title} style={styles.toolCard}>
-              <Text style={styles.toolTitle}>{tool.title}</Text>
-              <Text style={styles.toolMeta}>{tool.meta}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {/* Community Post */}
-        <View style={styles.postCard}>
-          <View style={styles.postHeader}>
-            <View style={styles.postAvatar}>
-              <Text style={styles.postAvatarText}>M</Text>
-            </View>
-            <View>
-              <Text style={styles.author}>Maya</Text>
-              <Text style={styles.time}>12 min ago</Text>
-            </View>
+          <View style={styles.moodGrid}>
+            {moods.map(moodItem => {
+              const isSelected = selectedMood === moodItem.label;
+              return (
+                <Pressable
+                  key={moodItem.key}
+                  testID={`mood-${moodItem.label}`}
+                  style={[
+                    styles.moodCardItem,
+                    isSelected && styles.moodCardItemSelected,
+                  ]}
+                  onPress={() =>
+                    handleSelectMood(moodItem.label, moodItem.emoji)
+                  }
+                >
+                  <Text style={styles.moodEmoji}>{moodItem.emoji}</Text>
+                  <Text
+                    style={[
+                      styles.moodCardLabel,
+                      isSelected && styles.moodCardLabelSelected,
+                    ]}
+                  >
+                    {moodItem.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
-          <Text style={styles.postTitle}>A small win today</Text>
-          <Text style={styles.postBody}>
-            I went for a short walk after a hard morning. It was not perfect,
-            but it helped me breathe a little easier.
+
+          <Pressable
+            style={styles.moodActionButton}
+            onPress={() => {
+              if (!selectedMood) {
+                setToastMessage('Please select how you are feeling above');
+              } else {
+                setToastMessage(`Mood ${selectedMood} logged for today! ✨`);
+              }
+            }}
+          >
+            <Text style={styles.moodActionButtonText}>
+              {selectedMood
+                ? `Logged as ${selectedMood} today`
+                : 'Select a mood first'}
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* RECOMMENDED FOR YOU */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionHeaderTitle}>RECOMMENDED FOR YOU</Text>
+          <Pressable onPress={onOpenResources}>
+            <Text style={styles.sectionHeaderLink}>View all</Text>
+          </Pressable>
+        </View>
+
+        <Pressable
+          style={styles.recommendedCard}
+          onPress={() => onOpenArticle && onOpenArticle(stressArticle)}
+        >
+          <View style={styles.recommendedTopRow}>
+            <View style={styles.tagBadge}>
+              <Text style={styles.tagBadgeText}>STRESS</Text>
+            </View>
+            <Pressable
+              onPress={() => {
+                setIsBookmarked(!isBookmarked);
+                setToastMessage(
+                  !isBookmarked
+                    ? 'Saved to bookmarks'
+                    : 'Removed from bookmarks',
+                );
+              }}
+              hitSlop={8}
+            >
+              <Text style={styles.bookmarkIcon}>
+                {isBookmarked ? '🔖' : '🏷️'}
+              </Text>
+            </Pressable>
+          </View>
+
+          <Text style={styles.recommendedTitle}>
+            Understanding everyday stress
           </Text>
-          <View style={styles.postFooter}>
-            <Text style={styles.footerText}>24 supports</Text>
-            <Text style={styles.footerText}>8 replies</Text>
-          </View>
+          <Text style={styles.recommendedDesc}>
+            Learn what triggers stress and gentle ways to work with it.
+          </Text>
+
+          <Text style={styles.recommendedFooter}>5 min read</Text>
+        </Pressable>
+
+        {/* SOMETHING GOOD FOR YOU */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionHeaderTitle}>SOMETHING GOOD FOR YOU</Text>
+          <Pressable onPress={onOpenResources}>
+            <Text style={styles.sectionHeaderLink}>See all</Text>
+          </Pressable>
         </View>
+
+        {/* Activity 1 */}
+        <View style={styles.activityCard}>
+          <View style={[styles.activityIconBox, { backgroundColor: '#D4F4E4' }]}>
+            <Text style={styles.activityEmoji}>🌱</Text>
+          </View>
+          <View style={styles.activityBody}>
+            <Text style={styles.activityTitle}>5-minute breathing</Text>
+            <Text style={styles.activityDesc}>
+              Calm your nervous system with slow, guided breathing.
+            </Text>
+            <Text style={styles.activityMeta}>5 min</Text>
+          </View>
+          <Pressable
+            style={styles.actionPillButton}
+            onPress={() => onOpenActivity && onOpenActivity('breathing')}
+          >
+            <Text style={styles.actionPillButtonText}>Start</Text>
+          </Pressable>
+        </View>
+
+        {/* Activity 2 */}
+        <View style={styles.activityCard}>
+          <View style={[styles.activityIconBox, { backgroundColor: '#E5DCF9' }]}>
+            <Text style={styles.activityEmoji}>🧘</Text>
+          </View>
+          <View style={styles.activityBody}>
+            <Text style={styles.activityTitle}>Quick mindfulness break</Text>
+            <Text style={styles.activityDesc}>
+              Pause, observe, and react with a short, mindful moment.
+            </Text>
+            <Text style={styles.activityMeta}>3 min</Text>
+          </View>
+          <Pressable
+            style={styles.actionPillButton}
+            onPress={() => onOpenActivity && onOpenActivity('mindfulness')}
+          >
+            <Text style={styles.actionPillButtonText}>Start</Text>
+          </Pressable>
+        </View>
+
+        {/* FIND YOUR COMMUNITY */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionHeaderTitle}>FIND YOUR COMMUNITY</Text>
+          <Pressable onPress={onOpenGroups}>
+            <Text style={styles.sectionHeaderLink}>See all</Text>
+          </Pressable>
+        </View>
+
+        {/* Community 1 */}
+        <View style={styles.communityCard}>
+          <View style={[styles.activityIconBox, { backgroundColor: '#FCE6D6' }]}>
+            <Text style={styles.activityEmoji}>📚</Text>
+          </View>
+          <View style={styles.activityBody}>
+            <Text style={styles.activityTitle}>Managing Academic Stress</Text>
+            <Text style={styles.activityDesc}>
+              Share strategies and support for academic pressures.
+            </Text>
+            <View style={styles.memberMetaRow}>
+              <View style={styles.avatarDotsRow}>
+                <View style={[styles.avatarDot, { backgroundColor: '#F87171' }]} />
+                <View
+                  style={[
+                    styles.avatarDot,
+                    { backgroundColor: '#60A5FA', marginLeft: -6 },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.avatarDot,
+                    { backgroundColor: '#34D399', marginLeft: -6 },
+                  ]}
+                />
+              </View>
+              <Text style={styles.memberCountText}>3.2k members</Text>
+            </View>
+          </View>
+          <Pressable
+            style={[
+              styles.actionPillButton,
+              joinedGroups['Academic'] && styles.actionPillButtonJoined,
+            ]}
+            onPress={() => {
+              toggleGroupJoin('Academic');
+              if (onOpenGroups) onOpenGroups();
+            }}
+          >
+            <Text
+              style={[
+                styles.actionPillButtonText,
+                joinedGroups['Academic'] && styles.actionPillButtonTextJoined,
+              ]}
+            >
+              {joinedGroups['Academic'] ? 'Joined' : 'Join'}
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Community 2 */}
+        <View style={styles.communityCard}>
+          <View style={[styles.activityIconBox, { backgroundColor: '#E5DCF9' }]}>
+            <Text style={styles.activityEmoji}>🧘‍♀️</Text>
+          </View>
+          <View style={styles.activityBody}>
+            <Text style={styles.activityTitle}>Mindfulness & Healthy Habits</Text>
+            <Text style={styles.activityDesc}>
+              Build gentle daily practices alongside others.
+            </Text>
+            <View style={styles.memberMetaRow}>
+              <View style={styles.avatarDotsRow}>
+                <View style={[styles.avatarDot, { backgroundColor: '#FBBF24' }]} />
+                <View
+                  style={[
+                    styles.avatarDot,
+                    { backgroundColor: '#A78BFA', marginLeft: -6 },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.avatarDot,
+                    { backgroundColor: '#F472B6', marginLeft: -6 },
+                  ]}
+                />
+              </View>
+              <Text style={styles.memberCountText}>850 members</Text>
+            </View>
+          </View>
+          <Pressable
+            style={[
+              styles.actionPillButton,
+              joinedGroups['Mindfulness'] && styles.actionPillButtonJoined,
+            ]}
+            onPress={() => {
+              toggleGroupJoin('Mindfulness');
+              if (onOpenGroups) onOpenGroups();
+            }}
+          >
+            <Text
+              style={[
+                styles.actionPillButtonText,
+                joinedGroups['Mindfulness'] && styles.actionPillButtonTextJoined,
+              ]}
+            >
+              {joinedGroups['Mindfulness'] ? 'Joined' : 'Join'}
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* NEED PROFESSIONAL SUPPORT BANNER */}
+        <View style={styles.proSupportCard}>
+          <View style={styles.proSupportTop}>
+            <View style={styles.proSupportIconBox}>
+              <Text style={styles.proSupportEmoji}>💼</Text>
+            </View>
+            <View style={styles.proSupportTextCol}>
+              <Text style={styles.proSupportTitle}>
+                Need professional support?
+              </Text>
+              <Text style={styles.proSupportDesc}>
+                Connect with a qualified professional when you need additional
+                support.
+              </Text>
+            </View>
+          </View>
+          <Pressable
+            style={styles.proSupportButton}
+            onPress={onOpenEmergencySupport}
+          >
+            <Text style={styles.proSupportButtonText}>Explore support</Text>
+          </Pressable>
+        </View>
+
+        {/* NEED URGENT HELP BANNER */}
+        <Pressable
+          style={styles.urgentHelpCard}
+          onPress={onOpenEmergencySupport}
+        >
+          <View style={styles.urgentIconBox}>
+            <Text style={styles.urgentEmoji}>🤝</Text>
+          </View>
+          <View style={styles.urgentTextCol}>
+            <Text style={styles.urgentTitle}>Need urgent help?</Text>
+            <Text style={styles.urgentDesc}>
+              Access emergency support information.
+            </Text>
+          </View>
+          <Text style={styles.urgentChevron}>›</Text>
+        </Pressable>
       </ScrollView>
+
+      {/* Notifications Modal */}
+      <Modal
+        visible={showNotifications}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowNotifications(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowNotifications(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Notifications</Text>
+              <Pressable onPress={() => setShowNotifications(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </Pressable>
+            </View>
+            <View style={styles.notificationItem}>
+              <Text style={styles.notifIcon}>🌿</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.notifTitle}>Daily Check-in Reminder</Text>
+                <Text style={styles.notifTime}>Take a moment to record your mood today.</Text>
+              </View>
+            </View>
+            <View style={styles.notificationItem}>
+              <Text style={styles.notifIcon}>💬</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.notifTitle}>Community Update</Text>
+                <Text style={styles.notifTime}>New responses in Academic Stress group.</Text>
+              </View>
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -258,346 +480,446 @@ function HomeScreen({ onOpenProfile }: HomeScreenProps) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#FAFBFD',
   },
-  content: {
-    padding: 20,
-    paddingBottom: 100,
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 32,
   },
-  header: {
+
+  /* Header Bar */
+  headerRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 20,
   },
-  greeting: {
-    color: '#6B7280',
+  greetingContainer: {
+    flex: 1,
+  },
+  subGreeting: {
+    fontSize: 12,
+    color: '#8E8E93',
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  mainGreeting: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1C1C1E',
+    letterSpacing: -0.3,
+  },
+  headerSubtitle: {
     fontSize: 14,
-    fontWeight: '600',
+    color: '#6E6E73',
+    marginTop: 2,
   },
-  title: {
-    color: '#111827',
-    fontSize: 28,
-    fontWeight: '800',
-    marginTop: 4,
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginLeft: 12,
   },
-  avatar: {
+  iconButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#2563EB',
-    alignItems: 'center',
+    backgroundColor: '#F0F1F6',
     justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
   },
-  avatarText: {
-    color: '#FFFFFF',
+  iconEmoji: {
     fontSize: 18,
-    fontWeight: '800',
   },
-  hero: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  heroTitle: {
-    color: '#111827',
-    fontSize: 22,
-    fontWeight: '800',
-  },
-  heroText: {
-    color: '#4B5563',
-    fontSize: 15,
-    lineHeight: 22,
-    marginTop: 10,
-  },
-  primaryButton: {
-    height: 44,
-    borderRadius: 8,
-    backgroundColor: '#2563EB',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 16,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  quickGrid: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 16,
-  },
-  quickCard: {
-    flex: 1,
-    minHeight: 126,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  quickIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#EEF6F4',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickIconText: {
-    color: '#0F766E',
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  quickTitle: {
-    color: '#111827',
-    fontSize: 14,
-    fontWeight: '800',
-    marginTop: 10,
-  },
-  quickDetail: {
-    color: '#6B7280',
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: 5,
-  },
-  checkInPanel: {
-    backgroundColor: '#17324D',
-    borderRadius: 8,
-    padding: 16,
-    marginTop: 16,
-  },
-  checkInHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  checkInTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  checkInSubtitle: {
-    color: '#C8D5E2',
-    fontSize: 13,
-    marginTop: 4,
-  },
-  checkInScore: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '900',
-  },
-  progressTrack: {
+  notificationBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#2D4966',
-    overflow: 'hidden',
-    marginTop: 16,
+    backgroundColor: '#FF3B30',
   },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#34D399',
-  },
-  checkInStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 16,
-  },
-  statItem: {
-    flex: 1,
-  },
-  statValue: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '900',
-  },
-  statLabel: {
-    color: '#C8D5E2',
-    fontSize: 11,
-    marginTop: 3,
-  },
-  statDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: '#3E5C78',
-    marginHorizontal: 10,
-  },
+
+  /* Toast Box */
   toastBox: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#A7F3D0',
-    borderWidth: 1,
-    borderRadius: 8,
+    backgroundColor: '#1C1C1E',
     paddingVertical: 10,
-    paddingHorizontal: 14,
-    marginTop: 12,
-    alignItems: 'center',
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    alignSelf: 'center',
   },
   toastText: {
-    color: '#065F46',
-    fontWeight: '700',
+    color: '#FFFFFF',
     fontSize: 13,
+    fontWeight: '500',
   },
-  sectionHeader: {
-    marginTop: 24,
-    marginBottom: 12,
+
+  /* Mood Tracker Hero Card */
+  moodHeroCard: {
+    backgroundColor: '#C3C5FC',
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 24,
   },
-  sectionTitle: {
-    color: '#111827',
-    fontSize: 18,
-    fontWeight: '800',
+  moodHeroTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#212059',
+    marginBottom: 16,
   },
-  moodRow: {
+  moodGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    gap: 6,
   },
-  moodChip: {
-    height: 40,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    backgroundColor: '#EAF2FF',
+  moodCardItem: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
-  moodChipSelected: {
-    backgroundColor: '#2563EB',
+  moodCardItemSelected: {
+    borderColor: '#4E46E5',
+    backgroundColor: '#F5F5FF',
   },
-  moodText: {
-    color: '#2563EB',
-    fontWeight: '800',
-    fontSize: 14,
+  moodEmoji: {
+    fontSize: 24,
+    marginBottom: 6,
   },
-  moodTextSelected: {
-    color: '#FFFFFF',
+  moodCardLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#666666',
+    textAlign: 'center',
   },
-  spaceList: {
-    gap: 10,
+  moodCardLabelSelected: {
+    color: '#4E46E5',
+    fontWeight: '700',
   },
-  spaceCard: {
-    minHeight: 68,
-    flexDirection: 'row',
-    alignItems: 'center',
+  moodActionButton: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    overflow: 'hidden',
-  },
-  spaceAccent: {
-    width: 5,
-    height: '100%',
-    backgroundColor: '#F59E0B',
-  },
-  spaceContent: {
-    flex: 1,
+    borderRadius: 24,
     paddingVertical: 12,
-    paddingHorizontal: 14,
+    alignItems: 'center',
   },
-  spaceTitle: {
-    color: '#111827',
-    fontSize: 15,
-    fontWeight: '800',
+  moodActionButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#212059',
   },
-  spaceMeta: {
-    color: '#6B7280',
-    fontSize: 12,
+
+  /* Section Header */
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
     marginTop: 4,
   },
-  spaceArrow: {
-    color: '#9CA3AF',
-    fontSize: 28,
-    paddingRight: 14,
-  },
-  toolRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  toolCard: {
-    flex: 1,
-    minHeight: 82,
-    backgroundColor: '#FDFBF3',
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#EFE6C8',
-    justifyContent: 'space-between',
-  },
-  toolTitle: {
-    color: '#111827',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  toolMeta: {
-    color: '#7C6F4F',
+  sectionHeaderTitle: {
     fontSize: 11,
-    marginTop: 8,
+    fontWeight: '700',
+    color: '#7C7C8A',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
-  postCard: {
+  sectionHeaderLink: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4A4A68',
+  },
+
+  /* Recommended Card */
+  recommendedCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 16,
+    borderRadius: 20,
+    padding: 18,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    marginTop: 20,
+    borderColor: '#ECECF0',
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
   },
-  postHeader: {
+  recommendedTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  tagBadge: {
+    backgroundColor: '#E4F0FF',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  tagBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#2563EB',
+    letterSpacing: 0.5,
+  },
+  bookmarkIcon: {
+    fontSize: 16,
+  },
+  recommendedTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1C1C1E',
+    marginBottom: 6,
+  },
+  recommendedDesc: {
+    fontSize: 13,
+    color: '#666666',
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  recommendedFooter: {
+    fontSize: 12,
+    color: '#8E8E93',
+  },
+
+  /* Something Good / Community Card */
+  activityCard: {
+    backgroundColor: '#F8F9FB',
+    borderRadius: 20,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#EFF0F4',
   },
-  postAvatar: {
-    width: 40,
-    height: 40,
+  communityCard: {
+    backgroundColor: '#F8F9FB',
     borderRadius: 20,
-    backgroundColor: '#10B981',
+    padding: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#EFF0F4',
+  },
+  activityIconBox: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  postAvatarText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
+  activityEmoji: {
+    fontSize: 24,
   },
-  author: {
-    color: '#111827',
+  activityBody: {
+    flex: 1,
+    marginHorizontal: 14,
+  },
+  activityTitle: {
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '700',
+    color: '#1C1C1E',
+    marginBottom: 2,
   },
-  time: {
-    color: '#6B7280',
+  activityDesc: {
     fontSize: 12,
+    color: '#666666',
+    lineHeight: 16,
+  },
+  activityMeta: {
+    fontSize: 11,
+    color: '#8E8E93',
+    marginTop: 4,
+  },
+  memberMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  avatarDotsRow: {
+    flexDirection: 'row',
+    marginRight: 6,
+  },
+  avatarDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  memberCountText: {
+    fontSize: 11,
+    color: '#8E8E93',
+  },
+  actionPillButton: {
+    backgroundColor: '#D7EFE6',
+    paddingVertical: 9,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+  },
+  actionPillButtonJoined: {
+    backgroundColor: '#E2E8F0',
+  },
+  actionPillButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1B503E',
+  },
+  actionPillButtonTextJoined: {
+    color: '#475569',
+  },
+
+  /* Professional Support Banner */
+  proSupportCard: {
+    backgroundColor: '#EFF873',
+    borderRadius: 24,
+    padding: 20,
+    marginTop: 12,
+    marginBottom: 14,
+  },
+  proSupportTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  proSupportIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  proSupportEmoji: {
+    fontSize: 22,
+  },
+  proSupportTextCol: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  proSupportTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1C1C1E',
+  },
+  proSupportDesc: {
+    fontSize: 12,
+    color: '#444444',
+    lineHeight: 16,
+    marginTop: 4,
+  },
+  proSupportButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    alignSelf: 'flex-start',
+    marginTop: 14,
+  },
+  proSupportButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1C1C1E',
+  },
+
+  /* Urgent Help Banner */
+  urgentHelpCard: {
+    backgroundColor: '#F7B5C5',
+    borderRadius: 24,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  urgentIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#FDE4CD',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  urgentEmoji: {
+    fontSize: 20,
+  },
+  urgentTextCol: {
+    flex: 1,
+    marginHorizontal: 12,
+  },
+  urgentTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1C1C1E',
+  },
+  urgentDesc: {
+    fontSize: 12,
+    color: '#444444',
+    marginTop: 1,
+  },
+  urgentChevron: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: '#1C1C1E',
+  },
+
+  /* Modal */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContainer: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1C1C1E',
+  },
+  modalClose: {
+    fontSize: 18,
+    color: '#8E8E93',
+    fontWeight: '600',
+  },
+  notificationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F5',
+  },
+  notifIcon: {
+    fontSize: 22,
+    marginRight: 12,
+  },
+  notifTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1C1C1E',
+  },
+  notifTime: {
+    fontSize: 12,
+    color: '#8E8E93',
     marginTop: 2,
   },
-  postTitle: {
-    color: '#111827',
-    fontSize: 17,
-    fontWeight: '800',
-    marginTop: 16,
-  },
-  postBody: {
-    color: '#4B5563',
-    fontSize: 15,
-    lineHeight: 22,
-    marginTop: 8,
-  },
-  postFooter: {
-    flexDirection: 'row',
-    gap: 18,
-    marginTop: 14,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  footerText: {
-    color: '#6B7280',
-    fontSize: 13,
-    fontWeight: '700',
-  },
 });
-
-export default HomeScreen;

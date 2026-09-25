@@ -600,7 +600,16 @@ function App() {
 
       case 'Home':
       default:
-        return <HomeScreen />;
+        return (
+          <HomeScreen
+            onOpenProfile={() => changeTab('Profile')}
+            onOpenResources={() => changeTab('Resources')}
+            onOpenArticle={handleOpenArticle}
+            onOpenActivity={handleOpenActivity}
+            onOpenGroups={() => changeTab('Groups')}
+            onOpenEmergencySupport={handleOpenEmergencySupport}
+          />
+        );
     }
   }, [
     activeTab,

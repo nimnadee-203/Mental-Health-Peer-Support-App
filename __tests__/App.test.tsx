@@ -45,8 +45,8 @@ test('renders the home screen content and the full shared bottom navigation', as
     .map(node => node.props.children)
     .flatMap(value => (Array.isArray(value) ? value : [value]));
 
-  expect(homeTextLabels).toContain('Patient Stories');
-  expect(homeTextLabels).toContain('Share your health journey');
+  expect(homeTextLabels).toContain('RECOMMENDED FOR YOU');
+  expect(homeTextLabels).toContain('SOMETHING GOOD FOR YOU');
   expect(navTextLabels).toContain('Home');
   expect(navTextLabels).toContain('Resources');
   expect(navTextLabels).toContain('Groups');
