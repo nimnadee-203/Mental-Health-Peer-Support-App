@@ -149,7 +149,7 @@ export default function HomeScreen({
         <View style={styles.headerRow}>
           <View style={styles.greetingContainer}>
             <Text style={styles.subGreeting}>{greetingTime}</Text>
-            <Text style={styles.mainGreeting}>{`${greetingTime}, ${firstName} 👋`}</Text>
+            <Text style={styles.mainGreeting}>{`${greetingTime}, ${firstName}`}</Text>
             <Text style={styles.headerSubtitle}>How are you feeling today?</Text>
           </View>
 
