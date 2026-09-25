@@ -98,12 +98,46 @@ export default function HomeScreen({
   const hour = new Date().getHours();
   const greetingTime =
     hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-  const firstName = profile?.fullName ? profile.fullName.split(' ')[0] : 'Alex';
+  const firstName = profile?.fullName ? profile.fullName.trim().split(' ')[0] : 'Alex';
 
-  // Stress article for recommended section
-  const stressArticle = resourceArticles.find(
-    a => a.id === 'art-1' || a.title.toLowerCase().includes('stress'),
-  ) || resourceArticles[0];
+  // Dynamic user interests & preference matching
+  const userInterests = profile?.interests || [];
+
+  // Match recommended article based on user's interests/preferences safely
+  const recommendedArticle = React.useMemo(() => {
+    if (userInterests && userInterests.length > 0) {
+      const matched = resourceArticles.find(article =>
+        userInterests.some(
+          interest =>
+            (Array.isArray(article?.tags) &&
+              article.tags.some(
+                t =>
+                  t &&
+                  t.toLowerCase().includes(interest.toString().toLowerCase()),
+              )) ||
+            (article?.title &&
+              article.title
+                .toLowerCase()
+                .includes(interest.toString().toLowerCase())) ||
+            (article?.summary &&
+              article.summary
+                .toLowerCase()
+                .includes(interest.toString().toLowerCase())),
+        ),
+      );
+      if (matched) return matched;
+    }
+    return (
+      resourceArticles.find(
+        a => a.id === 'art-1' || a.title?.toLowerCase().includes('stress'),
+      ) || resourceArticles[0]
+    );
+  }, [userInterests]);
+
+  const recommendedBadge =
+    userInterests && userInterests.length > 0
+      ? (recommendedArticle?.tags?.[0] || 'FOR YOU').toUpperCase()
+      : 'STRESS';
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
@@ -207,11 +241,11 @@ export default function HomeScreen({
 
         <Pressable
           style={styles.recommendedCard}
-          onPress={() => onOpenArticle && onOpenArticle(stressArticle)}
+          onPress={() => onOpenArticle && onOpenArticle(recommendedArticle)}
         >
           <View style={styles.recommendedTopRow}>
             <View style={styles.tagBadge}>
-              <Text style={styles.tagBadgeText}>STRESS</Text>
+              <Text style={styles.tagBadgeText}>{recommendedBadge}</Text>
             </View>
             <Pressable
               onPress={() => {
@@ -231,13 +265,13 @@ export default function HomeScreen({
           </View>
 
           <Text style={styles.recommendedTitle}>
-            Understanding everyday stress
+            {recommendedArticle.title}
           </Text>
           <Text style={styles.recommendedDesc}>
-            Learn what triggers stress and gentle ways to work with it.
+            {recommendedArticle.summary}
           </Text>
 
-          <Text style={styles.recommendedFooter}>5 min read</Text>
+          <Text style={styles.recommendedFooter}>{`${recommendedArticle.readTimeMinutes} min read`}</Text>
         </Pressable>
 
         {/* SOMETHING GOOD FOR YOU */}
