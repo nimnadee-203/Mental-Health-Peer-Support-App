@@ -625,11 +625,19 @@ function ActivitiesScreen({
     let Sound: any;
 
     try {
+      const { NativeModules } = require('react-native');
+      if (!NativeModules || !NativeModules.RNSound) {
+        console.log('Calm music native module RNSound is unavailable');
+        setMusicAvailable(false);
+        return;
+      }
       Sound =
         require('react-native-sound')
           .default ??
         require('react-native-sound');
-      Sound.setCategory('Playback');
+      if (Sound && typeof Sound.setCategory === 'function') {
+        Sound.setCategory('Playback');
+      }
     } catch (error) {
       console.log(
         'Calm music is unavailable:',

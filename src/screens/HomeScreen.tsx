@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 32,
+    paddingBottom: 110,
   },
 
   /* Header Bar */
