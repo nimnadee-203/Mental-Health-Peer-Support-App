@@ -3,3 +3,6 @@ node_modules/
 
 # Environment secrets — never commit this
 .env
+
+# User uploads
+uploads/

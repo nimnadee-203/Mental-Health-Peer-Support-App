@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { getAuthUserId, setAuthUserId } from '../api/authStore';
 import { getUserProfile, updateUserProfile } from '../api/profileApi';
 import { MessagingOption, UserProfile, VisibilityOption } from '../types/user';
@@ -20,11 +21,12 @@ type ProfileScreenProps = {
   onNavigateToAuth?: () => void;
   onLogout?: () => void;
   onOpenModeration?: () => void;
+  onOpenAdminDashboard?: () => void;
 };
 
 const DEFAULT_INTERESTS = ['Anxiety support', 'Mindfulness', 'Daily journaling'];
 
-function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration }: ProfileScreenProps) {
+function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration, onOpenAdminDashboard }: ProfileScreenProps) {
   const [userId, setUserId] = useState<string | null>(getAuthUserId());
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -169,6 +171,20 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration }:
   };
 
   const handleConfirmLogout = () => {
+    if (typeof window !== 'undefined' && (window as any).confirm) {
+      if ((window as any).confirm('Are you sure you want to log out of your account?')) {
+        setAuthUserId(null);
+        setProfile(null);
+        setUserId(null);
+        if (onLogout) {
+          onLogout();
+        } else if (onNavigateToAuth) {
+          onNavigateToAuth();
+        }
+      }
+      return;
+    }
+
     Alert.alert('Log Out', 'Are you sure you want to log out of your account?', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -214,6 +230,26 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration }:
           </Pressable>
         ) : null}
 
+        {/* Admin Area */}
+        {profile?.role === 'admin' && onOpenAdminDashboard ? (
+          <View style={styles.adminSectionWrapper}>
+            <Pressable style={styles.adminPremiumCard} onPress={onOpenAdminDashboard}>
+              <View style={styles.adminCardLeft}>
+                <View style={styles.adminIconWrapper}>
+                  <Feather name="shield" size={22} color="#FFFFFF" />
+                </View>
+                <View>
+                  <Text style={styles.adminCardTitle}>Admin & Settings</Text>
+                  <Text style={styles.adminCardSub}>Manage system & users</Text>
+                </View>
+              </View>
+              <View style={styles.adminCardRight}>
+                <Feather name="chevron-right" size={20} color="#5A5AD8" />
+              </View>
+            </Pressable>
+          </View>
+        ) : null}
+
         {/* Loading Indicator */}
         {isLoading ? (
           <View style={styles.centerBox}>
@@ -249,6 +285,11 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration }:
             <Pressable style={styles.retryButton} onPress={fetchProfile}>
               <Text style={styles.retryButtonText}>Retry</Text>
             </Pressable>
+            {onLogout && (
+              <Pressable style={[styles.retryButton, { backgroundColor: '#FEE2E2', marginTop: 10 }]} onPress={onLogout}>
+                <Text style={[styles.retryButtonText, { color: '#EF4444' }]}>Log Out</Text>
+              </Pressable>
+            )}
           </View>
         ) : profile ? (
           /* Logged-In User Profile Layout */
@@ -590,6 +631,56 @@ const styles = StyleSheet.create({
   moderationButtonText: {
     color: '#276A5A',
     fontWeight: '800',
+  },
+  adminSectionWrapper: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  adminPremiumCard: {
+    backgroundColor: '#F3F4FB',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#E6E8F4',
+  },
+  adminCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  adminIconWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#5A5AD8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    shadowColor: '#5A5AD8',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  adminCardTitle: {
+    color: '#0D0D1A',
+    fontWeight: '800',
+    fontSize: 16,
+    marginBottom: 2,
+  },
+  adminCardSub: {
+    color: '#6B6B80',
+    fontSize: 13,
+  },
+  adminCardRight: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#E6E8F4',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   content: {
     padding: 20,

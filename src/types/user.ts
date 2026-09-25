@@ -18,7 +18,8 @@ export interface UserProfile {
   id: string;
   fullName: string;
   email: string;
-  role?: 'user' | 'moderator' | 'admin';
+  role?: 'user' | 'professional' | 'moderator' | 'admin';
+  medicalExperience?: string;
   bio: string;
   interests: string[];
   stats: UserProfileStats;

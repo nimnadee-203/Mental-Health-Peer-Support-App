@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -12,11 +12,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Video, ResizeMode } from 'expo-av';
 import type { Post } from './GroupDiscussionScreen';
 
 import { API_BASE } from '../config/api';
 import ReportModal from '../components/ReportModal';
+import { getAuthUserId } from '../api/authStore';
+import SharePostModal from '../components/SharePostModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface Comment {
@@ -26,6 +29,7 @@ export interface Comment {
   authorName: string;
   likes: number;
   createdAt: string;
+  likedBy?: string[];
 }
 
 interface PostDetailScreenProps {
@@ -43,7 +47,7 @@ function timeAgo(dateString: string) {
   if (diffInSeconds < 60) return 'Just now';
   const diffInMinutes = Math.floor(diffInSeconds / 60);
   if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-  const diffInHours = Math.floor(diffInSeconds / 60);
+  const diffInHours = Math.floor(diffInMinutes / 60); // was wrongly dividing seconds again
   if (diffInHours < 24) return `${diffInHours}h ago`;
   const diffInDays = Math.floor(diffInHours / 24);
   return `${diffInDays}d ago`;
@@ -59,6 +63,7 @@ export default function PostDetailScreen({
   const [isLoading, setIsLoading] = useState(true);
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [likedCommentIds, setLikedCommentIds] = useState<string[]>([]);
 
   // Reporting and moderation state
   const [reportingTarget, setReportingTarget] = useState<{
@@ -70,6 +75,7 @@ export default function PostDetailScreen({
   const [isPostHidden, setIsPostHidden] = useState(false);
   const [hiddenCommentIds, setHiddenCommentIds] = useState<string[]>([]);
   const [blockedAuthors, setBlockedAuthors] = useState<string[]>([]);
+  const [sharingPost, setSharingPost] = useState<Post | null>(null);
 
   useEffect(() => {
     fetchComments();
@@ -80,8 +86,14 @@ export default function PostDetailScreen({
       const encodedPostId = encodeURIComponent(post._id);
       const response = await fetch(`${API_BASE}/comments/post/${encodedPostId}`);
       if (!response.ok) throw new Error('Failed to fetch comments');
-      const data = await response.json();
+      const data: Comment[] = await response.json();
       setComments(data);
+      
+      const currentUserId = getAuthUserId() || 'mock-user-1';
+      const initialLiked = data
+        .filter(c => c.likedBy && c.likedBy.includes(currentUserId))
+        .map(c => c._id);
+      setLikedCommentIds(initialLiked);
     } catch (error) {
       console.error(error);
     } finally {
@@ -131,12 +143,34 @@ export default function PostDetailScreen({
   };
 
   const handleLikeComment = async (commentId: string) => {
+    const isLiked = likedCommentIds.includes(commentId);
+    
+    // Optimistic update
+    setLikedCommentIds(prev => isLiked ? prev.filter(id => id !== commentId) : [...prev, commentId]);
     setComments(prev =>
-      prev.map(c => (c._id === commentId ? { ...c, likes: c.likes + 1 } : c))
+      prev.map(c => (c._id === commentId ? { ...c, likes: isLiked ? Math.max(0, c.likes - 1) : c.likes + 1 } : c))
     );
+    
     try {
-      await fetch(`${API_BASE}/comments/${commentId}/like`, { method: 'POST' });
+      const currentUserId = getAuthUserId() || 'mock-user-1';
+      const res = await fetch(`${API_BASE}/comments/${commentId}/like`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUserId }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        // Sync with actual server value
+        setComments(prev =>
+          prev.map(c => (c._id === commentId ? { ...c, likes: updated.likes } : c))
+        );
+      }
     } catch (error) {
+      // Rollback optimistic update on network failure
+      setLikedCommentIds(prev => isLiked ? [...prev, commentId] : prev.filter(id => id !== commentId));
+      setComments(prev =>
+        prev.map(c => (c._id === commentId ? { ...c, likes: isLiked ? c.likes + 1 : Math.max(0, c.likes - 1) } : c))
+      );
       console.error('Failed to like comment:', error);
     }
   };
@@ -215,6 +249,23 @@ export default function PostDetailScreen({
 
               <View style={styles.postContentContainer}>
                 <Text style={styles.postContent}>{post.content}</Text>
+                {post.imageUrl && (
+                  post.imageUrl.match(/\.(mp4|mov|webm|avi|mkv)$/i) ? (
+                    <Video
+                      source={{ uri: post.imageUrl }}
+                      style={styles.postImage}
+                      useNativeControls
+                      resizeMode={ResizeMode.COVER}
+                      isLooping
+                    />
+                  ) : (
+                    <Image
+                      source={{ uri: post.imageUrl }}
+                      style={styles.postImage}
+                      resizeMode="cover"
+                    />
+                  )
+                )}
               </View>
 
               <View style={styles.postActions}>
@@ -224,9 +275,15 @@ export default function PostDetailScreen({
                 </View>
                 <View style={styles.actionButtonStatic}>
                   <Text style={styles.actionEmoji}>🤝</Text>
-                  <Text style={styles.actionCount}>{post.commentsCount + comments.length}</Text>
+                  <Text style={styles.actionCount}>{comments.length}</Text>
                 </View>
                 <View style={styles.flexSpacer} />
+                <Pressable
+                  style={styles.reportIconButton}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  onPress={() => setSharingPost(post)}>
+                  <Text style={styles.reportIcon}>📤</Text>
+                </Pressable>
                 <Pressable
                   style={styles.reportIconButton}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -305,8 +362,8 @@ export default function PostDetailScreen({
                         <Pressable
                           style={styles.likeButton}
                           onPress={() => handleLikeComment(comment._id)}>
-                          <Text style={styles.actionEmoji}>💛</Text>
-                          <Text style={styles.likeCountText}>{comment.likes}</Text>
+                          <Text style={styles.actionEmoji}>{likedCommentIds.includes(comment._id) ? '💖' : '🤍'}</Text>
+                          <Text style={[styles.likeCountText, likedCommentIds.includes(comment._id) && { color: '#E11D48' }]}>{comment.likes}</Text>
                         </Pressable>
                       </View>
                     </View>
@@ -352,6 +409,16 @@ export default function PostDetailScreen({
             onClose={() => setReportingTarget(null)}
             onReportSuccess={(action) => handleReportAction(action, reportingTarget)}
             onOpenEmergencySupport={onOpenEmergencySupport}
+          />
+        )}
+
+        {/* SHARE MODAL */}
+        {sharingPost && (
+          <SharePostModal
+            visible={!!sharingPost}
+            post={sharingPost}
+            groupId={post.groupId}
+            onClose={() => setSharingPost(null)}
           />
         )}
 
@@ -477,8 +544,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito',
     fontWeight: '500',
     fontSize: 16,
-    lineHeight: 26,
+    lineHeight: 24,
     color: '#2D2D3A',
+  },
+  postImage: {
+    width: '100%',
+    height: 250,
+    borderRadius: 14,
+    marginTop: 16,
   },
   postActions: {
     flexDirection: 'row',

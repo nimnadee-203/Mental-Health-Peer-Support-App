@@ -25,7 +25,7 @@ router.get('/group/:groupId', async (req, res) => {
 router.post('/group/:groupId', auth, async (req, res) => {
   try {
     const { groupId } = req.params;
-    const { content, topic, contentNote, isAnonymous } = req.body;
+    const { content, topic, contentNote, isAnonymous, imageUrl } = req.body;
 
     // ── Input validation ─────────────────────────────────────────────────────
     if (!content || content.trim().length < 3) {
@@ -45,6 +45,7 @@ router.post('/group/:groupId', auth, async (req, res) => {
       authorId: req.user.id,
       likes: 0,
       commentsCount: 0,
+      imageUrl: imageUrl || null,
     });
 
     await post.save();
@@ -61,12 +62,20 @@ router.post('/group/:groupId', auth, async (req, res) => {
  */
 router.post('/:postId/like', async (req, res) => {
   try {
-    const post = await Post.findByIdAndUpdate(
-      req.params.postId,
-      { $inc: { likes: 1 } },
-      { new: true }
-    );
+    const { userId = 'mock-user-1' } = req.body;
+    const post = await Post.findById(req.params.postId);
     if (!post) return res.status(404).json({ error: 'Post not found' });
+
+    const hasLiked = post.likedBy.includes(userId);
+    if (hasLiked) {
+      post.likedBy = post.likedBy.filter(id => id !== userId);
+      post.likes = Math.max(0, post.likes - 1);
+    } else {
+      post.likedBy.push(userId);
+      post.likes += 1;
+    }
+    
+    await post.save();
     res.json(post);
   } catch (err) {
     console.error('POST /posts/:postId/like —', err.message);

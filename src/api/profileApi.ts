@@ -1,4 +1,4 @@
-import { API_BASE } from '../config/api';
+import { AUTH_BASE } from '../config/api';
 import { getAuthToken } from './authStore';
 import { UpdateProfilePayload, UserProfile } from '../types/user';
 
@@ -14,7 +14,7 @@ const getHeaders = () => {
 };
 
 export async function getUserProfile(userId: string): Promise<UserProfile> {
-  const response = await fetch(`${API_BASE}/profile/${userId}`, {
+  const response = await fetch(`${AUTH_BASE}/profile/${userId}`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -32,7 +32,7 @@ export async function updateUserProfile(
   userId: string,
   payload: UpdateProfilePayload,
 ): Promise<UserProfile> {
-  const response = await fetch(`${API_BASE}/profile/${userId}`, {
+  const response = await fetch(`${AUTH_BASE}/profile/${userId}`, {
     method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify(payload),

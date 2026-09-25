@@ -25,7 +25,7 @@ router.get('/post/:postId', async (req, res) => {
 router.post('/post/:postId', async (req, res) => {
   try {
     const { postId } = req.params;
-    const { content, isAnonymous } = req.body;
+    const { content, isAnonymous, parentCommentId } = req.body;
 
     // ── Input validation ─────────────────────────────────────────────────────
     if (!content || content.trim().length === 0) {
@@ -42,6 +42,7 @@ router.post('/post/:postId', async (req, res) => {
       postId,
       content: content.trim(),
       authorName: isAnonymous !== false ? 'Anonymous Member' : 'Member',
+      parentCommentId: parentCommentId || null,
     });
 
     await comment.save();
@@ -62,12 +63,20 @@ router.post('/post/:postId', async (req, res) => {
  */
 router.post('/:commentId/like', async (req, res) => {
   try {
-    const comment = await Comment.findByIdAndUpdate(
-      req.params.commentId,
-      { $inc: { likes: 1 } },
-      { new: true }
-    );
+    const { userId = 'mock-user-1' } = req.body;
+    const comment = await Comment.findById(req.params.commentId);
     if (!comment) return res.status(404).json({ error: 'Comment not found' });
+
+    const hasLiked = comment.likedBy.includes(userId);
+    if (hasLiked) {
+      comment.likedBy = comment.likedBy.filter(id => id !== userId);
+      comment.likes = Math.max(0, comment.likes - 1);
+    } else {
+      comment.likedBy.push(userId);
+      comment.likes += 1;
+    }
+
+    await comment.save();
     res.json(comment);
   } catch (err) {
     console.error('POST /comments/:commentId/like —', err.message);

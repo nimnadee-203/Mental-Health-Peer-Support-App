@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackHandler, Pressable, StatusBar, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import BottomNavigation from './src/components/BottomNavigation';
 
@@ -11,6 +12,7 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import SplashScreen from './src/screens/SplashScreen';
 import WelcomeScreen from './src/screens/WelcomeScreen';
 import ModeratorDashboardScreen from './src/screens/ModeratorDashboardScreen';
+import AdminDashboardScreen from './src/screens/AdminDashboardScreen';
 
 import ResourcesScreen from './src/screens/ResourcesScreen';
 import ResourceArticleScreen from './src/screens/ResourceArticleScreen';
@@ -27,11 +29,14 @@ import GroupDiscussionScreen, {
 } from './src/screens/GroupDiscussionScreen';
 import PostDetailScreen from './src/screens/PostDetailScreen';
 import CreatePostScreen from './src/screens/CreatePostScreen';
+import FeelingPickerScreen from './src/screens/FeelingPickerScreen';
 import CreateGroupScreen from './src/screens/Groups/CreateGroupScreen';
 
 import EmergencySupportScreen from './src/screens/EmergencySupportScreen';
+import MessagesScreen, { Conversation } from './src/screens/MessagesScreen';
+import ChatScreen from './src/screens/ChatScreen';
 import { API_BASE, COMMUNITY_API_BASE } from './src/config/api';
-import { getAuthRole, getAuthUserId, setAuthUserId } from './src/api/authStore';
+import { getAuthRole, getAuthUserId, setAuthUserId, loadAuthSession } from './src/api/authStore';
 import {
   createResource as createResourceRequest,
   getResources,
@@ -47,7 +52,8 @@ type AppScreen =
   | 'onboarding'
   | 'home'
   | 'profile'
-  | 'moderation';
+  | 'moderation'
+  | 'adminDashboard';
 
 type ResourcesScreenProps = {
   onOpenArticle: (article: ResourceArticle) => void;
@@ -74,6 +80,7 @@ type GroupsView =
   | 'discussion'
   | 'postDetail'
   | 'createPost'
+  | 'selectFeeling'
   | 'createGroup';
 
 // ─── Community Data ───────────────────────────────────────────────────────────
@@ -234,8 +241,7 @@ function App() {
 
   const [groupsView, setGroupsView] = useState<GroupsView>('home');
 
-  const [communities, setCommunities] =
-    useState<Community[]>(INITIAL_COMMUNITIES);
+  const [communities, setCommunities] = useState<Community[]>([]);
 
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(
     null,
@@ -250,6 +256,27 @@ function App() {
   useEffect(() => {
     fetchCommunities();
   }, []);
+
+  useEffect(() => {
+    const loadJoinedGroups = async () => {
+      const userId = getAuthUserId();
+      if (!userId) {
+        setJoinedGroupIds([]);
+        return;
+      }
+      try {
+        const stored = await AsyncStorage.getItem(`@joined_groups_${userId}`);
+        if (stored) {
+          setJoinedGroupIds(JSON.parse(stored));
+        } else {
+          setJoinedGroupIds([]);
+        }
+      } catch (err) {
+        console.warn('Failed to load joined groups:', err);
+      }
+    };
+    loadJoinedGroups();
+  }, [activeScreen]); // Reload when screen changes (e.g., after login)
 
   useEffect(() => {
     let isMounted = true;
@@ -355,18 +382,37 @@ function App() {
       }
 
       const data = JSON.parse(text);
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setCommunities(data);
       } else {
-        setCommunities(INITIAL_COMMUNITIES);
+        setCommunities([]);
       }
     } catch (error) {
-      setCommunities(INITIAL_COMMUNITIES);
+      console.warn('Failed to fetch communities:', error);
+      setCommunities([]);
     }
   };
 
-  // ── Tab Change ─────────────────────────────────────────────────────────────
+  // ── Messages Navigation ─────────────────────────────────────────────────────
 
+  const [messagesView, setMessagesView] = useState<'list' | 'chat'>('list');
+  const [selectedConversation, setSelectedConversation] =
+    useState<Conversation | null>(null);
+
+  const handleOpenChat = (conversation: Conversation) => {
+    setSelectedConversation(conversation);
+    setMessagesView('chat');
+  };
+
+  const handleBackFromChat = () => {
+    setMessagesView('list');
+    setSelectedConversation(null);
+  };
+
+  // Total unread count surfaced from MessagesScreen → drives nav badge
+  const [totalUnread, setTotalUnread] = useState(0);
+
+  // ── Tab Change ──────────────────────────────────────────────────────────────
   const changeTab = (
     tab: 'Home' | 'Resources' | 'Groups' | 'Messages' | 'Activities' | 'Profile',
   ) => {
@@ -442,10 +488,35 @@ function App() {
     setGroupsView('detail');
   };
 
-  const handleJoinGroup = (communityId: string) => {
-    setJoinedGroupIds(prev =>
-      prev.includes(communityId) ? prev : [...prev, communityId],
-    );
+  const handleJoinGroup = async (communityId: string) => {
+    const userId = getAuthUserId();
+    
+    // Optimistic local update
+    setJoinedGroupIds(prev => {
+      const next = prev.includes(communityId) ? prev : [...prev, communityId];
+      if (userId) {
+        AsyncStorage.setItem(`@joined_groups_${userId}`, JSON.stringify(next)).catch(err =>
+          console.warn('Failed to save joined groups:', err)
+        );
+      }
+      return next;
+    });
+
+    // Backend update
+    if (userId) {
+      try {
+        await fetch(`${API_BASE}/communities/${communityId}/join`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId }),
+        });
+        
+        // Refresh communities to get the updated member count
+        fetchCommunities();
+      } catch (err) {
+        console.warn('Failed to join community on backend:', err);
+      }
+    }
   };
 
   const handleEnterCommunity = (community: Community) => {
@@ -461,6 +532,15 @@ function App() {
   const handleCreatePost = (community: Community) => {
     setSelectedCommunity(community);
     setGroupsView('createPost');
+  };
+
+  const handleSelectFeeling = (community: Community) => {
+    setSelectedCommunity(community);
+    setGroupsView('selectFeeling');
+  };
+
+  const handleCreateGroup = () => {
+    setGroupsView('createGroup');
   };
 
   const handleBackToDiscussion = () => {
@@ -481,14 +561,19 @@ function App() {
     activeTab === 'Groups' &&
     (groupsView === 'discussion' ||
       groupsView === 'postDetail' ||
-      groupsView === 'createPost');
+      groupsView === 'createPost' ||
+      groupsView === 'selectFeeling' ||
+      groupsView === 'createGroup');
+
+  const isInChatView = activeTab === 'Messages' && messagesView === 'chat';
 
   const hideBottomNav =
     isArticleOpen ||
     (isActivityOpen && !!selectedActivity) ||
     isEmergencyOpen ||
     isCreateResourceOpen ||
-    isGroupDeepView;
+    isGroupDeepView ||
+    isInChatView;
 
   // ── Screen Renderer ─────────────────────────────────────────────────────────
 
@@ -563,6 +648,7 @@ function App() {
             community={selectedCommunity}
             onBack={handleBackToDetail}
             onCreatePost={handleCreatePost}
+            onSelectFeeling={handleSelectFeeling}
             onPostPress={handlePostPress}
             onOpenEmergencySupport={handleOpenEmergencySupport}
           />
@@ -584,6 +670,17 @@ function App() {
       if (groupsView === 'createPost' && selectedCommunity) {
         return (
           <CreatePostScreen
+            community={selectedCommunity}
+            onBack={handleBackToDiscussion}
+            onPostCreated={handleBackToDiscussion}
+          />
+        );
+      }
+
+      // Feeling Picker
+      if (groupsView === 'selectFeeling' && selectedCommunity) {
+        return (
+          <FeelingPickerScreen
             community={selectedCommunity}
             onBack={handleBackToDiscussion}
             onPostCreated={handleBackToDiscussion}
@@ -633,19 +730,19 @@ function App() {
       // ── Messages ────────────────────────────────────────────────────────────
 
       case 'Messages':
-        return (
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: '#F2F5F7',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-          >
-            <StatusBar
-              barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+        if (messagesView === 'chat' && selectedConversation) {
+          return (
+            <ChatScreen
+              conversation={selectedConversation}
+              onBack={handleBackFromChat}
             />
-          </View>
+          );
+        }
+        return (
+          <MessagesScreen
+            onOpenChat={handleOpenChat}
+            onUnreadCountChange={setTotalUnread}
+          />
         );
 
       // ── Activities ─────────────────────────────────────────────────────────
@@ -663,8 +760,12 @@ function App() {
             onOpenModeration={
               getAuthRole() === 'moderator' ? () => setActiveScreen('moderation') : undefined
             }
+            onOpenAdminDashboard={
+              getAuthRole() === 'admin' ? () => setActiveScreen('adminDashboard') : undefined
+            }
             onLogout={() => {
               setAuthUserId(null);
+              setJoinedGroupIds([]);
               setActiveScreen('auth');
               setActiveTab('Home');
             }}
@@ -704,11 +805,14 @@ function App() {
     selectedCommunity,
     selectedPost,
     joinedGroupIds,
+    messagesView,
+    selectedConversation,
     communities,
   ]);
 
-  const handleSplashFinish = useCallback(() => {
-    setActiveScreen('welcome');
+  const handleSplashFinish = useCallback(async () => {
+    const hasSession = await loadAuthSession();
+    setActiveScreen(hasSession ? 'home' : 'welcome');
   }, []);
 
   // ── App UI ──────────────────────────────────────────────────────────────────
@@ -730,6 +834,10 @@ function App() {
       ) : activeScreen === 'moderation' ? (
         <ModeratorDashboardScreen
           role="moderator"
+          onBack={() => setActiveScreen('home')}
+        />
+      ) : activeScreen === 'adminDashboard' ? (
+        <AdminDashboardScreen
           onBack={() => setActiveScreen('home')}
         />
       ) : activeScreen === 'onboarding' ? (
@@ -765,7 +873,11 @@ function App() {
           </Pressable>
 
           {!hideBottomNav && (
-            <BottomNavigation activeTab={activeTab} onChangeTab={changeTab} />
+            <BottomNavigation
+              activeTab={activeTab}
+              onChangeTab={changeTab}
+              unreadMessages={totalUnread}
+            />
           )}
         </>
       )}

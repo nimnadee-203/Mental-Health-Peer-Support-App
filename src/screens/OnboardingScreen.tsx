@@ -448,6 +448,11 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 14,
   },
+  featureDesc: {
+    fontSize: 15,
+    color: '#4B5563',
+    lineHeight: 22,
+  },
   checkCircle: {
     width: 32,
     height: 32,

@@ -37,9 +37,13 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['user', 'moderator', 'admin'],
+      enum: ['user', 'moderator', 'admin', 'professional'],
       default: 'user',
       index: true,
+    },
+    medicalExperience: {
+      type: String,
+      trim: true,
     },
     bio: {
       type: String,
@@ -90,11 +94,39 @@ const userSchema = new mongoose.Schema(
 
 const User = mongoose.model('User', userSchema);
 
+const activityLogSchema = new mongoose.Schema(
+  {
+    type: String,
+    userEmail: String,
+    userName: String,
+    description: String,
+    metadata: mongoose.Schema.Types.Mixed,
+  },
+  { timestamps: true }
+);
+
+const ActivityLog = mongoose.model('ActivityLog', activityLogSchema);
+
+const logActivity = async (type, user, description, metadata = {}) => {
+  try {
+    await ActivityLog.create({
+      type,
+      userEmail: user.email,
+      userName: user.fullName,
+      description,
+      metadata,
+    });
+  } catch (err) {
+    console.error('Failed to log activity:', err.message);
+  }
+};
+
 const buildUserProfile = user => ({
   id: user._id,
   fullName: user.fullName,
   email: user.email,
   role: user.role || 'user',
+  medicalExperience: user.medicalExperience,
   bio: user.bio,
   interests: user.interests,
   stats: user.stats,
@@ -158,6 +190,8 @@ app.post('/auth/signup', async (request, response) => {
     const passwordHash = await bcrypt.hash(password, 12);
     const user = await User.create({ fullName: cleanName, email: cleanEmail, passwordHash });
 
+    await logActivity('USER_CREATED', user, `User ${user.fullName} registered an account.`);
+
     return response.status(201).json({
       user: buildUserProfile(user),
       token: createToken(user),
@@ -184,6 +218,8 @@ app.post('/auth/login', async (request, response) => {
       return response.status(401).json({ message: 'Invalid email or password.' });
     }
 
+    await logActivity('LOGIN', user, `User ${user.fullName} logged in.`);
+
     return response.json({
       user: buildUserProfile(user),
       token: createToken(user),
@@ -193,6 +229,141 @@ app.post('/auth/login', async (request, response) => {
   }
 });
 
+// Admin Route: Get all users
+app.get('/auth/admin/users', async (request, response) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader) return response.status(401).json({ message: 'Unauthorized' });
+    
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, jwtSecret);
+    
+    if (decoded.role !== 'admin') {
+      return response.status(403).json({ message: 'Forbidden: Admins only' });
+    }
+
+    const users = await User.find().sort({ createdAt: -1 });
+    return response.json(users.map(buildUserProfile));
+  } catch (error) {
+    return response.status(500).json({ message: 'Could not fetch users' });
+  }
+});
+
+// Admin Route: Create user (including professional)
+app.post('/auth/admin/users', async (request, response) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader) return response.status(401).json({ message: 'Unauthorized' });
+    
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, jwtSecret);
+    
+    if (decoded.role !== 'admin') {
+      return response.status(403).json({ message: 'Forbidden: Admins only' });
+    }
+
+    const { fullName, email, password, role, medicalExperience } = request.body;
+    
+    if (!fullName || !email || !password || !role) {
+      return response.status(400).json({ message: 'Missing required fields' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const existingUser = await User.findOne({ email: cleanEmail });
+    if (existingUser) {
+      return response.status(409).json({ message: 'User already exists' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const user = await User.create({
+      fullName: fullName.trim(),
+      email: cleanEmail,
+      passwordHash,
+      role,
+      medicalExperience: role === 'professional' ? medicalExperience?.trim() : undefined,
+    });
+
+    await logActivity('USER_CREATED', user, `Admin created ${role} account for ${user.fullName}.`);
+
+    return response.status(201).json(buildUserProfile(user));
+  } catch (error) {
+    return response.status(500).json({ message: 'Could not create user' });
+  }
+});
+
+// Admin Route: Update user role/experience
+app.put('/auth/admin/users/:userId', async (request, response) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader) return response.status(401).json({ message: 'Unauthorized' });
+    
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, jwtSecret);
+    
+    if (decoded.role !== 'admin') {
+      return response.status(403).json({ message: 'Forbidden: Admins only' });
+    }
+
+    const { userId } = request.params;
+    const { role, medicalExperience } = request.body;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return response.status(400).json({ message: 'Invalid user ID.' });
+    }
+
+    // Admins cannot change another admin's role here, but we can keep it simple.
+    // For now, allow basic updates.
+    const updates = { role };
+    if (role === 'professional') {
+      updates.medicalExperience = medicalExperience?.trim() || '';
+    } else {
+      updates.$unset = { medicalExperience: 1 };
+    }
+
+    const user = await User.findByIdAndUpdate(userId, updates, { new: true });
+    if (!user) return response.status(404).json({ message: 'User not found' });
+
+    await logActivity('ROLE_CHANGE', user, `Admin changed role of ${user.fullName} to ${role}.`);
+
+    return response.json(buildUserProfile(user));
+  } catch (error) {
+    return response.status(500).json({ message: 'Could not update user' });
+  }
+});
+
+// Admin Route: Delete user
+app.delete('/auth/admin/users/:userId', async (request, response) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader) return response.status(401).json({ message: 'Unauthorized' });
+    
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, jwtSecret);
+    
+    if (decoded.role !== 'admin') {
+      return response.status(403).json({ message: 'Forbidden: Admins only' });
+    }
+
+    const { userId } = request.params;
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return response.status(400).json({ message: 'Invalid user ID.' });
+    }
+    
+    // Prevent admin from deleting themselves
+    if (userId === decoded.sub) {
+      return response.status(400).json({ message: 'Cannot delete yourself' });
+    }
+
+    const user = await User.findByIdAndDelete(userId);
+    if (!user) return response.status(404).json({ message: 'User not found' });
+
+    await logActivity('USER_DELETED', user, `Admin deleted account for ${user.fullName}.`);
+
+    return response.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    return response.status(500).json({ message: 'Could not delete user' });
+  }
+});
 app.get('/profile/:userId', async (request, response) => {
   try {
     const { userId } = request.params;
@@ -310,6 +481,7 @@ if (!process.env.MONGODB_URI) {
 mongoose
   .connect(process.env.MONGODB_URI, {
     serverSelectionTimeoutMS: 10000,
+    family: 4, // Force IPv4 to bypass Atlas DNS/IPv6 issues on Windows
   })
   .then(() => {
     app.listen(port, () => {

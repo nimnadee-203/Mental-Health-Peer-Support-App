@@ -21,6 +21,15 @@ const commentSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    parentCommentId: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    likedBy: {
+      type: [String],
+      default: [],
+    },
   },
   { timestamps: true }
 );

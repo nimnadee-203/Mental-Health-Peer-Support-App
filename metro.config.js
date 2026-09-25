@@ -1,11 +1,37 @@
-const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
+const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
 
 /**
- * Metro configuration
- * https://reactnative.dev/docs/metro
+ * Metro configuration with Expo + web support
+ * https://docs.expo.dev/guides/customizing-metro/
  *
- * @type {import('@react-native/metro-config').MetroConfig}
+ * @type {import('expo/metro-config').MetroConfig}
  */
-const config = {};
+const config = getDefaultConfig(__dirname, {
+  isCSSEnabled: true,
+});
 
-module.exports = mergeConfig(getDefaultConfig(__dirname), config);
+// Add web platform extensions
+config.resolver.platforms = ['web', 'ios', 'android', 'native'];
+
+// Alias native-only modules to web shims when bundling for web
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (platform === 'web') {
+    const webShims = {
+      'react-native-linear-gradient': path.resolve(
+        __dirname,
+        'src/shims/react-native-linear-gradient.js',
+      ),
+      'react-native-sound': path.resolve(
+        __dirname,
+        'src/shims/react-native-sound.js',
+      ),
+    };
+    if (webShims[moduleName]) {
+      return { filePath: webShims[moduleName], type: 'sourceFile' };
+    }
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
+
+module.exports = config;

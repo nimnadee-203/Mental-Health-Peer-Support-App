@@ -37,6 +37,10 @@ const communitySchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    members: {
+      type: [String],
+      default: [],
+    },
     memberAvatarColors: {
       type: [String],
       default: ['#C5DFF8', '#F9D4E0', '#C8EDD5'],
