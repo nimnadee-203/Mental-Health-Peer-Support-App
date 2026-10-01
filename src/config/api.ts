@@ -5,6 +5,8 @@ export const API_BASE = Platform.select({
   default: 'http://localhost:4000',
 });
 
+export const AUTH_BASE = API_BASE;
+
 export const COMMUNITY_API_BASE = Platform.select({
   android: 'http://localhost:3000/api',
   default: 'http://localhost:3000/api',
