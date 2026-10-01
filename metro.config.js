@@ -18,10 +18,6 @@ config.resolver.platforms = ['web', 'ios', 'android', 'native'];
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (platform === 'web') {
     const webShims = {
-      'react-native-linear-gradient': path.resolve(
-        __dirname,
-        'src/shims/react-native-linear-gradient.js',
-      ),
       'react-native-sound': path.resolve(
         __dirname,
         'src/shims/react-native-sound.js',

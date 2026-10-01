@@ -13,13 +13,13 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Video, ResizeMode } from 'expo-av';
 import type { Post } from './GroupDiscussionScreen';
 
 import { API_BASE } from '../config/api';
 import ReportModal from '../components/ReportModal';
 import { getAuthUserId } from '../api/authStore';
 import SharePostModal from '../components/SharePostModal';
+import VideoPlayer from '../components/VideoPlayer';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface Comment {
@@ -251,11 +251,10 @@ export default function PostDetailScreen({
                 <Text style={styles.postContent}>{post.content}</Text>
                 {post.imageUrl && (
                   post.imageUrl.match(/\.(mp4|mov|webm|avi|mkv)$/i) ? (
-                    <Video
+                    <VideoPlayer
                       source={{ uri: post.imageUrl }}
                       style={styles.postImage}
                       useNativeControls
-                      resizeMode={ResizeMode.COVER}
                       isLooping
                     />
                   ) : (

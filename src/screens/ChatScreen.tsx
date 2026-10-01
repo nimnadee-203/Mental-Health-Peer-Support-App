@@ -16,8 +16,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { ResizeMode, Video } from 'expo-av';
 import { API_BASE, COMMUNITY_API_BASE } from '../config/api';
+import VideoPlayer from '../components/VideoPlayer';
 import type { Conversation } from './MessagesScreen';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -87,11 +87,10 @@ function MessageBubble({ message, showSender, isGroup, senderBg }: BubbleProps) 
     const isVideo = message.mediaUrl.match(/\.(mp4|mov|webm|avi|mkv)$/i);
     if (isVideo) {
       return (
-        <Video
+        <VideoPlayer
           source={{ uri: message.mediaUrl }}
           style={styles.mediaAttachment}
           useNativeControls
-          resizeMode={ResizeMode.COVER}
           isLooping
         />
       );
