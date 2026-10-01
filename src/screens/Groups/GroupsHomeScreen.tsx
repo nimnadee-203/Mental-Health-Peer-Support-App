@@ -17,6 +17,7 @@ interface GroupsHomeScreenProps {
   communities: Community[];
   joinedIds: string[];
   onGroupPress: (community: Community) => void;
+  onJoinedGroupPress?: (community: Community) => void;
   onCreateGroup: () => void;
   canCreateGroup?: boolean;
   userInterestsOverride?: string[];
@@ -38,6 +39,7 @@ const GroupsHomeScreen = ({
   communities,
   joinedIds,
   onGroupPress,
+  onJoinedGroupPress,
   onCreateGroup,
   canCreateGroup = false,
   userInterestsOverride,
@@ -155,7 +157,8 @@ const GroupsHomeScreen = ({
                 <Pressable
                   key={c._id}
                   style={[styles.yourGroupCard, { backgroundColor: c.bgColor }]}
-                  onPress={() => onGroupPress(c)}
+                  onPress={() => (onJoinedGroupPress || onGroupPress)(c)}
+                  testID={`joined-group-card-${c._id}`}
                 >
                   <Text style={styles.yourGroupEmoji}>{c.emoji}</Text>
                   <Text style={styles.yourGroupName} numberOfLines={2}>
