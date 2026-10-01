@@ -18,6 +18,7 @@ interface GroupsHomeScreenProps {
   joinedIds: string[];
   onGroupPress: (community: Community) => void;
   onCreateGroup: () => void;
+  canCreateGroup?: boolean;
   userInterestsOverride?: string[];
 }
 
@@ -38,6 +39,7 @@ const GroupsHomeScreen = ({
   joinedIds,
   onGroupPress,
   onCreateGroup,
+  canCreateGroup = false,
   userInterestsOverride,
 }: GroupsHomeScreenProps) => {
   const [activeCategory, setActiveCategory] = useState('All');
@@ -88,13 +90,15 @@ const GroupsHomeScreen = ({
       {/* Header */}
       <View style={styles.headerRow}>
         <Text style={styles.title}>Find Your Community</Text>
-        <Pressable
-          style={styles.createButton}
-          onPress={onCreateGroup}
-          testID="create-group-button"
-        >
-          <Text style={styles.createButtonText}>+ Create</Text>
-        </Pressable>
+        {canCreateGroup && (
+          <Pressable
+            style={styles.createButton}
+            onPress={onCreateGroup}
+            testID="create-group-button"
+          >
+            <Text style={styles.createButtonText}>+ Create</Text>
+          </Pressable>
+        )}
       </View>
 
       <Text style={styles.subtitle}>

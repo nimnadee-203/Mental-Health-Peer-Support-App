@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Community = require('../models/Community');
 const User = require('../models/User');
+const auth = require('../middleware/auth');
+const requireRole = require('../middleware/requireRole');
 
 /**
  * GET /api/communities/team
@@ -45,7 +47,7 @@ router.get('/', async (_req, res) => {
  * POST /api/communities
  * Create a new community
  */
-router.post('/', async (req, res) => {
+router.post('/', auth, requireRole(['admin']), async (req, res) => {
   try {
     const {
       name,

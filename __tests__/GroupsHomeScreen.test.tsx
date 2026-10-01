@@ -55,6 +55,39 @@ const mockCommunities: Community[] = [
 ];
 
 describe('GroupsHomeScreen - Personalized Recommendations', () => {
+  it('hides the create group button when the user is not an admin', async () => {
+    let renderer: ReactTestRenderer.ReactTestRenderer;
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(
+        <GroupsHomeScreen
+          communities={mockCommunities}
+          joinedIds={[]}
+          onGroupPress={() => {}}
+          onCreateGroup={() => {}}
+        />,
+      );
+    });
+
+    expect(renderer!.root.findAllByProps({ testID: 'create-group-button' })).toHaveLength(0);
+  });
+
+  it('shows the create group button for admins', async () => {
+    let renderer: ReactTestRenderer.ReactTestRenderer;
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(
+        <GroupsHomeScreen
+          communities={mockCommunities}
+          joinedIds={[]}
+          onGroupPress={() => {}}
+          onCreateGroup={() => {}}
+          canCreateGroup
+        />,
+      );
+    });
+
+    expect(renderer!.root.findByProps({ testID: 'create-group-button' })).toBeTruthy();
+  });
+
   it('renders RECOMMENDED FOR YOU section when user has matching interests', async () => {
     const userInterests = ['Stress', 'Anxiety', 'Academic pressure'];
 
