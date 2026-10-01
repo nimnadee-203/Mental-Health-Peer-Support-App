@@ -705,6 +705,7 @@ function App() {
           communities={communities}
           joinedIds={joinedGroupIds}
           onGroupPress={handleGroupPress}
+          onJoinedGroupPress={handleEnterCommunity}
           onCreateGroup={() => setGroupsView('createGroup')}
           canCreateGroup={getAuthRole() === 'admin'}
         />

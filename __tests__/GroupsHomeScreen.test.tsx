@@ -55,6 +55,26 @@ const mockCommunities: Community[] = [
 ];
 
 describe('GroupsHomeScreen - Personalized Recommendations', () => {
+  it('uses the joined-group callback for joined community cards', async () => {
+    const onJoinedGroupPress = jest.fn();
+    let renderer: ReactTestRenderer.ReactTestRenderer;
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(
+        <GroupsHomeScreen
+          communities={mockCommunities}
+          joinedIds={['1']}
+          onGroupPress={() => {}}
+          onJoinedGroupPress={onJoinedGroupPress}
+          onCreateGroup={() => {}}
+        />,
+      );
+    });
+
+    renderer!.root.findByProps({ testID: 'joined-group-card-1' }).props.onPress();
+
+    expect(onJoinedGroupPress).toHaveBeenCalledWith(mockCommunities[0]);
+  });
+
   it('hides the create group button when the user is not an admin', async () => {
     let renderer: ReactTestRenderer.ReactTestRenderer;
     await ReactTestRenderer.act(async () => {
