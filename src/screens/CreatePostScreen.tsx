@@ -15,11 +15,11 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Video, ResizeMode } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { COMMUNITY_API_BASE } from '../config/api';
+import VideoPlayer from '../components/VideoPlayer';
 import { clearAuthSession, getAuthToken } from '../api/authStore';
 import type { Community } from './GroupDiscussionScreen';
 
@@ -182,7 +182,7 @@ export default function CreatePostScreen({ community, onBack, onPostCreated }: C
             {selectedImage && (
               <View style={s.mediaPreview}>
                 {selectedImage.match(/\.(mp4|mov|webm)$/i)
-                  ? <Video source={{ uri: selectedImage }} style={s.mediaImg} useNativeControls resizeMode={ResizeMode.COVER} isLooping />
+                  ? <VideoPlayer source={{ uri: selectedImage }} style={s.mediaImg} useNativeControls isLooping />
                   : <Image source={{ uri: selectedImage }} style={s.mediaImg} resizeMode="cover" />
                 }
                 <Pressable style={s.mediaRemove} onPress={() => setSelectedImage(null)}>

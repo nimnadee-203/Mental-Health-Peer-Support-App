@@ -10,10 +10,10 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Video, ResizeMode } from 'expo-av';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { COMMUNITY_API_BASE } from '../config/api';
+import VideoPlayer from '../components/VideoPlayer';
 import ReportModal from '../components/ReportModal';
 import SharePostModal from '../components/SharePostModal';
 import { getAuthUserId } from '../api/authStore';
@@ -222,7 +222,7 @@ function PostCard({ post, isLiked, onLike, onPress, onReport, onShare }: {
         <Text style={postSt.content}>{post.content}</Text>
         {post.imageUrl && (
           post.imageUrl.match(/\.(mp4|mov|webm|avi|mkv)$/i)
-            ? <Video source={{ uri: post.imageUrl }} style={postSt.media} useNativeControls resizeMode={ResizeMode.COVER} isLooping />
+            ? <VideoPlayer source={{ uri: post.imageUrl }} style={postSt.media} useNativeControls isLooping />
             : <Image source={{ uri: post.imageUrl }} style={postSt.media} resizeMode="cover" />
         )}
       </View>

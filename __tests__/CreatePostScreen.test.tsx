@@ -4,8 +4,6 @@ import ReactTestRenderer from 'react-test-renderer';
 import CreatePostScreen from '../src/screens/CreatePostScreen';
 import type { Community } from '../src/screens/GroupDiscussionScreen';
 
-jest.mock('react-native-linear-gradient', () => 'LinearGradient');
-
 jest.mock('../src/api/authStore', () => ({
   getAuthToken: jest.fn().mockReturnValue('mock-token'),
   clearAuthSession: jest.fn(),
