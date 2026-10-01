@@ -706,6 +706,7 @@ function App() {
           joinedIds={joinedGroupIds}
           onGroupPress={handleGroupPress}
           onCreateGroup={() => setGroupsView('createGroup')}
+          canCreateGroup={getAuthRole() === 'admin'}
         />
       );
     }

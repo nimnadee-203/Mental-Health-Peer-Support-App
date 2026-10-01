@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { getAuthToken } from '../../api/authStore';
 import { COMMUNITY_API_BASE } from '../../config/api';
 
 type CreateGroupScreenProps = {
@@ -90,6 +91,7 @@ const handleCreateGroup = async () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${getAuthToken() || ''}`,
       },
       body: JSON.stringify({
         name: groupName,
