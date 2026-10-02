@@ -12,18 +12,6 @@ import ResourcesScreen from '../src/screens/ResourcesScreen';
 import ActivitiesScreen from '../src/screens/ActivitiesScreen';
 import { resourceArticles } from '../src/types/ResourceArticle';
 
-jest.mock('react-native-sound', () => {
-  const SoundMock = jest.fn().mockImplementation(() => ({
-    setNumberOfLoops: jest.fn(),
-    setVolume: jest.fn(),
-    play: jest.fn(),
-    stop: jest.fn(),
-    release: jest.fn(),
-  }));
-  (SoundMock as any).setCategory = jest.fn();
-  return SoundMock;
-});
-
 test('renders the home screen content and the full shared bottom navigation', async () => {
   let homeComponent: ReactTestRenderer.ReactTestRenderer;
   let navComponent: ReactTestRenderer.ReactTestRenderer;

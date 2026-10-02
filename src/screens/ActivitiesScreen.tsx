@@ -3,6 +3,11 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import {
+  setAudioModeAsync,
+  useAudioPlayer,
+  useAudioPlayerStatus,
+} from 'expo-audio';
 
 import {
   Image,
@@ -530,6 +535,12 @@ function ActivitiesScreen({
   onBack,
   onSelectActivity,
 }: ActivitiesScreenProps) {
+  const calmMusicPlayer = useAudioPlayer(
+    require('../assets/audio/calm.mp3'),
+  );
+  const { isLoaded: soundLoaded } =
+    useAudioPlayerStatus(calmMusicPlayer);
+
   /* =======================================================
      BREATHING STATE
   ======================================================= */
@@ -577,12 +588,6 @@ function ActivitiesScreen({
   const [musicEnabled, setMusicEnabled] =
     useState(false);
 
-  const [soundLoaded, setSoundLoaded] =
-    useState(false);
-
-  const [musicAvailable, setMusicAvailable] =
-    useState(true);
-
   /* =======================================================
      JOURNALING STATE
   ======================================================= */
@@ -610,76 +615,17 @@ function ActivitiesScreen({
      MUSIC
   ======================================================= */
 
-  const soundRef =
-    useRef<any | null>(null);
-
   useEffect(() => {
-    let Sound: any;
+    calmMusicPlayer.loop = true;
+    calmMusicPlayer.volume = 0.35;
 
-    try {
-      const { NativeModules } = require('react-native');
-      if (!NativeModules || !NativeModules.RNSound) {
-        console.log('Calm music native module RNSound is unavailable');
-        setMusicAvailable(false);
-        return;
-      }
-      Sound =
-        require('react-native-sound')
-          .default ??
-        require('react-native-sound');
-      if (Sound && typeof Sound.setCategory === 'function') {
-        Sound.setCategory('Playback');
-      }
-    } catch (error) {
-      console.log(
-        'Calm music is unavailable:',
-        error,
-      );
-      setMusicAvailable(false);
-      return;
-    }
-
-    let calmMusicUri: any = require('../assets/audio/calm.mp3');
-    if (typeof Image.resolveAssetSource === 'function') {
-      calmMusicUri = Image.resolveAssetSource(calmMusicUri)?.uri || '';
-    }
-
-    const sound = new Sound(
-      calmMusicUri,
-      undefined,
-      (error: any) => {
-        if (error) {
-          console.log(
-            'Failed to load calm music:',
-            error,
-          );
-          return;
-        }
-
-        sound.setNumberOfLoops(-1);
-        sound.setVolume(0.35);
-
-        soundRef.current = sound;
-
-        setSoundLoaded(true);
-      },
+    setAudioModeAsync({ playsInSilentMode: true }).catch(
+      error => console.log('Calm music audio mode unavailable:', error),
     );
-
-    return () => {
-      setSoundLoaded(false);
-
-      if (soundRef.current) {
-        soundRef.current.stop();
-        soundRef.current.release();
-        soundRef.current = null;
-      }
-    };
   }, []);
 
   useEffect(() => {
-    const sound = soundRef.current;
-
-    if (!soundLoaded || !sound) {
+    if (!soundLoaded) {
       return;
     }
 
@@ -687,19 +633,14 @@ function ActivitiesScreen({
       musicEnabled &&
       activity === 'mindfulness'
     ) {
-      sound.play((success: any) => {
-        if (!success) {
-          console.log(
-            'Music playback failed',
-          );
-        }
-      });
+      calmMusicPlayer.play();
     } else {
-      sound.stop();
+      calmMusicPlayer.pause();
     }
   }, [
-    musicEnabled,
     activity,
+    calmMusicPlayer,
+    musicEnabled,
     soundLoaded,
   ]);
 
@@ -998,9 +939,7 @@ function ActivitiesScreen({
     ) {
       setMindfulnessDone(true);
 
-      if (soundRef.current) {
-        soundRef.current.stop();
-      }
+      calmMusicPlayer.pause();
 
       setMusicEnabled(false);
 
@@ -1025,9 +964,7 @@ function ActivitiesScreen({
   };
 
   const resetMindfulness = () => {
-    if (soundRef.current) {
-      soundRef.current.stop();
-    }
+    calmMusicPlayer.pause();
 
     setMindfulnessStepIndex(0);
     setMindfulnessDone(false);
@@ -1041,7 +978,7 @@ function ActivitiesScreen({
   };
 
   const toggleMusic = () => {
-    if (!musicAvailable) {
+    if (!soundLoaded) {
       return;
     }
 
@@ -1668,7 +1605,7 @@ function ActivitiesScreen({
               musicEnabled &&
                 styles.musicButtonActive,
             ]}
-            disabled={!musicAvailable}
+            disabled={!soundLoaded}
             onPress={toggleMusic}
           >
             <Text
@@ -1688,9 +1625,9 @@ function ActivitiesScreen({
             >
               {musicEnabled
                 ? 'ON'
-                : musicAvailable
+                : soundLoaded
                   ? 'OFF'
-                  : 'N/A'}
+                  : '...'}
             </Text>
           </Pressable>
         </View>
@@ -1996,9 +1933,7 @@ function ActivitiesScreen({
             styles.exitMindfulnessButton
           }
           onPress={() => {
-            if (soundRef.current) {
-              soundRef.current.stop();
-            }
+            calmMusicPlayer.pause();
 
             setMusicEnabled(false);
             onBack();
@@ -2642,9 +2577,7 @@ function ActivitiesScreen({
           accessibilityRole="button"
           accessibilityLabel="Back to activities"
           onPress={() => {
-            if (soundRef.current) {
-              soundRef.current.stop();
-            }
+            calmMusicPlayer.pause();
 
             setMusicEnabled(false);
             onBack();
