@@ -611,8 +611,7 @@ function App() {
           activity={selectedActivity}
           onSelectActivity={setSelectedActivity}
           onBack={() => {
-            setIsActivityOpen(false);
-            setActiveTab(activityPreviousTab);
+            setSelectedActivity(undefined);
           }}
         />
       );
