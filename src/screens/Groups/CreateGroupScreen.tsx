@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Image,
   View,
   Text,
   StyleSheet,
@@ -10,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { getAuthToken } from '../../api/authStore';
 import { COMMUNITY_API_BASE } from '../../config/api';
 
@@ -45,6 +47,7 @@ const CreateGroupScreen = ({
   '🍃',
 ];
   const [selectedBgColor, setSelectedBgColor] = useState('#C8EDD5');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const bgColors = [
   '#C8EDD5',
   '#C5DFF8',
@@ -70,6 +73,17 @@ const categories = [
   'Depression',
 ];
 
+const pickGroupImage = async () => {
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsEditing: true,
+    quality: 0.8,
+  });
+  if (!result.canceled && result.assets?.[0]?.uri) {
+    setSelectedImage(result.assets[0].uri);
+  }
+};
+
 const handleCreateGroup = async () => {
   if (!groupName.trim()) {
     Alert.alert('Missing Information', 'Please enter a group name.');
@@ -87,6 +101,31 @@ const handleCreateGroup = async () => {
   }
 
   try {
+    let imageUrl = '';
+    if (selectedImage) {
+      const formData = new FormData();
+      if (Platform.OS === 'web') {
+        const blob = await (await fetch(selectedImage)).blob();
+        const extension = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+        formData.append('media', new File([blob], `group.${extension}`, { type: blob.type }));
+      } else {
+        const filename = selectedImage.split('/').pop() || 'group.jpg';
+        const extension = (filename.split('.').pop() || 'jpg').toLowerCase();
+        formData.append('media', {
+          uri: selectedImage,
+          name: filename,
+          type: `image/${extension === 'jpg' ? 'jpeg' : extension}`,
+        } as any);
+      }
+      const uploadResponse = await fetch(`${COMMUNITY_API_BASE}/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      const uploadData = await uploadResponse.json();
+      if (!uploadResponse.ok) throw new Error(uploadData.error || 'Failed to upload group image.');
+      imageUrl = `${COMMUNITY_API_BASE.replace('/api', '')}${uploadData.url}`;
+    }
+
     const response = await fetch(`${COMMUNITY_API_BASE}/communities`, {
       method: 'POST',
       headers: {
@@ -100,6 +139,7 @@ const handleCreateGroup = async () => {
          bgColor: selectedBgColor,
         description: description,
         guidelines: guidelines,
+        imageUrl,
       }),
     });
 
@@ -244,6 +284,16 @@ return (
     />
   ))}
 </View>
+
+{/* Group Background Image */}
+<Text style={styles.label}>Group Background Image</Text>
+<Pressable style={styles.imagePicker} onPress={pickGroupImage}>
+  {selectedImage ? (
+    <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
+  ) : (
+    <Text style={styles.imagePickerText}>Choose an image</Text>
+  )}
+</Pressable>
 
         {/* Description */}
         <Text style={styles.label}>Description</Text>
@@ -470,6 +520,28 @@ colorOption: {
 selectedColorOption: {
   borderColor: '#2673FF',
   borderWidth: 3,
+},
+
+imagePicker: {
+  minHeight: 120,
+  borderWidth: 1,
+  borderColor: '#D8DDF5',
+  borderRadius: 12,
+  backgroundColor: '#F8F9FB',
+  alignItems: 'center',
+  justifyContent: 'center',
+  overflow: 'hidden',
+},
+
+imagePreview: {
+  width: '100%',
+  height: 160,
+},
+
+imagePickerText: {
+  color: '#2673FF',
+  fontSize: 14,
+  fontWeight: '700',
 },
 
 guidelinesInput: {

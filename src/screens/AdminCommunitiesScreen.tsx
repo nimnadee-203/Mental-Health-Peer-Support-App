@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Modal,
   Pressable,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,9 +12,10 @@ import {
   View,
   Alert,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { API_BASE } from '../config/api';
+import { COMMUNITY_API_BASE } from '../config/api';
 import { getAuthToken } from '../api/authStore';
 
 type AdminCommunitiesScreenProps = {
@@ -25,6 +28,7 @@ type Community = {
   category: string;
   emoji: string;
   bgColor: string;
+  imageUrl?: string;
   description: string;
   guidelines: string;
   isPrivate: boolean;
@@ -45,13 +49,25 @@ export default function AdminCommunitiesScreen({ onBack }: AdminCommunitiesScree
   const [description, setDescription] = useState('');
   const [guidelines, setGuidelines] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  const pickCommunityImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      setSelectedImage(result.assets[0].uri);
+    }
+  };
 
   const fetchCommunities = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const token = await getAuthToken();
-      const res = await fetch(`${API_BASE}/admin/communities`, {
+      const res = await fetch(`${COMMUNITY_API_BASE}/admin/communities`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error('Failed to fetch communities');
@@ -77,7 +93,31 @@ export default function AdminCommunitiesScreen({ onBack }: AdminCommunitiesScree
     setCreating(true);
     try {
       const token = await getAuthToken();
-      const res = await fetch(`${API_BASE}/admin/communities`, {
+      let imageUrl = '';
+      if (selectedImage) {
+        const formData = new FormData();
+        if (Platform.OS === 'web') {
+          const blob = await (await fetch(selectedImage)).blob();
+          const extension = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+          formData.append('media', new File([blob], `group.${extension}`, { type: blob.type }));
+        } else {
+          const filename = selectedImage.split('/').pop() || 'group.jpg';
+          const extension = (filename.split('.').pop() || 'jpg').toLowerCase();
+          formData.append('media', {
+            uri: selectedImage,
+            name: filename,
+            type: `image/${extension === 'jpg' ? 'jpeg' : extension}`,
+          } as any);
+        }
+        const uploadResponse = await fetch(`${COMMUNITY_API_BASE}/upload`, {
+          method: 'POST',
+          body: formData,
+        });
+        const uploadData = await uploadResponse.json();
+        if (!uploadResponse.ok) throw new Error(uploadData.error || 'Failed to upload group image.');
+        imageUrl = `${COMMUNITY_API_BASE.replace('/api', '')}${uploadData.url}`;
+      }
+      const res = await fetch(`${COMMUNITY_API_BASE}/admin/communities`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -87,6 +127,7 @@ export default function AdminCommunitiesScreen({ onBack }: AdminCommunitiesScree
           name,
           category,
           emoji,
+          imageUrl,
           description,
           guidelines,
           isPrivate,
@@ -107,6 +148,7 @@ export default function AdminCommunitiesScreen({ onBack }: AdminCommunitiesScree
       setDescription('');
       setGuidelines('');
       setIsPrivate(false);
+      setSelectedImage(null);
       
       // Refresh list
       fetchCommunities();
@@ -124,7 +166,7 @@ export default function AdminCommunitiesScreen({ onBack }: AdminCommunitiesScree
     }
     try {
       const token = await getAuthToken();
-      const res = await fetch(`${API_BASE}/admin/communities/${id}`, {
+      const res = await fetch(`${COMMUNITY_API_BASE}/admin/communities/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -231,6 +273,18 @@ export default function AdminCommunitiesScreen({ onBack }: AdminCommunitiesScree
               onChangeText={setEmoji}
             />
 
+            <Text style={styles.label}>Group Background Image</Text>
+            <Pressable style={styles.imagePicker} onPress={pickCommunityImage}>
+              {selectedImage ? (
+                <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
+              ) : (
+                <>
+                  <Feather name="image" size={22} color="#5A5AD8" />
+                  <Text style={styles.imagePickerText}>Choose image</Text>
+                </>
+              )}
+            </Pressable>
+
             <Text style={styles.label}>Description *</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
@@ -325,6 +379,9 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '700', color: '#6B6B80', marginBottom: 8, marginTop: 16 },
   input: { backgroundColor: '#F8F9FC', borderWidth: 1, borderColor: '#ECEEF8', borderRadius: 12, padding: 14, fontSize: 15, color: '#0D0D1A' },
   textArea: { height: 100, textAlignVertical: 'top' },
+  imagePicker: { alignItems: 'center', backgroundColor: '#F8F9FC', borderColor: '#D8DDF5', borderRadius: 12, borderWidth: 1, justifyContent: 'center', minHeight: 120, overflow: 'hidden' },
+  imagePreview: { height: 160, width: '100%' },
+  imagePickerText: { color: '#5A5AD8', fontWeight: '700', marginTop: 8 },
   
   toggleRow: { flexDirection: 'row', alignItems: 'center', marginTop: 20, marginBottom: 10 },
   checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: '#D1D5DB', marginRight: 12, justifyContent: 'center', alignItems: 'center' },

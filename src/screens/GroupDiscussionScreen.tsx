@@ -28,6 +28,7 @@ export interface Community {
   topics?: string[];
   emoji: string;
   bgColor: string;
+  imageUrl?: string;
   description: string;
   guidelines: string;
   memberCount: number;

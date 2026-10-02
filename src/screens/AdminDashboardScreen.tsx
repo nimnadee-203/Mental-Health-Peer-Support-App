@@ -16,12 +16,13 @@ import AdminUsersScreen from './AdminUsersScreen';
 import AdminActivitiesScreen from './AdminActivitiesScreen';
 import AdminSettingsScreen from './AdminSettingsScreen';
 import AdminCommunitiesScreen from './AdminCommunitiesScreen';
+import ManageMembersScreen from './ManageMembersScreen';
 
 type AdminDashboardScreenProps = {
   onBack: () => void;
 };
 
-type AdminView = 'home' | 'users' | 'activities' | 'settings' | 'communities';
+type AdminView = 'home' | 'users' | 'activities' | 'settings' | 'communities' | 'members';
 
 type AdminStats = {
   totalCommunities: number;
@@ -78,6 +79,10 @@ export default function AdminDashboardScreen({ onBack }: AdminDashboardScreenPro
 
   if (view === 'settings') {
     return <AdminSettingsScreen onBack={() => setView('home')} />;
+  }
+
+  if (view === 'members') {
+    return <ManageMembersScreen role="admin" onBack={() => setView('home')} />;
   }
 
   return (
@@ -151,6 +156,17 @@ export default function AdminDashboardScreen({ onBack }: AdminDashboardScreenPro
           <View style={styles.navContent}>
             <Text style={styles.navTitle}>Manage Communities</Text>
             <Text style={styles.navDesc}>Create, update, and moderate communities.</Text>
+          </View>
+          <Feather name="chevron-right" size={20} color="#A0A0B8" />
+        </Pressable>
+
+        <Pressable style={styles.navCard} onPress={() => setView('members')}>
+          <View style={[styles.navIcon, { backgroundColor: '#FFF3E0' }]}>
+            <Feather name="user-check" size={20} color="#D97706" />
+          </View>
+          <View style={styles.navContent}>
+            <Text style={styles.navTitle}>Manage Members</Text>
+            <Text style={styles.navDesc}>Review members, moderators, and group join requests.</Text>
           </View>
           <Feather name="chevron-right" size={20} color="#A0A0B8" />
         </Pressable>

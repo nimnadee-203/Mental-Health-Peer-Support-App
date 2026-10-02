@@ -54,6 +54,7 @@ router.post('/', auth, requireRole(['admin']), async (req, res) => {
       category,
       emoji,
       bgColor,
+      imageUrl,
       description,
       guidelines,
       memberCount,
@@ -75,6 +76,7 @@ router.post('/', auth, requireRole(['admin']), async (req, res) => {
       category: category || 'General Wellbeing',
       emoji: emoji || '🌱',
       bgColor: bgColor || '#C8EDD5',
+      imageUrl: imageUrl || '',
       description: description ? description.trim() : '',
       memberCount: memberCount || 1,
       memberAvatarColors: memberAvatarColors || ['#C5DFF8', '#F9D4E0', '#C8EDD5'],
@@ -102,8 +104,10 @@ router.post('/:id/join', async (req, res) => {
     if (!community) return res.status(404).json({ error: 'Community not found' });
 
     if (!community.members) community.members = [];
+    if (!community.memberDetails) community.memberDetails = [];
     if (!community.members.includes(userId)) {
       community.members.push(userId);
+      community.memberDetails.push({ userId, joinedAt: new Date() });
       await community.save();
     }
 
@@ -126,6 +130,9 @@ router.post('/:id/leave', async (req, res) => {
 
     if (community.members && community.members.includes(userId)) {
       community.members = community.members.filter(id => id !== userId);
+      community.memberDetails = (community.memberDetails || []).filter(
+        member => member.userId !== userId,
+      );
       await community.save();
     }
 

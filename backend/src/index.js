@@ -26,6 +26,7 @@ const uploadRouter = require('./routes/upload');
 const adminRouter = require('./routes/admin');
 const digitalDetoxRouter = require('./routes/digitalDetox');
 const journalsRouter = require('./routes/journals');
+const sessionsRouter = require('./routes/sessions');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -51,6 +52,7 @@ app.use('/api/upload', uploadRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/digital-detox', digitalDetoxRouter);
 app.use('/api/journals', journalsRouter);
+app.use('/api/sessions', sessionsRouter);
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date() }));
 

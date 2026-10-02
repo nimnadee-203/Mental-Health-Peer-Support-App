@@ -18,6 +18,7 @@ import ResourcesScreen from './src/screens/ResourcesScreen';
 import ResourceArticleScreen from './src/screens/ResourceArticleScreen';
 import ActivitiesScreen from './src/screens/ActivitiesScreen';
 import CreateResourceScreen from './src/screens/CreateResourceScreen';
+import ScheduleScreen from './src/screens/ScheduleScreen';
 
 import { ResourceArticle, resourceArticles } from './src/types/ResourceArticle';
 
@@ -236,6 +237,7 @@ function App() {
   // ── Create Resource Navigation ─────────────────────────────────────────────
 
   const [isCreateResourceOpen, setIsCreateResourceOpen] = useState(false);
+  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
 
   // ── Groups Navigation ──────────────────────────────────────────────────────
 
@@ -325,6 +327,11 @@ function App() {
         return true;
       }
 
+      if (isScheduleOpen) {
+        setIsScheduleOpen(false);
+        return true;
+      }
+
       // 5. If inside Groups sub-navigation
       if (activeTab === 'Groups') {
         if (groupsView === 'postDetail' || groupsView === 'createPost') {
@@ -363,6 +370,7 @@ function App() {
     isActivityOpen,
     activityPreviousTab,
     isCreateResourceOpen,
+    isScheduleOpen,
     activeTab,
     groupsView,
     activeScreen,
@@ -424,6 +432,7 @@ function App() {
     setSelectedActivity(undefined);
     setIsEmergencyOpen(false);
     setIsCreateResourceOpen(false);
+    setIsScheduleOpen(false);
 
     // Reset groups sub-navigation
     if (tab === 'Groups') {
@@ -505,7 +514,7 @@ function App() {
     // Backend update
     if (userId) {
       try {
-        await fetch(`${API_BASE}/communities/${communityId}/join`, {
+        await fetch(`${COMMUNITY_API_BASE}/communities/${communityId}/join`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId }),
@@ -572,6 +581,7 @@ function App() {
     (isActivityOpen && !!selectedActivity) ||
     isEmergencyOpen ||
     isCreateResourceOpen ||
+    isScheduleOpen ||
     isGroupDeepView ||
     isInChatView;
 
@@ -625,6 +635,16 @@ function App() {
       );
     }
 
+    if (isScheduleOpen) {
+      return (
+        <ScheduleScreen
+          communities={communities}
+          onBack={() => setIsScheduleOpen(false)}
+          role={getAuthRole()}
+        />
+      );
+    }
+
     // ── Groups Sub-Navigation ────────────────────────────────────────────────
 
     if (activeTab === 'Groups') {
@@ -637,6 +657,13 @@ function App() {
             onBack={handleBackToHome}
             onJoin={handleJoinGroup}
             onEnter={handleEnterCommunity}
+            isAdmin={getAuthRole() === 'admin'}
+            onGroupUpdated={updatedCommunity => {
+              setSelectedCommunity(updatedCommunity);
+              setCommunities(current => current.map(community => (
+                community._id === updatedCommunity._id ? updatedCommunity : community
+              )));
+            }}
           />
         );
       }
@@ -707,7 +734,9 @@ function App() {
           onGroupPress={handleGroupPress}
           onJoinedGroupPress={handleEnterCommunity}
           onCreateGroup={() => setGroupsView('createGroup')}
+          onOpenSchedule={() => setIsScheduleOpen(true)}
           canCreateGroup={getAuthRole() === 'admin'}
+          isAdmin={getAuthRole() === 'admin'}
         />
       );
     }
@@ -801,6 +830,7 @@ function App() {
     selectedActivity,
     isEmergencyOpen,
     isCreateResourceOpen,
+    isScheduleOpen,
 
     // Groups
     groupsView,

@@ -7,6 +7,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { getAuthUserId } from '../../api/authStore';
 import { getUserProfile } from '../../api/profileApi';
 import { getRecommendedCommunities, RecommendationResult } from '../../utils/recommendationEngine';
@@ -19,7 +20,9 @@ interface GroupsHomeScreenProps {
   onGroupPress: (community: Community) => void;
   onJoinedGroupPress?: (community: Community) => void;
   onCreateGroup: () => void;
+  onOpenSchedule?: () => void;
   canCreateGroup?: boolean;
+  isAdmin?: boolean;
   userInterestsOverride?: string[];
 }
 
@@ -41,7 +44,9 @@ const GroupsHomeScreen = ({
   onGroupPress,
   onJoinedGroupPress,
   onCreateGroup,
+  onOpenSchedule,
   canCreateGroup = false,
+  isAdmin = false,
   userInterestsOverride,
 }: GroupsHomeScreenProps) => {
   const [activeCategory, setActiveCategory] = useState('All');
@@ -92,15 +97,27 @@ const GroupsHomeScreen = ({
       {/* Header */}
       <View style={styles.headerRow}>
         <Text style={styles.title}>Find Your Community</Text>
-        {canCreateGroup && (
-          <Pressable
-            style={styles.createButton}
-            onPress={onCreateGroup}
-            testID="create-group-button"
-          >
-            <Text style={styles.createButtonText}>+ Create</Text>
-          </Pressable>
-        )}
+        <View style={styles.headerActions}>
+          {onOpenSchedule && (
+            <Pressable
+              accessibilityLabel="Open Schedule"
+              onPress={onOpenSchedule}
+              style={styles.scheduleButton}
+              testID="open-schedule-button"
+            >
+              <Feather name="calendar" size={20} color="#2673FF" />
+            </Pressable>
+          )}
+          {canCreateGroup && (
+            <Pressable
+              style={styles.createButton}
+              onPress={onCreateGroup}
+              testID="create-group-button"
+            >
+              <Text style={styles.createButtonText}>+ Create</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
 
       <Text style={styles.subtitle}>
@@ -145,7 +162,7 @@ const GroupsHomeScreen = ({
         contentContainerStyle={styles.groupsContainer}
       >
         {/* YOUR GROUPS */}
-        {joinedCommunities.length > 0 && (
+        {!isAdmin && joinedCommunities.length > 0 && (
           <View testID="your-groups-section">
             <Text style={styles.sectionTitle}>YOUR GROUPS</Text>
             <ScrollView
@@ -174,7 +191,7 @@ const GroupsHomeScreen = ({
         )}
 
         {/* RECOMMENDED FOR YOU */}
-        {recommendedResults.length > 0 && searchQuery.trim() === '' && (
+          {!isAdmin && recommendedResults.length > 0 && searchQuery.trim() === '' && (
           <View testID="recommended-groups-section">
             <Text style={styles.sectionTitle}>RECOMMENDED FOR YOU</Text>
 
@@ -256,21 +273,23 @@ const GroupsHomeScreen = ({
                       </Text>
                     </View>
 
-                    <View
-                      style={[
-                        styles.joinBadge,
-                        isJoined && styles.joinBadgeJoined,
-                      ]}
-                    >
-                      <Text
+                    {!isAdmin && (
+                      <View
                         style={[
-                          styles.joinBadgeText,
-                          isJoined && styles.joinBadgeTextJoined,
+                          styles.joinBadge,
+                          isJoined && styles.joinBadgeJoined,
                         ]}
                       >
-                        {isJoined ? 'Joined ✓' : 'Join'}
-                      </Text>
-                    </View>
+                        <Text
+                          style={[
+                            styles.joinBadgeText,
+                            isJoined && styles.joinBadgeTextJoined,
+                          ]}
+                        >
+                          {isJoined ? 'Joined ✓' : 'Join'}
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 </Pressable>
               );
@@ -329,21 +348,23 @@ const GroupsHomeScreen = ({
                   </Text>
                 </View>
 
-                <View
-                  style={[
-                    styles.joinBadge,
-                    isJoined && styles.joinBadgeJoined,
-                  ]}
-                >
-                  <Text
+                {!isAdmin && (
+                  <View
                     style={[
-                      styles.joinBadgeText,
-                      isJoined && styles.joinBadgeTextJoined,
+                      styles.joinBadge,
+                      isJoined && styles.joinBadgeJoined,
                     ]}
                   >
-                    {isJoined ? 'Joined ✓' : 'Join'}
-                  </Text>
-                </View>
+                    <Text
+                      style={[
+                        styles.joinBadgeText,
+                        isJoined && styles.joinBadgeTextJoined,
+                      ]}
+                    >
+                      {isJoined ? 'Joined ✓' : 'Join'}
+                    </Text>
+                  </View>
+                )}
               </View>
             </Pressable>
           );
@@ -367,9 +388,23 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
   },
   title: {
+    flex: 1,
     fontSize: 24,
     fontWeight: '800',
     color: '#1F2937',
+  },
+  headerActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  scheduleButton: {
+    alignItems: 'center',
+    backgroundColor: '#E8F0FF',
+    borderRadius: 10,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
   },
   subtitle: {
     fontSize: 14,
