@@ -58,7 +58,9 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration }:
   // Volunteer Application state
   const [volunteerApp, setVolunteerApp] = useState<VolunteerApplication | null>(null);
   const [isVolunteerModalOpen, setIsVolunteerModalOpen] = useState(false);
+  const [volunteerStep, setVolunteerStep] = useState<1 | 2>(1);
   const [volunteerReason, setVolunteerReason] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isSubmittingVolunteer, setIsSubmittingVolunteer] = useState(false);
   const [volunteerError, setVolunteerError] = useState<string | null>(null);
 
@@ -96,6 +98,10 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration }:
       setVolunteerError('Please describe why you would like to become a Peer Support Volunteer.');
       return;
     }
+    if (!agreedToTerms) {
+      setVolunteerError('Please accept the Peer Supporter Code of Conduct to submit.');
+      return;
+    }
 
     setIsSubmittingVolunteer(true);
     setVolunteerError(null);
@@ -104,7 +110,9 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration }:
       const newApp = await applyForVolunteer(volunteerReason.trim());
       setVolunteerApp(newApp);
       setIsVolunteerModalOpen(false);
+      setVolunteerStep(1);
       setVolunteerReason('');
+      setAgreedToTerms(false);
       Alert.alert('Application Submitted', 'Your Peer Support Volunteer application has been submitted for review!');
     } catch (err: any) {
       setVolunteerError(err?.message || 'Failed to submit application.');
@@ -375,11 +383,14 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration }:
                   </Text>
                   <Pressable
                     style={styles.applyVolunteerButton}
-                    onPress={() => setIsVolunteerModalOpen(true)}
-                    testID="apply-volunteer-button"
+                    onPress={() => {
+                      setVolunteerStep(1);
+                      setIsVolunteerModalOpen(true);
+                    }}
+                    testID="become-volunteer-button"
                   >
                     <Text style={styles.applyVolunteerButtonText}>
-                      Apply to Become a Peer Support Volunteer
+                      Become a Peer Support Volunteer
                     </Text>
                   </Pressable>
                 </View>
@@ -682,51 +693,135 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration }:
       <Modal visible={isVolunteerModalOpen} animationType="slide" transparent>
         <SafeAreaView style={styles.modalOverlay}>
           <ScrollView contentContainerStyle={styles.modalContent}>
-            <Text style={styles.modalTitle}>Apply to become a Peer Support Volunteer</Text>
-            <Text style={styles.volunteerModalSubtitle}>
-              Please describe why you would like to become a Peer Support Volunteer and how you plan to support peer community members.
-            </Text>
+            {volunteerStep === 1 ? (
+              /* Step 1: Role Information & Requirements */
+              <View testID="volunteer-step-1">
+                <Text style={styles.modalTitle}>Become a Peer Support Volunteer 🌱</Text>
+                <Text style={styles.volunteerModalSubtitle}>
+                  Peer Support Volunteers help create a safe, compassionate environment for community members.
+                </Text>
 
-            <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Application Reason / Motivation</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={volunteerReason}
-                onChangeText={setVolunteerReason}
-                placeholder="I want to contribute by offering empathetic listening and supporting peer members..."
-                placeholderTextColor="#9CA3AF"
-                multiline
-                numberOfLines={4}
-                testID="volunteer-reason-input"
-              />
-            </View>
+                <View style={styles.infoCard}>
+                  <Text style={styles.infoCardHeading}>Role & Responsibilities</Text>
+                  <View style={styles.infoBulletRow}>
+                    <Text style={styles.infoBulletIcon}>✓</Text>
+                    <Text style={styles.infoBulletText}>Provide peer-to-peer emotional encouragement and support.</Text>
+                  </View>
+                  <View style={styles.infoBulletRow}>
+                    <Text style={styles.infoBulletIcon}>✓</Text>
+                    <Text style={styles.infoBulletText}>Create and facilitate topic-focused peer support groups.</Text>
+                  </View>
+                  <View style={styles.infoBulletRow}>
+                    <Text style={styles.infoBulletIcon}>✓</Text>
+                    <Text style={styles.infoBulletText}>Respond to community members seeking guidance.</Text>
+                  </View>
+                  <View style={styles.infoBulletRow}>
+                    <Text style={styles.infoBulletIcon}>✓</Text>
+                    <Text style={styles.infoBulletText}>Display the official Peer Support Volunteer 🌱 badge on your profile.</Text>
+                  </View>
+                </View>
 
-            {volunteerError ? <Text style={styles.errorText}>{volunteerError}</Text> : null}
+                <View style={styles.infoCard}>
+                  <Text style={styles.infoCardHeading}>Requirements</Text>
+                  <View style={styles.infoBulletRow}>
+                    <Text style={styles.infoBulletIcon}>•</Text>
+                    <Text style={styles.infoBulletText}>Active account in good community standing.</Text>
+                  </View>
+                  <View style={styles.infoBulletRow}>
+                    <Text style={styles.infoBulletIcon}>•</Text>
+                    <Text style={styles.infoBulletText}>Commitment to empathetic, safe, and respectful peer support.</Text>
+                  </View>
+                  <View style={styles.infoBulletRow}>
+                    <Text style={styles.infoBulletIcon}>•</Text>
+                    <Text style={styles.infoBulletText}>Agreement to escalate acute crisis or self-harm risks to Emergency Support.</Text>
+                  </View>
+                </View>
 
-            <View style={styles.modalActions}>
-              <Pressable
-                style={styles.cancelButton}
-                onPress={() => {
-                  setIsVolunteerModalOpen(false);
-                  setVolunteerError(null);
-                }}
-                disabled={isSubmittingVolunteer}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                style={styles.saveButton}
-                onPress={handleApplyVolunteer}
-                disabled={isSubmittingVolunteer}
-                testID="submit-volunteer-button"
-              >
-                {isSubmittingVolunteer ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.saveButtonText}>Submit Application</Text>
-                )}
-              </Pressable>
-            </View>
+                <View style={styles.modalActions}>
+                  <Pressable
+                    style={styles.cancelButton}
+                    onPress={() => {
+                      setIsVolunteerModalOpen(false);
+                      setVolunteerError(null);
+                    }}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.saveButton}
+                    onPress={() => {
+                      setVolunteerStep(2);
+                      setVolunteerError(null);
+                    }}
+                    testID="continue-volunteer-step-2"
+                  >
+                    <Text style={styles.saveButtonText}>Continue to Application →</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              /* Step 2: Application Form */
+              <View testID="volunteer-step-2">
+                <Text style={styles.modalTitle}>Volunteer Application</Text>
+                <Text style={styles.volunteerModalSubtitle}>
+                  Please share why you would like to become a Peer Support Volunteer.
+                </Text>
+
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>Application Reason / Motivation</Text>
+                  <TextInput
+                    style={[styles.input, styles.textArea]}
+                    value={volunteerReason}
+                    onChangeText={setVolunteerReason}
+                    placeholder="I want to contribute by offering empathetic listening and supporting peer members..."
+                    placeholderTextColor="#9CA3AF"
+                    multiline
+                    numberOfLines={4}
+                    testID="volunteer-reason-input"
+                  />
+                </View>
+
+                <Pressable
+                  style={styles.checkboxRow}
+                  onPress={() => setAgreedToTerms(prev => !prev)}
+                  testID="agree-terms-checkbox"
+                >
+                  <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}>
+                    {agreedToTerms && <Text style={styles.checkboxCheckmark}>✓</Text>}
+                  </View>
+                  <Text style={styles.checkboxLabel}>
+                    I agree to the Peer Supporter Code of Conduct and community guidelines.
+                  </Text>
+                </Pressable>
+
+                {volunteerError ? <Text style={styles.errorText}>{volunteerError}</Text> : null}
+
+                <View style={styles.modalActions}>
+                  <Pressable
+                    style={styles.cancelButton}
+                    onPress={() => {
+                      setVolunteerStep(1);
+                      setVolunteerError(null);
+                    }}
+                    disabled={isSubmittingVolunteer}
+                  >
+                    <Text style={styles.cancelButtonText}>← Back</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.saveButton}
+                    onPress={handleApplyVolunteer}
+                    disabled={isSubmittingVolunteer}
+                    testID="submit-volunteer-button"
+                  >
+                    {isSubmittingVolunteer ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.saveButtonText}>Submit Application</Text>
+                    )}
+                  </Pressable>
+                </View>
+              </View>
+            )}
           </ScrollView>
         </SafeAreaView>
       </Modal>
@@ -1278,6 +1373,67 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 16,
+  },
+  infoCard: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 12,
+  },
+  infoCardHeading: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginBottom: 8,
+  },
+  infoBulletRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+    gap: 8,
+  },
+  infoBulletIcon: {
+    color: '#2563EB',
+    fontWeight: '900',
+    fontSize: 14,
+  },
+  infoBulletText: {
+    color: '#334155',
+    fontSize: 13,
+    lineHeight: 18,
+    flex: 1,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    gap: 10,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#94A3B8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
+  },
+  checkboxCheckmark: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  checkboxLabel: {
+    color: '#475569',
+    fontSize: 13,
+    flex: 1,
+    lineHeight: 18,
   },
 });
 
