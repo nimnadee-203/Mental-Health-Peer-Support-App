@@ -34,6 +34,7 @@ export interface Community {
   memberCount: number;
   memberAvatarColors: string[];
   isJoined: boolean;
+  creatorId?: string | null;
 }
 
 export interface Post {
@@ -338,10 +339,10 @@ export default function GroupDiscussionScreen({
   const fetchTeam = useCallback(async () => {
     setTeamLoading(true);
     try {
-      const res = await fetch(`${COMMUNITY_API_BASE}/communities/team`);
+      const res = await fetch(`${COMMUNITY_API_BASE}/communities/team?groupId=${encodeURIComponent(community._id)}`);
       if (res.ok) setTeam(await res.json());
     } catch { /* silent */ } finally { setTeamLoading(false); }
-  }, []);
+  }, [community._id]);
 
   useEffect(() => { fetchPosts(); fetchTeam(); }, [fetchPosts, fetchTeam]);
 

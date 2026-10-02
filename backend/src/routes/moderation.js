@@ -11,11 +11,26 @@ const ModerationAudit = require('../models/ModerationAudit');
 
 const moderatorsOnly = [auth, requireRole(['moderator', 'admin'])];
 
-router.get('/stats', ...moderatorsOnly, async (_req, res) => {
+const getAssignedCommunityIds = async req => {
+  if (req.user.role === 'admin') return null;
+  return Community.find({ moderatorIds: req.user.id }).distinct('_id');
+};
+
+const canModerateCommunity = async (req, groupId) => {
+  if (req.user.role === 'admin') return true;
+  return Boolean(groupId && await Community.exists({ _id: groupId, moderatorIds: req.user.id }));
+};
+
+router.get('/stats', ...moderatorsOnly, async (req, res) => {
   try {
+    const assignedIds = await getAssignedCommunityIds(req);
+    const groupIds = assignedIds ? assignedIds.map(String) : null;
     const [reportCounts, hiddenPosts] = await Promise.all([
-      Report.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
-      Post.countDocuments({ moderationStatus: 'hidden' }),
+      Report.aggregate([
+        ...(groupIds ? [{ $match: { groupId: { $in: groupIds } } }] : []),
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+      ]),
+      Post.countDocuments(groupIds ? { groupId: { $in: groupIds }, moderationStatus: 'hidden' } : { moderationStatus: 'hidden' }),
     ]);
     const stats = { pending: 0, under_review: 0, resolved: 0, dismissed: 0, hiddenPosts };
     reportCounts.forEach(item => {
@@ -30,6 +45,8 @@ router.get('/stats', ...moderatorsOnly, async (_req, res) => {
 router.get('/reports', ...moderatorsOnly, async (req, res) => {
   try {
     const query = {};
+    const assignedIds = await getAssignedCommunityIds(req);
+    if (assignedIds) query.groupId = { $in: assignedIds.map(String) };
     if (req.query.status && req.query.status !== 'all') query.status = req.query.status;
     if (typeof req.query.search === 'string' && req.query.search.trim()) {
       const search = req.query.search.trim();
@@ -57,6 +74,11 @@ router.get('/reports', ...moderatorsOnly, async (req, res) => {
 router.get('/history', ...moderatorsOnly, async (req, res) => {
   try {
     const query = req.query.reportId ? { reportId: req.query.reportId } : {};
+    const assignedIds = await getAssignedCommunityIds(req);
+    if (assignedIds) {
+      const reports = await Report.find({ groupId: { $in: assignedIds.map(String) } }).select('_id').lean();
+      query.reportId = { $in: reports.map(report => report._id) };
+    }
     const history = await ModerationAudit.find(query)
       .populate('moderatorId', 'fullName')
       .sort({ createdAt: -1 })
@@ -77,18 +99,17 @@ router.patch('/reports/:id', ...moderatorsOnly, async (req, res) => {
     if (!['pending', 'under_review', 'resolved', 'dismissed'].includes(status)) {
       return res.status(400).json({ error: 'Invalid report status.' });
     }
-    const report = await Report.findByIdAndUpdate(
-      req.params.id,
-      {
-        status,
-        reviewedBy: req.user.id,
-        reviewedAt: new Date(),
-        moderatorAction: status,
-        ...(typeof req.body.reason === 'string' ? { moderationNote: req.body.reason.trim() } : {}),
-      },
-      { new: true, runValidators: true },
-    );
+    const report = await Report.findById(req.params.id);
     if (!report) return res.status(404).json({ error: 'Report not found.' });
+    if (!(await canModerateCommunity(req, report.groupId))) {
+      return res.status(403).json({ error: 'You are not assigned to this group.' });
+    }
+    report.status = status;
+    report.reviewedBy = req.user.id;
+    report.reviewedAt = new Date();
+    report.moderatorAction = status;
+    if (typeof req.body.reason === 'string') report.moderationNote = req.body.reason.trim();
+    await report.save();
     await ModerationAudit.create({
       moderatorId: req.user.id,
       action: status === 'dismissed' ? 'DISMISS_REPORT' : 'UPDATE_REPORT',
@@ -109,12 +130,13 @@ router.patch('/posts/:id/:action', ...moderatorsOnly, async (req, res) => {
       return res.status(400).json({ error: 'Invalid moderation action.' });
     }
     const moderationStatus = req.params.action === 'hide' ? 'hidden' : 'visible';
-    const post = await Post.findByIdAndUpdate(
-      req.params.id,
-      { moderationStatus },
-      { new: true },
-    );
+    const post = await Post.findById(req.params.id);
     if (!post) return res.status(404).json({ error: 'Post not found.' });
+    if (!(await canModerateCommunity(req, post.groupId))) {
+      return res.status(403).json({ error: 'You are not assigned to this group.' });
+    }
+    post.moderationStatus = moderationStatus;
+    await post.save();
 
     if (req.body.reportId && mongoose.Types.ObjectId.isValid(req.body.reportId) && moderationStatus === 'hidden') {
       await Report.findByIdAndUpdate(req.body.reportId, {
@@ -140,6 +162,9 @@ router.patch('/posts/:id/:action', ...moderatorsOnly, async (req, res) => {
 
 router.post('/users/:id/warn', ...moderatorsOnly, async (req, res) => {
   try {
+    if (!(await canModerateCommunity(req, req.body.groupId))) {
+      return res.status(403).json({ error: 'You are not assigned to this group.' });
+    }
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ error: 'Invalid user ID.' });
     }
@@ -167,9 +192,10 @@ router.get('/users', auth, requireRole(['admin']), async (_req, res) => {
   }
 });
 
-router.get('/members', ...moderatorsOnly, async (_req, res) => {
+router.get('/members', ...moderatorsOnly, async (req, res) => {
   try {
-    const communities = await Community.find()
+    const assignedIds = await getAssignedCommunityIds(req);
+    const communities = await Community.find(assignedIds ? { _id: { $in: assignedIds } } : {})
       .select('name createdAt members memberDetails joinRequests')
       .sort({ createdAt: -1 })
       .lean();

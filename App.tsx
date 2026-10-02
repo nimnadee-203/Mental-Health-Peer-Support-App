@@ -316,6 +316,11 @@ function App() {
 
       // 3. If activity is open
       if (isActivityOpen) {
+        if (selectedActivity) {
+          setSelectedActivity(undefined);
+          return true;
+        }
+
         setIsActivityOpen(false);
         setActiveTab(activityPreviousTab);
         return true;
@@ -368,6 +373,7 @@ function App() {
     isEmergencyOpen,
     isArticleOpen,
     isActivityOpen,
+    selectedActivity,
     activityPreviousTab,
     isCreateResourceOpen,
     isScheduleOpen,
@@ -657,6 +663,7 @@ function App() {
             onJoin={handleJoinGroup}
             onEnter={handleEnterCommunity}
             isAdmin={getAuthRole() === 'admin'}
+            canManage={getAuthRole() === 'admin' || selectedCommunity.creatorId === getAuthUserId()}
             onGroupUpdated={updatedCommunity => {
               setSelectedCommunity(updatedCommunity);
               setCommunities(current => current.map(community => (
@@ -734,7 +741,7 @@ function App() {
           onJoinedGroupPress={handleEnterCommunity}
           onCreateGroup={() => setGroupsView('createGroup')}
           onOpenSchedule={() => setIsScheduleOpen(true)}
-          canCreateGroup={getAuthRole() === 'admin'}
+          canCreateGroup={['admin', 'professional'].includes(getAuthRole())}
           isAdmin={getAuthRole() === 'admin'}
         />
       );

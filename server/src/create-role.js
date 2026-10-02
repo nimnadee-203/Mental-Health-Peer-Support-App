@@ -3,27 +3,15 @@ import dns from 'dns';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import readline from 'readline';
+import User from './models/User.js';
 
 dotenv.config();
-
-// Use a resolver that can reach MongoDB Atlas SRV records on this network.
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 const role = process.argv[2];
 if (!['admin', 'moderator'].includes(role)) {
   throw new Error('Usage: npm run create-admin | npm run create-moderator');
 }
-
-const userSchema = new mongoose.Schema(
-  {
-    fullName: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    passwordHash: { type: String, required: true },
-    role: { type: String, enum: ['user', 'moderator', 'admin'], default: 'user' },
-  },
-  { collection: 'users' },
-);
-const User = mongoose.models.User || mongoose.model('User', userSchema);
 
 const ask = question => new Promise(resolve => {
   const interfaceRef = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -33,30 +21,66 @@ const ask = question => new Promise(resolve => {
   });
 });
 
-const createRoleAccount = async () => {
-  if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI is required in server/.env');
-  const fullName = await ask('Full name: ');
-  const email = (await ask('Email: ')).toLowerCase();
-  const password = await ask('Password: ');
-  if (!fullName || !email || password.length < 6) throw new Error('Name, email, and a password of at least 6 characters are required.');
+const askPassword = question => new Promise(resolve => {
+  const interfaceRef = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const mutedWrite = interfaceRef._writeToOutput;
+  interfaceRef._writeToOutput = () => {};
+  interfaceRef.question(question, answer => {
+    interfaceRef._writeToOutput = mutedWrite;
+    interfaceRef.close();
+    process.stdout.write('\n');
+    resolve(answer);
+  });
+});
 
-  await mongoose.connect(process.env.MONGODB_URI);
+const isValidEmail = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+const createRoleAccount = async () => {
+  if (!process.env.MONGODB_URI) {
+    throw new Error('MONGODB_URI is required. Set it in server/.env first.');
+  }
+
+  const fullName = await ask('Admin name: ');
+  const email = (await ask('Admin email: ')).toLowerCase();
+  const password = await askPassword('Admin password: ');
+
+  if (fullName.length < 2) throw new Error('Name must be at least 2 characters long.');
+  if (!isValidEmail(email)) throw new Error('Please enter a valid email address.');
+  if (password.length < 6) throw new Error('Password must be at least 6 characters long.');
+
+  await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
   const existing = await User.findOne({ email });
+
   if (existing) {
+    if (existing.role === role) {
+      console.log(`This account is already a ${role}: ${email}. No changes were made.`);
+      return;
+    }
+
+    const confirmation = (await ask(
+      `Account ${email} has role "${existing.role}". Change it to "${role}"? (yes/no): `,
+    )).toLowerCase();
+    if (confirmation !== 'yes' && confirmation !== 'y') {
+      console.log('No changes were made.');
+      return;
+    }
+
     existing.role = role;
-    existing.passwordHash = await bcrypt.hash(password, 12);
-    existing.fullName = fullName;
     await existing.save();
     console.log(`Updated existing account ${email} to ${role}.`);
-  } else {
-    await User.create({ fullName, email, passwordHash: await bcrypt.hash(password, 12), role });
-    console.log(`Created ${role} account ${email}.`);
+    return;
   }
-  await mongoose.disconnect();
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  await User.create({ fullName, email, passwordHash, role });
+  console.log(`Created ${role} account: ${email}.`);
 };
 
-createRoleAccount().catch(async error => {
-  console.error(error.message);
-  await mongoose.disconnect().catch(() => {});
-  process.exitCode = 1;
-});
+createRoleAccount()
+  .catch(error => {
+    console.error(`Could not create ${role} account: ${error.message}`);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await mongoose.disconnect().catch(() => {});
+  });

@@ -29,6 +29,7 @@ interface GroupDetailScreenProps {
   onJoin: (communityId: string) => void;
   onEnter: (community: Community) => void;
   isAdmin?: boolean;
+  canManage?: boolean;
   onGroupUpdated?: (community: Community) => void;
 }
 
@@ -39,6 +40,7 @@ export default function GroupDetailScreen({
   onJoin,
   onEnter,
   isAdmin = false,
+  canManage = false,
   onGroupUpdated,
 }: GroupDetailScreenProps) {
   const [joined, setJoined] = useState(isJoined);
@@ -103,7 +105,7 @@ const handleSaveEdit = async () => {
       if (!uploadResponse.ok) throw new Error(uploadData.error || 'Failed to upload group image.');
       imageUrl = `${COMMUNITY_API_BASE.replace('/api', '')}${uploadData.url}`;
     }
-    const response = await fetch(`${COMMUNITY_API_BASE}/admin/communities/${community._id}`, {
+    const response = await fetch(`${COMMUNITY_API_BASE}${isAdmin ? `/admin/communities/${community._id}` : `/communities/${community._id}`}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -239,6 +241,15 @@ const groupImageUrl = community.imageUrl
                   Enter Community
                 </Text>
               </Pressable>
+              {canManage && (
+                <Pressable
+                  accessibilityLabel="Edit Group Details"
+                  accessibilityRole="button"
+                  style={styles.editGroupButton}
+                  onPress={openEdit}>
+                  <Text style={styles.editGroupButtonText}>Edit Group Details</Text>
+                </Pressable>
+              )}
             </>
           )}
         </View>

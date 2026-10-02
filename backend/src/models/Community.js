@@ -46,6 +46,15 @@ const communitySchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    moderatorIds: {
+      type: [String],
+      default: [],
+    },
+    creatorId: {
+      type: String,
+      default: null,
+      index: true,
+    },
     memberDetails: {
       type: [
         {

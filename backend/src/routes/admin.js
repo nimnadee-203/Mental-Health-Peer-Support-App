@@ -132,6 +132,44 @@ router.get('/communities', auth, requireAdmin, async (req, res) => {
   }
 });
 
+router.get('/moderators', auth, requireAdmin, async (_req, res) => {
+  try {
+    const moderators = await User.find({ role: 'moderator' })
+      .select('_id fullName email')
+      .sort({ fullName: 1 })
+      .lean();
+    return res.json({ moderators });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to fetch moderators.' });
+  }
+});
+
+router.patch('/communities/:id/moderators', auth, requireAdmin, async (req, res) => {
+  try {
+    const moderatorIds = Array.isArray(req.body.moderatorIds) ? req.body.moderatorIds : null;
+    if (!moderatorIds || moderatorIds.some(id => typeof id !== 'string')) {
+      return res.status(400).json({ error: 'moderatorIds must be an array of user IDs.' });
+    }
+
+    const moderators = await User.find({ _id: { $in: moderatorIds }, role: 'moderator' })
+      .select('_id')
+      .lean();
+    if (moderators.length !== new Set(moderatorIds).size) {
+      return res.status(400).json({ error: 'Every selected user must be a moderator.' });
+    }
+
+    const community = await Community.findByIdAndUpdate(
+      req.params.id,
+      { moderatorIds: [...new Set(moderatorIds)] },
+      { new: true, runValidators: true },
+    );
+    if (!community) return res.status(404).json({ error: 'Community not found.' });
+    return res.json(community);
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to assign community moderators.' });
+  }
+});
+
 /**
  * POST /api/admin/communities
  * Creates a new community.

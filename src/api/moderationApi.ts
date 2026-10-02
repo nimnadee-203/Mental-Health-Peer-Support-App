@@ -10,6 +10,7 @@ export interface ModerationReport {
   reasonNote?: string;
   targetContentPreview?: string;
   targetId: string;
+  groupId?: string;
   targetAuthor?: string;
   targetAuthorId?: string;
   moderationNote?: string;
@@ -109,8 +110,8 @@ export const updateUserRole = (
     body: JSON.stringify({ role }),
   });
 
-export const warnUser = (userId: string, reason: string) =>
+export const warnUser = (userId: string, reason: string, groupId?: string) =>
   request(`/moderation/users/${userId}/warn`, {
     method: 'POST',
-    body: JSON.stringify({ reason }),
+    body: JSON.stringify({ reason, groupId }),
   });

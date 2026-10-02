@@ -33,7 +33,10 @@ type Community = {
   guidelines: string;
   isPrivate: boolean;
   memberCount: number;
+  moderatorIds?: string[];
 };
+
+type Moderator = { _id: string; fullName: string; email: string };
 
 export default function AdminCommunitiesScreen({ onBack }: AdminCommunitiesScreenProps) {
   const [communities, setCommunities] = useState<Community[]>([]);
@@ -50,6 +53,10 @@ export default function AdminCommunitiesScreen({ onBack }: AdminCommunitiesScree
   const [guidelines, setGuidelines] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [moderators, setModerators] = useState<Moderator[]>([]);
+  const [assignmentCommunity, setAssignmentCommunity] = useState<Community | null>(null);
+  const [selectedModeratorIds, setSelectedModeratorIds] = useState<string[]>([]);
+  const [savingModerators, setSavingModerators] = useState(false);
 
   const pickCommunityImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -67,18 +74,67 @@ export default function AdminCommunitiesScreen({ onBack }: AdminCommunitiesScree
     setError(null);
     try {
       const token = await getAuthToken();
-      const res = await fetch(`${COMMUNITY_API_BASE}/admin/communities`, {
+      const communitiesResponse = await fetch(`${COMMUNITY_API_BASE}/admin/communities`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error('Failed to fetch communities');
-      const data = await res.json();
-      setCommunities(data);
+      const communitiesData = await communitiesResponse.json().catch(() => ({}));
+      if (!communitiesResponse.ok) {
+        throw new Error(communitiesData.error || `Failed to fetch communities (${communitiesResponse.status})`);
+      }
+      setCommunities(communitiesData);
+
+      // Moderator assignment is supplementary; it must not hide communities if its
+      // endpoint is unavailable while the backend is being restarted or updated.
+      try {
+        const moderatorsResponse = await fetch(`${COMMUNITY_API_BASE}/admin/moderators`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (moderatorsResponse.ok) {
+          const moderatorData = await moderatorsResponse.json();
+          setModerators(moderatorData.moderators || []);
+        } else {
+          setModerators([]);
+        }
+      } catch {
+        setModerators([]);
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const openModeratorAssignment = (community: Community) => {
+    setAssignmentCommunity(community);
+    setSelectedModeratorIds(community.moderatorIds || []);
+  };
+
+  const saveModeratorAssignment = async () => {
+    if (!assignmentCommunity) return;
+    setSavingModerators(true);
+    try {
+      const token = await getAuthToken();
+      const response = await fetch(
+        `${COMMUNITY_API_BASE}/admin/communities/${assignmentCommunity._id}/moderators`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ moderatorIds: selectedModeratorIds }),
+        },
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to assign moderators.');
+      setCommunities(current => current.map(community => (
+        community._id === data._id ? data : community
+      )));
+      setAssignmentCommunity(null);
+    } catch (err: any) {
+      Alert.alert('Error', err.message);
+    } finally {
+      setSavingModerators(false);
+    }
+  };
 
   useEffect(() => {
     fetchCommunities();
@@ -96,19 +152,12 @@ export default function AdminCommunitiesScreen({ onBack }: AdminCommunitiesScree
       let imageUrl = '';
       if (selectedImage) {
         const formData = new FormData();
-        if (Platform.OS === 'web') {
-          const blob = await (await fetch(selectedImage)).blob();
-          const extension = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
-          formData.append('media', new File([blob], `group.${extension}`, { type: blob.type }));
-        } else {
-          const filename = selectedImage.split('/').pop() || 'group.jpg';
-          const extension = (filename.split('.').pop() || 'jpg').toLowerCase();
-          formData.append('media', {
-            uri: selectedImage,
-            name: filename,
-            type: `image/${extension === 'jpg' ? 'jpeg' : extension}`,
-          } as any);
-        }
+        const filename = selectedImage.split('/').pop() || 'group.jpg';
+        const extension = (filename.split('.').pop() || 'jpg').toLowerCase();
+        const mimeType = `image/${extension === 'jpg' ? 'jpeg' : extension}`;
+        const sourceBlob = await (await fetch(selectedImage)).blob();
+        const mediaBlob = new Blob([sourceBlob], { type: mimeType });
+        formData.append('media', mediaBlob, filename);
         const uploadResponse = await fetch(`${COMMUNITY_API_BASE}/upload`, {
           method: 'POST',
           body: formData,
@@ -232,11 +281,56 @@ export default function AdminCommunitiesScreen({ onBack }: AdminCommunitiesScree
                     <Text style={[styles.statText, { color: '#B45309' }]}>Private</Text>
                   </View>
                 )}
+                <Pressable style={styles.assignButton} onPress={() => openModeratorAssignment(comm)}>
+                  <Feather name="shield" size={12} color="#2673FF" style={{ marginRight: 4 }} />
+                  <Text style={styles.assignText}>{comm.moderatorIds?.length || 0} Moderators</Text>
+                </Pressable>
               </View>
             </View>
           ))}
         </ScrollView>
       )}
+
+      <Modal visible={!!assignmentCommunity} animationType="slide" transparent>
+        <SafeAreaView style={styles.modalOverlay}>
+          <View style={styles.assignmentContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Assign Moderators</Text>
+              <Pressable onPress={() => setAssignmentCommunity(null)} style={styles.closeBtn}>
+                <Feather name="x" size={24} color="#6B6B80" />
+              </Pressable>
+            </View>
+            <Text style={styles.assignmentSubtitle}>{assignmentCommunity?.name}</Text>
+            {moderators.length === 0 ? (
+              <Text style={styles.emptyModerators}>No moderator accounts available.</Text>
+            ) : moderators.map(moderator => {
+              const selected = selectedModeratorIds.includes(moderator._id);
+              return (
+                <Pressable
+                  key={moderator._id}
+                  style={styles.moderatorOption}
+                  onPress={() => setSelectedModeratorIds(current => (
+                    selected
+                      ? current.filter(id => id !== moderator._id)
+                      : [...current, moderator._id]
+                  ))}
+                >
+                  <View style={[styles.checkbox, selected && styles.checkboxChecked]}>
+                    {selected && <Feather name="check" size={14} color="#FFF" />}
+                  </View>
+                  <View>
+                    <Text style={styles.moderatorName}>{moderator.fullName}</Text>
+                    <Text style={styles.moderatorEmail}>{moderator.email}</Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+            <Pressable style={styles.submitBtn} onPress={saveModeratorAssignment} disabled={savingModerators}>
+              <Text style={styles.submitBtnText}>{savingModerators ? 'Saving...' : 'Save Moderators'}</Text>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      </Modal>
 
       {/* Create Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
@@ -370,9 +464,17 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', gap: 8 },
   statPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   statText: { fontSize: 12, fontWeight: '600', color: '#4B5563' },
+  assignButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F0FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  assignText: { fontSize: 12, fontWeight: '700', color: '#2673FF' },
   
   modalOverlay: { flex: 1, backgroundColor: 'rgba(13, 13, 26, 0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 60 },
+  assignmentContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  assignmentSubtitle: { color: '#6B6B80', fontSize: 15, marginBottom: 12 },
+  moderatorOption: { alignItems: 'center', flexDirection: 'row', paddingVertical: 12, gap: 12 },
+  moderatorName: { color: '#0D0D1A', fontSize: 15, fontWeight: '700' },
+  moderatorEmail: { color: '#6B6B80', fontSize: 12, marginTop: 2 },
+  emptyModerators: { color: '#6B6B80', paddingVertical: 20 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   modalTitle: { fontSize: 20, fontWeight: '800', color: '#0D0D1A' },
   closeBtn: { padding: 4 },
