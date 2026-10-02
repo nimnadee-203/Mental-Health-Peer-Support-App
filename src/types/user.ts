@@ -1,6 +1,13 @@
 export type VisibilityOption = 'Everyone' | 'Group Members' | 'Only Me';
 export type MessagingOption = 'Everyone' | 'Group Members' | 'Nobody';
 
+export type UserRole =
+  | 'community_member'
+  | 'peer_volunteer'
+  | 'moderator'
+  | 'admin'
+  | 'user';
+
 export interface PrivacySettings {
   profileVisibility: VisibilityOption;
   anonymousSharing: boolean;
@@ -18,7 +25,7 @@ export interface UserProfile {
   id: string;
   fullName: string;
   email: string;
-  role?: 'user' | 'moderator' | 'admin';
+  role?: UserRole;
   bio: string;
   interests: string[];
   stats: UserProfileStats;
@@ -31,4 +38,3 @@ export interface UpdateProfilePayload {
   interests?: string[];
   privacySettings?: PrivacySettings;
 }
-

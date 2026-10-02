@@ -37,8 +37,8 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['user', 'moderator', 'admin'],
-      default: 'user',
+      enum: ['community_member', 'user', 'peer_volunteer', 'moderator', 'admin'],
+      default: 'community_member',
       index: true,
     },
     bio: {
@@ -94,7 +94,7 @@ const buildUserProfile = user => ({
   id: user._id,
   fullName: user.fullName,
   email: user.email,
-  role: user.role || 'user',
+  role: user.role || 'community_member',
   bio: user.bio,
   interests: user.interests,
   stats: user.stats,

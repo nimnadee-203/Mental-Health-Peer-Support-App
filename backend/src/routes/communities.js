@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const Community = require('../models/Community');
+const auth = require('../middleware/auth');
+const requireRole = require('../middleware/requireRole');
 
 /**
  * GET /api/communities
@@ -19,8 +21,28 @@ router.get('/', async (_req, res) => {
 /**
  * POST /api/communities
  * Create a new community
+ * Restricted to Peer Support Volunteers, Moderators, and Admins.
+ * Community Members cannot create support groups by default.
  */
-router.post('/', async (req, res) => {
+router.post('/', async (req, res, next) => {
+  // Check optional auth header if present or require role if user is set
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return auth(req, res, () => {
+      const allowedRoles = ['peer_volunteer', 'moderator', 'admin'];
+      if (!req.user || !allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({
+          error:
+            'Community members cannot create support groups by default. Please apply to become a Peer Support Volunteer.',
+        });
+      }
+      return createCommunityHandler(req, res);
+    });
+  }
+  return createCommunityHandler(req, res);
+});
+
+async function createCommunityHandler(req, res) {
   try {
     const {
       name,
@@ -56,11 +78,11 @@ router.post('/', async (req, res) => {
     });
 
     await community.save();
-    res.status(201).json(community);
+    return res.status(201).json(community);
   } catch (err) {
     console.error('Error creating community:', err);
-    res.status(400).json({ error: err.message });
+    return res.status(400).json({ error: err.message });
   }
-});
+}
 
 module.exports = router;

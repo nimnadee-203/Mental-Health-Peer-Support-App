@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,6 +20,7 @@ interface GroupsHomeScreenProps {
   onGroupPress: (community: Community) => void;
   onCreateGroup: () => void;
   userInterestsOverride?: string[];
+  userRole?: string;
 }
 
 const CATEGORIES = [
@@ -39,31 +41,56 @@ const GroupsHomeScreen = ({
   onGroupPress,
   onCreateGroup,
   userInterestsOverride,
+  userRole: propsUserRole,
 }: GroupsHomeScreenProps) => {
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [userInterests, setUserInterests] = useState<string[]>(
     userInterestsOverride || [],
   );
+  const [userRole, setUserRole] = useState<string | undefined>(propsUserRole);
 
-  const fetchUserInterests = useCallback(async () => {
-    if (userInterestsOverride) return;
+  const fetchUserProfile = useCallback(async () => {
+    if (propsUserRole) {
+      setUserRole(propsUserRole);
+    }
     const userId = getAuthUserId();
     if (!userId) return;
 
     try {
       const profile = await getUserProfile(userId);
-      if (profile && profile.interests) {
-        setUserInterests(profile.interests);
+      if (profile) {
+        if (profile.interests && !userInterestsOverride) {
+          setUserInterests(profile.interests);
+        }
+        if (profile.role && !propsUserRole) {
+          setUserRole(profile.role);
+        }
       }
     } catch {
-      // Ignore errors if profile loading fails
+      // Ignore errors
     }
-  }, [userInterestsOverride]);
+  }, [propsUserRole, userInterestsOverride]);
 
   useEffect(() => {
-    fetchUserInterests();
-  }, [fetchUserInterests]);
+    fetchUserProfile();
+  }, [fetchUserProfile]);
+
+  const handleCreateGroupClick = () => {
+    const isAllowedToCreate =
+      userRole === 'peer_volunteer' ||
+      userRole === 'moderator' ||
+      userRole === 'admin';
+
+    if (isAllowedToCreate) {
+      onCreateGroup();
+    } else {
+      Alert.alert(
+        'Group Creation Restricted',
+        'Community members cannot create support groups by default. Please apply to become a Peer Support Volunteer in your profile to gain group creation privileges.',
+      );
+    }
+  };
 
   const joinedCommunities = communities.filter(c => joinedIds.includes(c._id));
 
@@ -90,7 +117,7 @@ const GroupsHomeScreen = ({
         <Text style={styles.title}>Find Your Community</Text>
         <Pressable
           style={styles.createButton}
-          onPress={onCreateGroup}
+          onPress={handleCreateGroupClick}
           testID="create-group-button"
         >
           <Text style={styles.createButtonText}>+ Create</Text>

@@ -58,7 +58,7 @@ const handleJoinToggle = () => {
       {/* BANNER */}
       <View style={[styles.banner, { backgroundColor: community.bgColor }]}>
         <Pressable style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backIcon}>◀</Text>
+          <Text style={styles.backIcon}>‹</Text>
         </Pressable>
         <Text style={styles.bannerEmoji}>{community.emoji}</Text>
       </View>

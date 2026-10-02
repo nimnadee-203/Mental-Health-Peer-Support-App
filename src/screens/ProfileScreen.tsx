@@ -13,6 +13,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getAuthUserId, setAuthUserId } from '../api/authStore';
 import { getUserProfile, updateUserProfile } from '../api/profileApi';
+import {
+  applyForVolunteer,
+  getVolunteerStatus,
+  VolunteerApplication,
+} from '../api/volunteerApi';
 import { MessagingOption, UserProfile, VisibilityOption } from '../types/user';
 
 type ProfileScreenProps = {
@@ -50,6 +55,13 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration }:
   const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
   const [privacySaveSuccess, setPrivacySaveSuccess] = useState(false);
 
+  // Volunteer Application state
+  const [volunteerApp, setVolunteerApp] = useState<VolunteerApplication | null>(null);
+  const [isVolunteerModalOpen, setIsVolunteerModalOpen] = useState(false);
+  const [volunteerReason, setVolunteerReason] = useState('');
+  const [isSubmittingVolunteer, setIsSubmittingVolunteer] = useState(false);
+  const [volunteerError, setVolunteerError] = useState<string | null>(null);
+
   const fetchProfile = useCallback(async () => {
     const currentUserId = getAuthUserId();
     setUserId(currentUserId);
@@ -66,12 +78,40 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration }:
     try {
       const data = await getUserProfile(currentUserId);
       setProfile(data);
+      try {
+        const appStatus = await getVolunteerStatus();
+        setVolunteerApp(appStatus);
+      } catch {
+        // Ignore if volunteer status fetch fails
+      }
     } catch (err: any) {
       setError(err?.message || 'Failed to load profile.');
     } finally {
       setIsLoading(false);
     }
   }, []);
+
+  const handleApplyVolunteer = async () => {
+    if (!volunteerReason.trim()) {
+      setVolunteerError('Please describe why you would like to become a Peer Support Volunteer.');
+      return;
+    }
+
+    setIsSubmittingVolunteer(true);
+    setVolunteerError(null);
+
+    try {
+      const newApp = await applyForVolunteer(volunteerReason.trim());
+      setVolunteerApp(newApp);
+      setIsVolunteerModalOpen(false);
+      setVolunteerReason('');
+      Alert.alert('Application Submitted', 'Your Peer Support Volunteer application has been submitted for review!');
+    } catch (err: any) {
+      setVolunteerError(err?.message || 'Failed to submit application.');
+    } finally {
+      setIsSubmittingVolunteer(false);
+    }
+  };
 
   useEffect(() => {
     fetchProfile();
@@ -258,6 +298,17 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration }:
                 <Text style={styles.avatarText}>{avatarLetter}</Text>
               </View>
               <Text style={styles.name}>{profile.fullName}</Text>
+              <View style={styles.roleBadgeContainer}>
+                <Text style={styles.roleBadgeText}>
+                  {profile.role === 'peer_volunteer'
+                    ? 'Peer Support Volunteer 🌱'
+                    : profile.role === 'moderator'
+                    ? 'Moderator 🛡️'
+                    : profile.role === 'admin'
+                    ? 'Admin 👑'
+                    : 'Community Member'}
+                </Text>
+              </View>
               <Text style={styles.email}>{profile.email}</Text>
               <Text style={styles.bio}>
                 {profile.bio || 'Sharing small steps, honest updates, and support with the community.'}
@@ -278,6 +329,61 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration }:
                 <Text style={styles.statValue}>{profile.stats?.replies ?? 0}</Text>
                 <Text style={styles.statLabel}>Replies</Text>
               </View>
+            </View>
+
+            {/* Volunteer Application Section */}
+            <View style={styles.section} testID="volunteer-application-section">
+              <Text style={styles.sectionTitle}>Peer Support Volunteer Status</Text>
+              {profile.role === 'peer_volunteer' ? (
+                <View style={styles.volunteerActiveBox}>
+                  <Text style={styles.volunteerActiveTitle}>Active Peer Support Volunteer 🌱</Text>
+                  <Text style={styles.volunteerActiveText}>
+                    You have active peer supporter permissions! You can facilitate peer support discussions, respond to community members, and create support groups.
+                  </Text>
+                </View>
+              ) : volunteerApp ? (
+                <View style={styles.volunteerStatusBox}>
+                  <Text style={styles.volunteerStatusLabel}>Application Status:</Text>
+                  <Text
+                    style={[
+                      styles.volunteerStatusValue,
+                      volunteerApp.status === 'pending' && styles.statusPending,
+                      volunteerApp.status === 'approved' && styles.statusApproved,
+                      volunteerApp.status === 'rejected' && styles.statusRejected,
+                    ]}
+                  >
+                    {volunteerApp.status === 'pending'
+                      ? 'Pending Approval ⏳'
+                      : volunteerApp.status === 'approved'
+                      ? 'Approved ✓'
+                      : 'Rejected ❌'}
+                  </Text>
+                  <Text style={styles.volunteerReasonText}>"{volunteerApp.reason}"</Text>
+                  {volunteerApp.status === 'rejected' && (
+                    <Pressable
+                      style={styles.reapplyButton}
+                      onPress={() => setIsVolunteerModalOpen(true)}
+                    >
+                      <Text style={styles.reapplyButtonText}>Re-apply for Peer Support Volunteer</Text>
+                    </Pressable>
+                  )}
+                </View>
+              ) : (
+                <View style={styles.volunteerApplyBox}>
+                  <Text style={styles.volunteerApplyText}>
+                    Community Members can apply to become a Peer Support Volunteer. Once approved, you gain additional peer supporter features and group creation privileges.
+                  </Text>
+                  <Pressable
+                    style={styles.applyVolunteerButton}
+                    onPress={() => setIsVolunteerModalOpen(true)}
+                    testID="apply-volunteer-button"
+                  >
+                    <Text style={styles.applyVolunteerButtonText}>
+                      Apply to Become a Peer Support Volunteer
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
             </View>
 
             {/* Support Interests */}
@@ -565,6 +671,59 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration }:
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <Text style={styles.saveButtonText}>Save</Text>
+                )}
+              </Pressable>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Volunteer Application Modal */}
+      <Modal visible={isVolunteerModalOpen} animationType="slide" transparent>
+        <SafeAreaView style={styles.modalOverlay}>
+          <ScrollView contentContainerStyle={styles.modalContent}>
+            <Text style={styles.modalTitle}>Apply to become a Peer Support Volunteer</Text>
+            <Text style={styles.volunteerModalSubtitle}>
+              Please describe why you would like to become a Peer Support Volunteer and how you plan to support peer community members.
+            </Text>
+
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Application Reason / Motivation</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={volunteerReason}
+                onChangeText={setVolunteerReason}
+                placeholder="I want to contribute by offering empathetic listening and supporting peer members..."
+                placeholderTextColor="#9CA3AF"
+                multiline
+                numberOfLines={4}
+                testID="volunteer-reason-input"
+              />
+            </View>
+
+            {volunteerError ? <Text style={styles.errorText}>{volunteerError}</Text> : null}
+
+            <View style={styles.modalActions}>
+              <Pressable
+                style={styles.cancelButton}
+                onPress={() => {
+                  setIsVolunteerModalOpen(false);
+                  setVolunteerError(null);
+                }}
+                disabled={isSubmittingVolunteer}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={styles.saveButton}
+                onPress={handleApplyVolunteer}
+                disabled={isSubmittingVolunteer}
+                testID="submit-volunteer-button"
+              >
+                {isSubmittingVolunteer ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Submit Application</Text>
                 )}
               </Pressable>
             </View>
@@ -1014,6 +1173,111 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#FFFFFF',
     fontWeight: '800',
+  },
+  roleBadgeContainer: {
+    backgroundColor: '#EEF4FF',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginTop: 6,
+  },
+  roleBadgeText: {
+    color: '#2563EB',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  volunteerActiveBox: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 14,
+  },
+  volunteerActiveTitle: {
+    color: '#065F46',
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  volunteerActiveText: {
+    color: '#047857',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  volunteerStatusBox: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 14,
+  },
+  volunteerStatusLabel: {
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  volunteerStatusValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: 2,
+    marginBottom: 8,
+  },
+  statusPending: {
+    color: '#D97706',
+  },
+  statusApproved: {
+    color: '#059669',
+  },
+  statusRejected: {
+    color: '#DC2626',
+  },
+  volunteerReasonText: {
+    color: '#475569',
+    fontSize: 13,
+    fontStyle: 'italic',
+  },
+  reapplyButton: {
+    marginTop: 10,
+    backgroundColor: '#2563EB',
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  reapplyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  volunteerApplyBox: {
+    backgroundColor: '#F0F9FF',
+    borderColor: '#BAE6FD',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 14,
+  },
+  volunteerApplyText: {
+    color: '#0369A1',
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 12,
+  },
+  applyVolunteerButton: {
+    backgroundColor: '#2563EB',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+  },
+  applyVolunteerButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  volunteerModalSubtitle: {
+    color: '#4B5563',
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 16,
   },
 });
 
