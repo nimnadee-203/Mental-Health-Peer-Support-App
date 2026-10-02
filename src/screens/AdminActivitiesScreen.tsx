@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { API_BASE } from '../config/api';
+import { COMMUNITY_API_BASE } from '../config/api';
 import { getAuthToken } from '../api/authStore';
 
 type AdminActivitiesScreenProps = {
@@ -18,7 +18,7 @@ type AdminActivitiesScreenProps = {
 
 type Activity = {
   _id: string;
-  type: 'EMERGENCY' | 'REPORT' | 'LOGIN' | 'ROLE_CHANGE' | 'USER_CREATED' | 'USER_DELETED';
+  type: 'EMERGENCY' | 'REPORT' | 'LOGIN' | 'ROLE_CHANGE' | 'USER_CREATED' | 'USER_DELETED' | 'COMMUNITY_CREATED';
   description: string;
   status: string;
   user: string;
@@ -36,7 +36,7 @@ export default function AdminActivitiesScreen({ onBack }: AdminActivitiesScreenP
     setError(null);
     try {
       const token = await getAuthToken();
-      const res = await fetch(`${API_BASE}/admin/activities`, {
+      const res = await fetch(`${COMMUNITY_API_BASE}/admin/activities`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error('Failed to fetch activities');
@@ -64,10 +64,11 @@ export default function AdminActivitiesScreen({ onBack }: AdminActivitiesScreenP
     if (activeFilter === 'Reports' && a.type === 'REPORT') return true;
     if (activeFilter === 'Users' && (a.type === 'USER_CREATED' || a.type === 'USER_DELETED' || a.type === 'ROLE_CHANGE')) return true;
     if (activeFilter === 'Auth' && a.type === 'LOGIN') return true;
+    if (activeFilter === 'Groups' && a.type === 'COMMUNITY_CREATED') return true;
     return false;
   });
 
-  const FILTERS = ['All', 'Emergencies', 'Reports', 'Users', 'Auth'];
+  const FILTERS = ['All', 'Emergencies', 'Reports', 'Groups', 'Users', 'Auth'];
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -124,6 +125,8 @@ export default function AdminActivitiesScreen({ onBack }: AdminActivitiesScreenP
                     badgeStyle = styles.badgeRole; iconName = 'shield'; iconColor = '#7C67D6';
                   } else if (a.type === 'USER_CREATED' || a.type === 'USER_DELETED') {
                     badgeStyle = styles.badgeUser; iconName = a.type === 'USER_CREATED' ? 'user-plus' : 'user-minus'; iconColor = '#10B981';
+                  } else if (a.type === 'COMMUNITY_CREATED') {
+                    badgeStyle = styles.badgeUser; iconName = 'users'; iconColor = '#0F766E';
                   }
 
                   return (

@@ -104,19 +104,12 @@ const handleCreateGroup = async () => {
     let imageUrl = '';
     if (selectedImage) {
       const formData = new FormData();
-      if (Platform.OS === 'web') {
-        const blob = await (await fetch(selectedImage)).blob();
-        const extension = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
-        formData.append('media', new File([blob], `group.${extension}`, { type: blob.type }));
-      } else {
-        const filename = selectedImage.split('/').pop() || 'group.jpg';
-        const extension = (filename.split('.').pop() || 'jpg').toLowerCase();
-        formData.append('media', {
-          uri: selectedImage,
-          name: filename,
-          type: `image/${extension === 'jpg' ? 'jpeg' : extension}`,
-        } as any);
-      }
+      const filename = selectedImage.split('/').pop() || 'group.jpg';
+      const extension = (filename.split('.').pop() || 'jpg').toLowerCase();
+      const mimeType = `image/${extension === 'jpg' ? 'jpeg' : extension}`;
+      const sourceBlob = await (await fetch(selectedImage)).blob();
+      const mediaBlob = new Blob([sourceBlob], { type: mimeType });
+      formData.append('media', mediaBlob, filename);
       const uploadResponse = await fetch(`${COMMUNITY_API_BASE}/upload`, {
         method: 'POST',
         body: formData,

@@ -21,6 +21,7 @@ const digitalDetoxProgressSchema = new mongoose.Schema(
     },
     currentDay: { type: Number, required: true, min: 1, max: 31, default: 1 },
     completedDays: { type: [Number], default: [] },
+    stars: { type: Number, default: 0, min: 0 },
     startedAt: { type: Date, default: Date.now },
     lastCompletedAt: { type: Date },
     completed: { type: Boolean, default: false },

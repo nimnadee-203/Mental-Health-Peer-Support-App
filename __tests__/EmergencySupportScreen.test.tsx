@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
-import { Text, Pressable, TextInput } from 'react-native';
+import { Linking, Text, Pressable, TextInput } from 'react-native';
 
 import { EmergencySupportScreen } from '../src/screens/EmergencySupportScreen';
 import {
@@ -88,6 +88,40 @@ describe('EmergencySupportScreen', () => {
     expect(texts).toContain('Brother');
     expect(texts).toContain('Call Trusted Person');
     expect(texts).toContain('Notify Trusted Person');
+  });
+
+  it('opens the messaging app with an emergency help message', async () => {
+    mockGetTrustedContact.mockResolvedValue({
+      _id: 'contact_123',
+      name: 'John Doe',
+      phone: '0771234567',
+      relationship: 'Brother',
+      isActive: true,
+    });
+
+    const canOpenURL = jest.spyOn(Linking, 'canOpenURL').mockResolvedValue(true);
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+
+    let renderer: ReactTestRenderer.ReactTestRenderer;
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(<EmergencySupportScreen onBack={() => {}} />);
+    });
+
+    const notifyButton = renderer!.root.findByProps({
+      accessibilityLabel: 'Notify Trusted Person',
+    });
+
+    await ReactTestRenderer.act(async () => {
+      await notifyButton.props.onPress();
+    });
+
+    expect(canOpenURL).toHaveBeenCalledWith(expect.stringContaining('sms:0771234567'));
+    expect(openURL).toHaveBeenCalledWith(
+      expect.stringContaining("I'm%20having%20a%20difficult%20moment"),
+    );
+
+    canOpenURL.mockRestore();
+    openURL.mockRestore();
   });
 
   it('submits a professional support request and handles success state', async () => {

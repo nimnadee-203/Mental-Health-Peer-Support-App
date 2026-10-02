@@ -12,6 +12,7 @@ export type DigitalDetoxProgress = {
   userId: string;
   currentDay: number;
   completedDays: number[];
+  stars: number;
   startedAt: string;
   lastCompletedAt?: string;
   completed: boolean;

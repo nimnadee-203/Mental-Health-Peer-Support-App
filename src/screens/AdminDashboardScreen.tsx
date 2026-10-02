@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { API_BASE } from '../config/api';
+import { COMMUNITY_API_BASE } from '../config/api';
 import { getAuthToken } from '../api/authStore';
 
 import AdminUsersScreen from './AdminUsersScreen';
@@ -42,7 +42,7 @@ export default function AdminDashboardScreen({ onBack }: AdminDashboardScreenPro
     setError(null);
     try {
       const token = await getAuthToken();
-      const res = await fetch(`${API_BASE}/admin/stats`, {
+      const res = await fetch(`${COMMUNITY_API_BASE}/admin/stats`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       

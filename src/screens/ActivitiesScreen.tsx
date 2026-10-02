@@ -1,4 +1,6 @@
+import * as Speech from 'expo-speech';
 import React, {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -22,6 +24,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DigitalDetoxChallengeScreen from './DigitalDetoxChallengeScreen';
 import JournalingScreen from './JournalingScreen';
+import MoodGardenScreen from './MoodGardenScreen';
 
 type ActivityType =
   | 'breathing'
@@ -85,12 +88,12 @@ const activities = [
 
   {
     type: 'healthyRoutine' as ActivityType,
-    title: 'Healthy Routine Check',
+    title: 'Mood Garden',
     description:
-      'Check in with the small habits that support your wellbeing.',
+      'Grow a gentle garden through small moments of care.',
     duration: '2 min',
-    icon: '🌱',
-    color: '#E8F5C8',
+    icon: '🌸',
+    color: '#F8DDEB',
   },
 ];
 
@@ -142,6 +145,13 @@ const breathingSequence = [
     color: '#B5A5E8',
     message: 'Just be here 🌸',
   },
+];
+
+const breathingVoiceMessages = [
+  'Breathe in slowly.',
+  'Hold gently.',
+  'Now slowly breathe out.',
+  'Relax and breathe normally.',
 ];
 
 /* =========================================================
@@ -481,51 +491,6 @@ const journalFocuses: JournalFocus[] = [
   },
 ];
 
-const healthyRoutineItems = [
-  {
-    id: 'water',
-    emoji: '💧',
-    label: "I've had enough water",
-  },
-  {
-    id: 'meal',
-    emoji: '🍎',
-    label: "I've had a nourishing meal",
-  },
-  {
-    id: 'rest',
-    emoji: '😴',
-    label: "I've had enough rest",
-  },
-  {
-    id: 'move',
-    emoji: '🚶',
-    label: "I've moved or stretched my body",
-  },
-  {
-    id: 'screen',
-    emoji: '🌤️',
-    label:
-      "I've spent some time away from my screen",
-  },
-  {
-    id: 'kind',
-    emoji: '💛',
-    label:
-      "I've done something kind for myself",
-  },
-  {
-    id: 'connect',
-    emoji: '👥',
-    label: "I've connected with someone",
-  },
-  {
-    id: 'relax',
-    emoji: '🧘',
-    label: "I've taken a moment to relax",
-  },
-];
-
 /* =========================================================
    COMPONENT
 ========================================================= */
@@ -563,6 +528,12 @@ function ActivitiesScreen({
 
   const [breathingCycle, setBreathingCycle] =
     useState(1);
+
+  const [voiceGuidanceEnabled, setVoiceGuidanceEnabled] =
+    useState(true);
+
+  const [voiceUnavailable, setVoiceUnavailable] =
+    useState(false);
 
   /* =======================================================
      MINDFULNESS STATE
@@ -610,6 +581,9 @@ function ActivitiesScreen({
     useRef<ReturnType<
       typeof setInterval
     > | null>(null);
+
+  const spokenPhaseRef = useRef<string | null>(null);
+  const completionVoiceRef = useRef(false);
 
   /* =======================================================
      MUSIC
@@ -755,6 +729,95 @@ function ActivitiesScreen({
     timeLeft,
   ]);
 
+  const speakGuidance = useCallback((message: string) => {
+    if (!voiceGuidanceEnabled || voiceUnavailable) {
+      return;
+    }
+
+    try {
+      Speech.stop();
+      Speech.speak(message, {
+        rate: 0.85,
+        pitch: 1,
+        onError: () => setVoiceUnavailable(true),
+      });
+    } catch {
+      setVoiceUnavailable(true);
+    }
+  }, [voiceGuidanceEnabled, voiceUnavailable]);
+
+  useEffect(() => {
+    if (
+      activity !== 'breathing' ||
+      breathingDone ||
+      isPaused ||
+      !voiceGuidanceEnabled ||
+      voiceUnavailable
+    ) {
+      return;
+    }
+
+    const phaseKey = `${breathingCycle}:${breathingStepIndex}`;
+    if (spokenPhaseRef.current === phaseKey) {
+      return;
+    }
+
+    spokenPhaseRef.current = phaseKey;
+    speakGuidance(
+      breathingVoiceMessages[breathingStepIndex],
+    );
+  }, [
+    activity,
+    breathingCycle,
+    breathingDone,
+    breathingStepIndex,
+    isPaused,
+    speakGuidance,
+    voiceGuidanceEnabled,
+    voiceUnavailable,
+  ]);
+
+  useEffect(() => {
+    if (
+      activity !== 'breathing' ||
+      breathingDone ||
+      isPaused ||
+      !voiceGuidanceEnabled
+    ) {
+      Speech.stop();
+    }
+  }, [
+    activity,
+    breathingDone,
+    isPaused,
+    voiceGuidanceEnabled,
+  ]);
+
+  useEffect(() => {
+    if (
+      !breathingDone ||
+      !voiceGuidanceEnabled ||
+      voiceUnavailable ||
+      completionVoiceRef.current
+    ) {
+      return;
+    }
+
+    completionVoiceRef.current = true;
+    speakGuidance(
+      'Well done. Take a moment to notice how you feel.',
+    );
+  }, [
+    breathingDone,
+    speakGuidance,
+    voiceGuidanceEnabled,
+    voiceUnavailable,
+  ]);
+
+  useEffect(() => () => {
+    Speech.stop();
+  }, []);
+
   /* =======================================================
      JOURNAL UPDATE
   ======================================================= */
@@ -855,6 +918,10 @@ function ActivitiesScreen({
   ======================================================= */
 
   const resetBreathing = () => {
+    Speech.stop();
+    spokenPhaseRef.current = null;
+    completionVoiceRef.current = false;
+    setVoiceUnavailable(false);
     setBreathingStepIndex(0);
     setBreathingDone(false);
     setIsPaused(false);
@@ -864,6 +931,15 @@ function ActivitiesScreen({
     );
 
     setBreathingCycle(1);
+  };
+
+  const toggleVoiceGuidance = () => {
+    setVoiceGuidanceEnabled(current => {
+      if (current) {
+        Speech.stop();
+      }
+      return !current;
+    });
   };
 
   /* =======================================================
@@ -1429,6 +1505,28 @@ function ActivitiesScreen({
         </View>
 
         <Pressable
+          testID="breathing-voice-toggle"
+          accessibilityRole="button"
+          accessibilityLabel="Toggle voice guidance"
+          style={[
+            styles.voiceGuidanceButton,
+            voiceGuidanceEnabled &&
+              styles.voiceGuidanceButtonActive,
+          ]}
+          onPress={toggleVoiceGuidance}
+          disabled={voiceUnavailable}
+        >
+          <Text style={styles.voiceGuidanceText}>
+            {voiceUnavailable
+              ? '🔊 Voice guidance unavailable'
+              : `🔊 Voice Guidance ${
+                  voiceGuidanceEnabled ? 'ON' : 'OFF'
+                }`}
+          </Text>
+        </Pressable>
+
+        <Pressable
+          testID="breathing-pause"
           style={styles.pauseButton}
           onPress={() =>
             setIsPaused(
@@ -1451,7 +1549,10 @@ function ActivitiesScreen({
           style={
             styles.secondaryButton
           }
-          onPress={onBack}
+          onPress={() => {
+            Speech.stop();
+            onBack();
+          }}
         >
           <Text
             style={
@@ -1933,6 +2034,7 @@ function ActivitiesScreen({
             styles.exitMindfulnessButton
           }
           onPress={() => {
+            Speech.stop();
             calmMusicPlayer.pause();
 
             setMusicEnabled(false);
@@ -2559,6 +2661,10 @@ function ActivitiesScreen({
     return <JournalingScreen onBack={onBack} />;
   }
 
+  if (activity === 'healthyRoutine') {
+    return <MoodGardenScreen onBack={onBack} />;
+  }
+
   return (
     activity === 'digitalDetox' ? (
       <DigitalDetoxChallengeScreen onBack={onBack} />
@@ -3064,6 +3170,28 @@ const styles = StyleSheet.create({
     color: '#167E6A',
     fontSize: 13,
     fontWeight: '900',
+  },
+
+  voiceGuidanceButton: {
+    width: '100%',
+    backgroundColor: '#F3F6F5',
+    borderRadius: 14,
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginBottom: 9,
+    borderWidth: 1,
+    borderColor: '#DCE5E3',
+  },
+
+  voiceGuidanceButtonActive: {
+    backgroundColor: '#E2F9EF',
+    borderColor: '#A9E5CF',
+  },
+
+  voiceGuidanceText: {
+    color: '#31545B',
+    fontSize: 12,
+    fontWeight: '800',
   },
 
   /* =======================================================

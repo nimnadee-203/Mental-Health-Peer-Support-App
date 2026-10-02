@@ -13,6 +13,9 @@ type Props = { onBack: () => void };
 type Mood = '😣' | '😐' | '🙂' | '😌';
 
 const formatTime = (seconds: number) => `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
+const isToday = (date?: string) => date
+  ? new Date(date).toDateString() === new Date().toDateString()
+  : false;
 
 function DigitalDetoxChallengeScreen({ onBack }: Props) {
   const [progress, setProgress] = useState<DigitalDetoxProgress | null>(null);
@@ -47,6 +50,8 @@ function DigitalDetoxChallengeScreen({ onBack }: Props) {
   const day = progress?.currentDay || 1;
   const currentChallenge = DIGITAL_DETOX_CHALLENGES[day - 1];
   const completedDays = progress?.completedDays || [];
+  const stars = progress?.stars || 0;
+  const completedToday = isToday(progress?.lastCompletedAt);
   const isCurrentCompleted = completedDays.includes(day);
   const isTimerComplete = currentChallenge?.durationSeconds ? timeLeft === 0 : true;
 
@@ -67,6 +72,8 @@ function DigitalDetoxChallengeScreen({ onBack }: Props) {
   }, [completedDays.length, progressWidth]);
 
   const beginChallenge = () => {
+    if (completedToday) return;
+
     setError('');
     setStarted(true);
     setPaused(false);
@@ -108,9 +115,11 @@ function DigitalDetoxChallengeScreen({ onBack }: Props) {
             <Text style={styles.successEmoji}>🌿</Text>
             <Text style={styles.title}>Nice work!</Text>
             <Text style={styles.detail}>You completed Day {completedDay} of your Digital Balance Challenge.</Text>
+            <Text style={styles.reward}>⭐ Star earned</Text>
+            <Text style={styles.starCount}>You have {stars} {stars === 1 ? 'star' : 'stars'} saved.</Text>
             <Text style={styles.prompt}>How do you feel now?</Text>
             <View style={styles.moods}>{(['😣', '😐', '🙂', '😌'] as Mood[]).map(item => <Pressable key={item} onPress={() => setMood(item)} style={[styles.mood, mood === item && styles.moodSelected]}><Text style={styles.moodText}>{item}</Text></Pressable>)}</View>
-            <Text style={styles.nextLabel}>{nextDay ? `Day ${nextDay} unlocked` : 'Challenge complete'}</Text>
+            <Text style={styles.nextLabel}>{nextDay ? `Come back tomorrow for Day ${nextDay}.` : 'Challenge complete'}</Text>
             <Pressable style={styles.primary} onPress={onBack}><Text style={styles.primaryText}>{nextDay ? 'Continue' : 'Done'}</Text></Pressable>
           </Animated.View>
         </ScrollView>
@@ -135,7 +144,13 @@ function DigitalDetoxChallengeScreen({ onBack }: Props) {
           <Text style={styles.sectionLabel}>TODAY'S CHALLENGE</Text>
           <Text style={styles.challengeTitle}>{currentChallenge.title}</Text>
           <Text style={styles.detail}>{currentChallenge.description}</Text>
-          {started ? (
+          {completedToday ? (
+            <View style={styles.tomorrowBox}>
+              <Text style={styles.tomorrowTitle}>Today's activity is complete</Text>
+              <Text style={styles.tomorrowText}>Come back tomorrow for your next digital balance challenge.</Text>
+              <Text style={styles.starCount}>⭐ {stars} {stars === 1 ? 'star' : 'stars'} saved</Text>
+            </View>
+          ) : started ? (
             <View style={styles.startedBox}>
               {currentChallenge.durationSeconds ? <Text style={styles.timer}>{formatTime(timeLeft)}</Text> : null}
               {day === 1 ? <><Text style={styles.stepLabel}>Step {guidedStep + 1} of {currentChallenge.instructions.length}</Text><Text style={styles.instruction}>{currentChallenge.instructions[guidedStep]}</Text><View style={styles.dots}>{currentChallenge.instructions.map((_, index) => <Text key={index} style={styles.dot}>{index === guidedStep ? '●' : '○'}</Text>)}</View><Pressable style={styles.primary} onPress={() => guidedStep < currentChallenge.instructions.length - 1 ? setGuidedStep(step => step + 1) : setTimeLeft(0)}><Text style={styles.primaryText}>{guidedStep < currentChallenge.instructions.length - 1 ? 'Next' : 'Finish activity'}</Text></Pressable></> : null}
@@ -183,6 +198,11 @@ const styles = StyleSheet.create({
   dots: { textAlign: 'center', color: '#198F78', marginVertical: 5 },
   dot: { color: '#198F78', fontSize: 16, marginHorizontal: 2 },
   completed: { color: '#198F78', fontWeight: '900', marginTop: 12 },
+  reward: { color: '#B7791F', fontSize: 18, fontWeight: '900', marginTop: 10 },
+  starCount: { color: '#775C20', fontWeight: '800', marginTop: 6, textAlign: 'center' },
+  tomorrowBox: { width: '100%', backgroundColor: '#FFF8E7', borderRadius: 16, padding: 14, marginTop: 10, borderWidth: 1, borderColor: '#F5E3B6' },
+  tomorrowTitle: { color: '#775C20', fontWeight: '900', textAlign: 'center', marginBottom: 6 },
+  tomorrowText: { color: '#8A7545', lineHeight: 19, textAlign: 'center' },
   error: { color: '#B34B4B', textAlign: 'center', marginTop: 12, lineHeight: 18 },
   journeyTitle: { color: '#173B42', fontSize: 18, fontWeight: '900', marginTop: 22, marginBottom: 10 },
   journeyRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 11, marginBottom: 6 },

@@ -6,6 +6,11 @@ const router = express.Router();
 const TOTAL_DAYS = 31;
 
 const progressFor = userId => ({ userId });
+const isSameUtcDay = (firstDate, secondDate) => (
+  firstDate.getUTCFullYear() === secondDate.getUTCFullYear()
+  && firstDate.getUTCMonth() === secondDate.getUTCMonth()
+  && firstDate.getUTCDate() === secondDate.getUTCDate()
+);
 
 router.get('/progress', auth, async (req, res) => {
   try {
@@ -45,6 +50,12 @@ router.post('/day/:day/complete', auth, async (req, res) => {
     if (progress.completedDays.includes(day)) {
       return res.status(409).json({ error: 'This challenge day is already completed.', progress });
     }
+    if (progress.lastCompletedAt && isSameUtcDay(new Date(progress.lastCompletedAt), new Date())) {
+      return res.status(409).json({
+        error: 'You have already completed today\'s activity. Come back tomorrow.',
+        progress,
+      });
+    }
     if (progress.completed || day !== progress.currentDay) {
       return res.status(409).json({ error: 'Complete the current challenge day first.', progress });
     }
@@ -59,6 +70,7 @@ router.post('/day/:day/complete', auth, async (req, res) => {
 
     progress.completedDays.push(day);
     progress.history.push({ day, completedAt, reflection, mood });
+    progress.stars = (progress.stars || 0) + 1;
     progress.lastCompletedAt = completedAt;
     progress.completed = day === TOTAL_DAYS;
     if (!progress.completed) {

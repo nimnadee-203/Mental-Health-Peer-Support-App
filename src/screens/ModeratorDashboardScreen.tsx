@@ -97,7 +97,7 @@ function ModeratorDashboardScreen({ role, onBack }: ModeratorDashboardScreenProp
       if (action === 'resolve') await updateModerationReport(report._id, 'resolved', note);
       if (action === 'dismiss') await updateModerationReport(report._id, 'dismissed', note);
       if (action === 'hide' || action === 'restore') await moderatePost(report.targetId, action, report._id, note);
-      if (action === 'warn') await warnUser(report.targetAuthorId!, note || `Reported content: ${report.category}`);
+      if (action === 'warn') await warnUser(report.targetAuthorId!, note || `Reported content: ${report.category}`, report.groupId);
       setPendingAction(null);
       await load();
     } catch (requestError) {
