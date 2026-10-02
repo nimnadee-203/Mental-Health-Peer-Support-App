@@ -23,6 +23,11 @@ const communitySchema = new mongoose.Schema(
       default: '#C8EDD5',
       trim: true,
     },
+    imageUrl: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     description: {
       type: String,
       default: '',
@@ -39,6 +44,29 @@ const communitySchema = new mongoose.Schema(
     },
     members: {
       type: [String],
+      default: [],
+    },
+    memberDetails: {
+      type: [
+        {
+          userId: { type: String, required: true },
+          joinedAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
+    joinRequests: {
+      type: [
+        {
+          userId: { type: String, required: true },
+          requestedAt: { type: Date, default: Date.now },
+          status: {
+            type: String,
+            enum: ['pending', 'rejected'],
+            default: 'pending',
+          },
+        },
+      ],
       default: [],
     },
     memberAvatarColors: {

@@ -4,6 +4,10 @@ import ReactTestRenderer from 'react-test-renderer';
 import GroupsHomeScreen from '../src/screens/Groups/GroupsHomeScreen';
 import type { Community } from '../src/screens/GroupDiscussionScreen';
 
+jest.mock('@expo/vector-icons', () => ({
+  Feather: () => null,
+}));
+
 jest.mock('../src/api/authStore', () => ({
   getAuthUserId: jest.fn().mockReturnValue(null),
 }));
@@ -55,6 +59,30 @@ const mockCommunities: Community[] = [
 ];
 
 describe('GroupsHomeScreen - Personalized Recommendations', () => {
+  it('hides joined groups and join controls for admins', async () => {
+    let renderer: ReactTestRenderer.ReactTestRenderer;
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(
+        <GroupsHomeScreen
+          communities={mockCommunities}
+          joinedIds={['1']}
+          onGroupPress={() => {}}
+          onCreateGroup={() => {}}
+          isAdmin
+        />,
+      );
+    });
+
+    expect(renderer!.root.findAllByProps({ testID: 'your-groups-section' })).toHaveLength(0);
+    const texts = renderer!.root
+      .findAllByType(Text)
+      .map(item => item.props.children)
+      .flatMap(value => (Array.isArray(value) ? value : [value]))
+      .join(' ');
+    expect(texts).not.toContain('Joined');
+    expect(texts).not.toContain('Join');
+  });
+
   it('uses the joined-group callback for joined community cards', async () => {
     const onJoinedGroupPress = jest.fn();
     let renderer: ReactTestRenderer.ReactTestRenderer;

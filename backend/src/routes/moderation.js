@@ -6,6 +6,7 @@ const requireRole = require('../middleware/requireRole');
 const Report = require('../models/Report');
 const Post = require('../models/Post');
 const User = require('../models/User');
+const Community = require('../models/Community');
 const ModerationAudit = require('../models/ModerationAudit');
 
 const moderatorsOnly = [auth, requireRole(['moderator', 'admin'])];
@@ -163,6 +164,136 @@ router.get('/users', auth, requireRole(['admin']), async (_req, res) => {
     return res.json({ users });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to load users.' });
+  }
+});
+
+router.get('/members', ...moderatorsOnly, async (_req, res) => {
+  try {
+    const communities = await Community.find()
+      .select('name createdAt members memberDetails joinRequests')
+      .sort({ createdAt: -1 })
+      .lean();
+    const userIds = new Set();
+    communities.forEach(community => {
+      (community.members || []).forEach(userId => userIds.add(userId));
+      (community.joinRequests || [])
+        .filter(request => request.status === 'pending')
+        .forEach(request => userIds.add(request.userId));
+    });
+
+    const validUserIds = [...userIds].filter(id => mongoose.Types.ObjectId.isValid(id));
+    const users = await User.find({ _id: { $in: validUserIds } })
+      .select('_id fullName email role createdAt')
+      .lean();
+    const usersById = new Map(users.map(user => [user._id.toString(), user]));
+    const members = [];
+
+    communities.forEach(community => {
+      const detailsByUserId = new Map(
+        (community.memberDetails || []).map(detail => [detail.userId, detail.joinedAt]),
+      );
+      (community.members || []).forEach(userId => {
+        const user = usersById.get(userId);
+        if (!user) return;
+        members.push({
+          id: `${community._id}:${userId}`,
+          userId,
+          communityId: community._id,
+          communityName: community.name,
+          fullName: user.fullName,
+          email: user.email,
+          role: user.role,
+          joinDate: detailsByUserId.get(userId) || community.createdAt,
+          status: 'active',
+        });
+      });
+      (community.joinRequests || [])
+        .filter(request => request.status === 'pending')
+        .forEach(request => {
+          const user = usersById.get(request.userId);
+          if (!user) return;
+          members.push({
+            id: `${community._id}:${request.userId}:request`,
+            userId: request.userId,
+            communityId: community._id,
+            communityName: community.name,
+            fullName: user.fullName,
+            email: user.email,
+            role: user.role,
+            joinDate: request.requestedAt,
+            status: 'pending',
+          });
+        });
+    });
+
+    const uniqueMemberIds = new Set(members.filter(member => member.status === 'active').map(member => member.userId));
+    const moderatorIds = new Set(
+      members
+        .filter(member => member.status === 'active' && member.role === 'moderator')
+        .map(member => member.userId),
+    );
+    return res.json({
+      members,
+      stats: {
+        totalMembers: uniqueMemberIds.size,
+        moderators: moderatorIds.size,
+        pendingRequests: members.filter(member => member.status === 'pending').length,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to load community members.' });
+  }
+});
+
+router.post('/members/:communityId/:userId/approve', ...moderatorsOnly, async (req, res) => {
+  try {
+    const community = await Community.findById(req.params.communityId);
+    if (!community) return res.status(404).json({ error: 'Community not found.' });
+    const request = (community.joinRequests || []).find(
+      item => item.userId === req.params.userId && item.status === 'pending',
+    );
+    if (!request) return res.status(404).json({ error: 'Pending request not found.' });
+    if (!community.members.includes(req.params.userId)) {
+      if (!community.memberDetails) community.memberDetails = [];
+      community.members.push(req.params.userId);
+      community.memberDetails.push({ userId: req.params.userId, joinedAt: new Date() });
+    }
+    community.joinRequests = community.joinRequests.filter(item => item !== request);
+    await community.save();
+    return res.json({ success: true });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to approve membership request.' });
+  }
+});
+
+router.post('/members/:communityId/:userId/reject', ...moderatorsOnly, async (req, res) => {
+  try {
+    const community = await Community.findById(req.params.communityId);
+    if (!community) return res.status(404).json({ error: 'Community not found.' });
+    const request = (community.joinRequests || []).find(
+      item => item.userId === req.params.userId && item.status === 'pending',
+    );
+    if (!request) return res.status(404).json({ error: 'Pending request not found.' });
+    request.status = 'rejected';
+    await community.save();
+    return res.json({ success: true });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to reject membership request.' });
+  }
+});
+
+router.delete('/members/:communityId/:userId', ...moderatorsOnly, async (req, res) => {
+  try {
+    const community = await Community.findById(req.params.communityId);
+    if (!community) return res.status(404).json({ error: 'Community not found.' });
+    community.members = community.members.filter(userId => userId !== req.params.userId);
+    community.memberDetails = (community.memberDetails || []).filter(
+      member => member.userId !== req.params.userId,
+    );
+    await community.save();
+    return res.json({ success: true });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to remove member.' });
   }
 });
 

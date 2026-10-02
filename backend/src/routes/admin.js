@@ -138,7 +138,7 @@ router.get('/communities', auth, requireAdmin, async (req, res) => {
  */
 router.post('/communities', auth, requireAdmin, async (req, res) => {
   try {
-    const { name, category, emoji, bgColor, description, guidelines, isPrivate } = req.body;
+    const { name, category, emoji, bgColor, imageUrl, description, guidelines, isPrivate } = req.body;
     
     if (!name || !category || !description) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -149,6 +149,7 @@ router.post('/communities', auth, requireAdmin, async (req, res) => {
       category,
       emoji: emoji || '🌐',
       bgColor: bgColor || '#E6F4EA',
+      imageUrl: imageUrl || '',
       description,
       guidelines: guidelines || '',
       isPrivate: !!isPrivate,

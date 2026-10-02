@@ -4,6 +4,15 @@ import ReactTestRenderer from 'react-test-renderer';
 import GroupDetailScreen from '../src/screens/Groups/GroupDetailScreen';
 import type { Community } from '../src/screens/GroupDiscussionScreen';
 
+jest.mock('../src/api/authStore', () => ({
+  getAuthToken: jest.fn().mockReturnValue('test-token'),
+}));
+
+jest.mock('expo-image-picker', () => ({
+  MediaTypeOptions: { Images: 'Images' },
+  launchImageLibraryAsync: jest.fn(),
+}));
+
 const mockCommunity: Community = {
   _id: 'community-1',
   name: 'Student Stress Support',
@@ -19,6 +28,26 @@ const mockCommunity: Community = {
 };
 
 describe('GroupDetailScreen', () => {
+  it('shows only enter and edit actions for admins', async () => {
+    let renderer: ReactTestRenderer.ReactTestRenderer;
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(
+        <GroupDetailScreen
+          community={mockCommunity}
+          isJoined={false}
+          isAdmin
+          onBack={() => {}}
+          onJoin={() => {}}
+          onEnter={() => {}}
+        />,
+      );
+    });
+
+    expect(renderer!.root.findByProps({ accessibilityLabel: 'Enter Community' })).toBeTruthy();
+    expect(renderer!.root.findByProps({ accessibilityLabel: 'Edit Group Details' })).toBeTruthy();
+    expect(renderer!.root.findAllByProps({ accessibilityLabel: 'Join' })).toHaveLength(0);
+  });
+
   it('renders community details and guidelines correctly', async () => {
     let renderer: ReactTestRenderer.ReactTestRenderer;
     await ReactTestRenderer.act(async () => {
