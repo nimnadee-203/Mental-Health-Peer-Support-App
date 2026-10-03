@@ -13,7 +13,6 @@ import SplashScreen from './src/screens/SplashScreen';
 import WelcomeScreen from './src/screens/WelcomeScreen';
 import ModeratorDashboardScreen from './src/screens/ModeratorDashboardScreen';
 import AdminDashboardScreen from './src/screens/AdminDashboardScreen';
-import MessagesScreen from './src/screens/MessagesScreen';
 
 import ResourcesScreen from './src/screens/ResourcesScreen';
 import ResourceArticleScreen from './src/screens/ResourceArticleScreen';
