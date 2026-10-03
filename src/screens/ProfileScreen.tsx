@@ -321,6 +321,19 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration }:
               <Text style={styles.bio}>
                 {profile.bio || 'Sharing small steps, honest updates, and support with the community.'}
               </Text>
+
+              {(profile.role === 'moderator' || profile.role === 'admin' || onOpenModeration) && (
+                <Pressable
+                  accessibilityRole="button"
+                  testID="open-moderator-dashboard-button"
+                  style={[styles.editButton, { backgroundColor: '#2563EB', marginTop: 14, minWidth: 200 }]}
+                  onPress={onOpenModeration}
+                >
+                  <Text style={[styles.editButtonText, { color: '#FFFFFF', fontWeight: '800' }]}>
+                    🛡️ Open Moderator / Admin Dashboard
+                  </Text>
+                </Pressable>
+              )}
             </View>
 
             {/* Stats Row */}
