@@ -29,6 +29,28 @@ type ProfileScreenProps = {
 
 const DEFAULT_INTERESTS = ['Anxiety support', 'Mindfulness', 'Daily journaling'];
 
+function PencilIcon({ color = '#2563EB', size = 14 }: { color?: string; size?: number }) {
+  return (
+    <View style={{ width: size, height: size, transform: [{ rotate: '45deg' }], alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ width: 4, height: 3, backgroundColor: color, borderTopLeftRadius: 1, borderTopRightRadius: 1, marginBottom: 1 }} />
+      <View style={{ width: 4, height: 7, backgroundColor: color, borderRadius: 0.5 }} />
+      <View
+        style={{
+          width: 0,
+          height: 0,
+          borderLeftWidth: 2,
+          borderRightWidth: 2,
+          borderTopWidth: 4,
+          borderLeftColor: 'transparent',
+          borderRightColor: 'transparent',
+          borderTopColor: color,
+          marginTop: 0.5,
+        }}
+      />
+    </View>
+  );
+}
+
 function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration }: ProfileScreenProps) {
   const [userId, setUserId] = useState<string | null>(getAuthUserId());
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -313,7 +335,7 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration }:
                   style={styles.pencilBadge}
                   onPress={handleOpenEdit}
                 >
-                  <Text style={styles.pencilIcon}>✏️</Text>
+                  <PencilIcon color="#2563EB" size={14} />
                 </Pressable>
               </View>
               <Text style={styles.name}>{profile.fullName}</Text>
