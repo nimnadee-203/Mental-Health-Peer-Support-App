@@ -927,15 +927,6 @@ function App() {
         <>
           {screen}
 
-          <Pressable
-            accessibilityLabel="Open profile"
-            accessibilityRole="button"
-            onPress={() => changeTab('Profile')}
-            style={styles.profileShortcut}
-          >
-            <Text style={styles.profileShortcutText}>{userEmailLetter}</Text>
-          </Pressable>
-
           {!hideBottomNav && (
             <BottomNavigation
               activeTab={activeTab}

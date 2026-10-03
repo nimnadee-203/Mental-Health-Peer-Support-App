@@ -82,7 +82,10 @@ function NavTab({ item, isActive, onPress, badgeCount }: NavTabProps) {
           )}
         </View>
 
-        <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          style={[styles.navLabel, isActive && styles.navLabelActive]}>
           {item.label}
         </Text>
       </Animated.View>
@@ -120,18 +123,18 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 16,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 16,
+    paddingHorizontal: 8,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 10,
     backgroundColor: 'transparent',
   },
   navBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
     backgroundColor: 'rgba(255, 255, 255, 0.98)',
-    borderRadius: 32,
-    paddingVertical: 8,
-    paddingHorizontal: 8,
+    borderRadius: 28,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
     shadowColor: '#0D0D1A',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.1,
@@ -146,14 +149,15 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 2,
   },
   iconWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 24,
-    minWidth: 54,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    borderRadius: 20,
+    width: '100%',
   },
   iconWrapperActive: {
     backgroundColor: '#5A5AD8',
@@ -167,8 +171,8 @@ const styles = StyleSheet.create({
   // ── Icon + badge ──────────────────────────────────────────────────────────
   iconArea: {
     position: 'relative',
-    width: 26,
-    height: 26,
+    width: 24,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -197,10 +201,11 @@ const styles = StyleSheet.create({
 
   // ── Label ─────────────────────────────────────────────────────────────────
   navLabel: {
-    marginTop: 4,
-    fontSize: 10,
+    marginTop: 2,
+    fontSize: 9.5,
     fontWeight: '700',
     color: '#A0A0B8',
+    textAlign: 'center',
   },
   navLabelActive: {
     color: '#FFFFFF',
