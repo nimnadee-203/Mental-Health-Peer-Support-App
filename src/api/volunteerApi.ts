@@ -1,4 +1,4 @@
-import { API_BASE } from '../config/api';
+import { COMMUNITY_API_BASE } from '../config/api';
 import { getAuthToken } from './authStore';
 
 export interface VolunteerApplication {
@@ -15,7 +15,7 @@ export interface VolunteerApplication {
 
 export async function applyForVolunteer(reason: string): Promise<VolunteerApplication> {
   const token = getAuthToken();
-  const response = await fetch(`${API_BASE}/volunteer/apply`, {
+  const response = await fetch(`${COMMUNITY_API_BASE}/volunteer/apply`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -24,7 +24,7 @@ export async function applyForVolunteer(reason: string): Promise<VolunteerApplic
     body: JSON.stringify({ reason }),
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(data.error || data.message || 'Failed to submit volunteer application.');
   }
@@ -34,15 +34,15 @@ export async function applyForVolunteer(reason: string): Promise<VolunteerApplic
 
 export async function getVolunteerStatus(): Promise<VolunteerApplication | null> {
   const token = getAuthToken();
-  const response = await fetch(`${API_BASE}/volunteer/my-status`, {
+  const response = await fetch(`${COMMUNITY_API_BASE}/volunteer/my-status`, {
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.error || 'Failed to fetch application status.');
+    throw new Error(data.error || data.message || 'Failed to fetch application status.');
   }
 
   return data.application;
@@ -50,15 +50,15 @@ export async function getVolunteerStatus(): Promise<VolunteerApplication | null>
 
 export async function getVolunteerApplications(): Promise<VolunteerApplication[]> {
   const token = getAuthToken();
-  const response = await fetch(`${API_BASE}/volunteer/applications`, {
+  const response = await fetch(`${COMMUNITY_API_BASE}/volunteer/applications`, {
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.error || 'Failed to fetch volunteer applications.');
+    throw new Error(data.error || data.message || 'Failed to fetch volunteer applications.');
   }
 
   return data.applications || [];
@@ -66,7 +66,7 @@ export async function getVolunteerApplications(): Promise<VolunteerApplication[]
 
 export async function approveVolunteerApplication(id: string): Promise<VolunteerApplication> {
   const token = getAuthToken();
-  const response = await fetch(`${API_BASE}/volunteer/applications/${id}/approve`, {
+  const response = await fetch(`${COMMUNITY_API_BASE}/volunteer/applications/${id}/approve`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -74,9 +74,9 @@ export async function approveVolunteerApplication(id: string): Promise<Volunteer
     },
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.error || 'Failed to approve application.');
+    throw new Error(data.error || data.message || 'Failed to approve application.');
   }
 
   return data.application;
@@ -84,7 +84,7 @@ export async function approveVolunteerApplication(id: string): Promise<Volunteer
 
 export async function rejectVolunteerApplication(id: string): Promise<VolunteerApplication> {
   const token = getAuthToken();
-  const response = await fetch(`${API_BASE}/volunteer/applications/${id}/reject`, {
+  const response = await fetch(`${COMMUNITY_API_BASE}/volunteer/applications/${id}/reject`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -92,10 +92,11 @@ export async function rejectVolunteerApplication(id: string): Promise<VolunteerA
     },
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.error || 'Failed to reject application.');
+    throw new Error(data.error || data.message || 'Failed to reject application.');
   }
 
   return data.application;
 }
+
