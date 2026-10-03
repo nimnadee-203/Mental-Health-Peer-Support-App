@@ -47,6 +47,7 @@ interface TeamMember {
 interface MessagesScreenProps {
   onOpenChat: (conversation: Conversation) => void;
   onUnreadCountChange?: (count: number) => void;
+  onNavigateToAuth?: () => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
