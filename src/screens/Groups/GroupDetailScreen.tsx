@@ -167,7 +167,7 @@ const groupImageUrl = community.imageUrl
           <Text style={styles.bannerEmoji}>{community.emoji}</Text>
         )}
         <Pressable style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backIcon}>◀</Text>
+          <Text style={styles.backIcon}>‹</Text>
         </Pressable>
       </View>
 

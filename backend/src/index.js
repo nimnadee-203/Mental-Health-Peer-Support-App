@@ -21,6 +21,7 @@ const emergencyRouter = require('./routes/emergency');
 const trustedContactRouter = require('./routes/trustedContact');
 const resourcesRouter = require('./routes/resources');
 const moderationRouter = require('./routes/moderation');
+const volunteerRouter = require('./routes/volunteer');
 
 const uploadRouter = require('./routes/upload');
 const adminRouter = require('./routes/admin');
@@ -47,6 +48,7 @@ app.use('/api/emergency', emergencyRouter);
 app.use('/api/trusted-contact', trustedContactRouter);
 app.use('/api/resources', resourcesRouter);
 app.use('/api/moderation', moderationRouter);
+app.use('/api/volunteer', volunteerRouter);
 
 app.use('/api/upload', uploadRouter);
 app.use('/api/admin', adminRouter);

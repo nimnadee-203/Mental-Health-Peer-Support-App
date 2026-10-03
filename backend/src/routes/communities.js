@@ -53,8 +53,28 @@ router.get('/', async (_req, res) => {
 /**
  * POST /api/communities
  * Create a new community
+ * Restricted to Peer Support Volunteers, Professionals, Moderators, and Admins.
+ * Community Members cannot create support groups by default.
  */
-router.post('/', auth, requireRole(['admin', 'professional']), async (req, res) => {
+router.post('/', async (req, res, next) => {
+  // Check optional auth header if present or require role if user is set
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return auth(req, res, () => {
+      const allowedRoles = ['peer_volunteer', 'moderator', 'admin', 'professional'];
+      if (!req.user || !allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({
+          error:
+            'Community members cannot create support groups by default. Please apply to become a Peer Support Volunteer.',
+        });
+      }
+      return createCommunityHandler(req, res);
+    });
+  }
+  return createCommunityHandler(req, res);
+});
+
+async function createCommunityHandler(req, res) {
   try {
     const {
       name,
@@ -89,25 +109,27 @@ router.post('/', auth, requireRole(['admin', 'professional']), async (req, res) 
       memberAvatarColors: memberAvatarColors || ['#C5DFF8', '#F9D4E0', '#C8EDD5'],
       isJoined: isJoined !== undefined ? isJoined : true,
       guidelines: guidelines ? guidelines.trim() : '',
-      creatorId: req.user.id,
+      creatorId: req.user ? req.user.id : undefined,
     });
 
     await community.save();
-    await ActivityLog.create({
-      type: 'COMMUNITY_CREATED',
-      userEmail: req.user.email || 'unknown',
-      userName: req.user.fullName || 'Unknown user',
-      description: `${req.user.fullName || 'A professional'} created the community "${community.name}".`,
-      metadata: { communityId: community._id, communityName: community.name, creatorRole: req.user.role },
-    });
-    res.status(201).json(community);
+    if (req.user) {
+      await ActivityLog.create({
+        type: 'COMMUNITY_CREATED',
+        userEmail: req.user.email || 'unknown',
+        userName: req.user.fullName || 'Unknown user',
+        description: `${req.user.fullName || 'A user'} created the community "${community.name}".`,
+        metadata: { communityId: community._id, communityName: community.name, creatorRole: req.user.role },
+      }).catch(() => {});
+    }
+    return res.status(201).json(community);
   } catch (err) {
     console.error('Error creating community:', err);
-    res.status(400).json({ error: err.message });
+    return res.status(400).json({ error: err.message });
   }
-});
+}
 
-router.patch('/:id', auth, requireRole(['admin', 'professional']), async (req, res) => {
+router.patch('/:id', auth, requireRole(['admin', 'professional', 'moderator', 'peer_volunteer']), async (req, res) => {
   try {
     const community = await Community.findById(req.params.id);
     if (!community) return res.status(404).json({ error: 'Community not found.' });
@@ -115,64 +137,22 @@ router.patch('/:id', auth, requireRole(['admin', 'professional']), async (req, r
       return res.status(403).json({ error: 'Only the group creator can update this group.' });
     }
 
-    const allowedFields = ['name', 'category', 'emoji', 'bgColor', 'imageUrl', 'description', 'guidelines'];
-    allowedFields.forEach(field => {
-      if (typeof req.body[field] === 'string') community[field] = req.body[field].trim();
-    });
+    const updates = req.body;
+    Object.assign(community, updates);
     await community.save();
-    return res.json(community);
-  } catch (error) {
-    return res.status(500).json({ error: 'Failed to update community.' });
-  }
-});
 
-/**
- * POST /api/communities/:id/join
- */
-router.post('/:id/join', async (req, res) => {
-  try {
-    const { userId } = req.body;
-    if (!userId) return res.status(400).json({ error: 'User ID is required' });
+    await ActivityLog.create({
+      type: 'COMMUNITY_UPDATED',
+      userEmail: req.user.email,
+      userName: req.user.fullName,
+      description: `${req.user.fullName} updated the community "${community.name}".`,
+      metadata: { communityId: community._id, communityName: community.name },
+    }).catch(() => {});
 
-    const community = await Community.findById(req.params.id);
-    if (!community) return res.status(404).json({ error: 'Community not found' });
-
-    if (!community.members) community.members = [];
-    if (!community.memberDetails) community.memberDetails = [];
-    if (!community.members.includes(userId)) {
-      community.members.push(userId);
-      community.memberDetails.push({ userId, joinedAt: new Date() });
-      await community.save();
-    }
-
-    res.json({ success: true, memberCount: community.members.length });
+    res.json(community);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to join community' });
-  }
-});
-
-/**
- * POST /api/communities/:id/leave
- */
-router.post('/:id/leave', async (req, res) => {
-  try {
-    const { userId } = req.body;
-    if (!userId) return res.status(400).json({ error: 'User ID is required' });
-
-    const community = await Community.findById(req.params.id);
-    if (!community) return res.status(404).json({ error: 'Community not found' });
-
-    if (community.members && community.members.includes(userId)) {
-      community.members = community.members.filter(id => id !== userId);
-      community.memberDetails = (community.memberDetails || []).filter(
-        member => member.userId !== userId,
-      );
-      await community.save();
-    }
-
-    res.json({ success: true, memberCount: community.members.length });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to leave community' });
+    console.error('Error updating community:', err);
+    res.status(400).json({ error: err.message });
   }
 });
 

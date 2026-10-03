@@ -13,6 +13,7 @@ import SplashScreen from './src/screens/SplashScreen';
 import WelcomeScreen from './src/screens/WelcomeScreen';
 import ModeratorDashboardScreen from './src/screens/ModeratorDashboardScreen';
 import AdminDashboardScreen from './src/screens/AdminDashboardScreen';
+import MessagesScreen from './src/screens/MessagesScreen';
 
 import ResourcesScreen from './src/screens/ResourcesScreen';
 import ResourceArticleScreen from './src/screens/ResourceArticleScreen';
@@ -42,7 +43,7 @@ import {
   createResource as createResourceRequest,
   getResources,
 } from './src/api/resourcesApi';
-import { updateUserProfile } from './src/api/profileApi';
+import { getUserProfile, updateUserProfile } from './src/api/profileApi';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -252,6 +253,29 @@ function App() {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
   const [joinedGroupIds, setJoinedGroupIds] = useState<string[]>([]);
+  const [userEmailLetter, setUserEmailLetter] = useState<string>('U');
+
+  const updateProfileAvatarLetter = useCallback(async () => {
+    const userId = getAuthUserId();
+    if (!userId) {
+      setUserEmailLetter('U');
+      return;
+    }
+    try {
+      const profile = await getUserProfile(userId);
+      if (profile?.email) {
+        setUserEmailLetter(profile.email.trim().charAt(0).toUpperCase());
+      } else if (profile?.fullName) {
+        setUserEmailLetter(profile.fullName.trim().charAt(0).toUpperCase());
+      }
+    } catch {
+      // Fallback
+    }
+  }, []);
+
+  useEffect(() => {
+    updateProfileAvatarLetter();
+  }, [updateProfileAvatarLetter, activeScreen, activeTab]);
 
   // ── Fetch Communities ──────────────────────────────────────────────────────
 
@@ -779,6 +803,7 @@ function App() {
           <MessagesScreen
             onOpenChat={handleOpenChat}
             onUnreadCountChange={setTotalUnread}
+            onNavigateToAuth={() => setActiveScreen('auth')}
           />
         );
 
@@ -795,7 +820,9 @@ function App() {
             onBack={() => changeTab('Home')}
             onNavigateToAuth={() => setActiveScreen('auth')}
             onOpenModeration={
-              getAuthRole() === 'moderator' ? () => setActiveScreen('moderation') : undefined
+              getAuthRole() === 'moderator' || getAuthRole() === 'admin'
+                ? () => setActiveScreen('moderation')
+                : undefined
             }
             onOpenAdminDashboard={
               getAuthRole() === 'admin' ? () => setActiveScreen('adminDashboard') : undefined
@@ -907,7 +934,7 @@ function App() {
             onPress={() => changeTab('Profile')}
             style={styles.profileShortcut}
           >
-            <Text style={styles.profileShortcutText}>P</Text>
+            <Text style={styles.profileShortcutText}>{userEmailLetter}</Text>
           </Pressable>
 
           {!hideBottomNav && (

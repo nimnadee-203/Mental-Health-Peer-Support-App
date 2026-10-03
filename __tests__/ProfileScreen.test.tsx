@@ -15,6 +15,14 @@ jest.mock('../src/api/profileApi', () => ({
   updateUserProfile: jest.fn(),
 }));
 
+jest.mock('../src/api/volunteerApi', () => ({
+  applyForVolunteer: jest.fn(),
+  getVolunteerStatus: jest.fn().mockResolvedValue(null),
+  getVolunteerApplications: jest.fn().mockResolvedValue([]),
+  approveVolunteerApplication: jest.fn(),
+  rejectVolunteerApplication: jest.fn(),
+}));
+
 const mockGetAuthUserId = getAuthUserId as jest.Mock;
 const mockGetUserProfile = getUserProfile as jest.Mock;
 const mockUpdateUserProfile = updateUserProfile as jest.Mock;

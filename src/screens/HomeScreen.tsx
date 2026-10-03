@@ -168,7 +168,9 @@ export default function HomeScreen({
               onPress={onOpenProfile}
               accessibilityLabel="Profile"
             >
-              <Text style={styles.iconEmoji}>😊</Text>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: '#2563EB' }}>
+                {(profile?.email || profile?.fullName || 'U').trim().charAt(0).toUpperCase()}
+              </Text>
             </Pressable>
           </View>
         </View>
