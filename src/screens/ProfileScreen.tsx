@@ -302,8 +302,19 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration }:
           /* Logged-In User Profile Layout */
           <>
             <View style={styles.profileHeader}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{avatarLetter}</Text>
+              <View style={styles.avatarContainer}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{avatarLetter}</Text>
+                </View>
+                <Pressable
+                  accessibilityLabel="Edit Profile"
+                  accessibilityRole="button"
+                  testID="edit-profile-button"
+                  style={styles.pencilBadge}
+                  onPress={handleOpenEdit}
+                >
+                  <Text style={styles.pencilIcon}>✏️</Text>
+                </Pressable>
               </View>
               <Text style={styles.name}>{profile.fullName}</Text>
               <View style={styles.roleBadgeContainer}>
@@ -587,17 +598,8 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration }:
               </View>
             </View>
 
-            {/* Action Buttons: Edit Profile & Log Out */}
+            {/* Action Buttons: Log Out */}
             <View style={styles.actionRow}>
-              <Pressable
-                accessibilityRole="button"
-                testID="edit-profile-button"
-                style={styles.editButton}
-                onPress={handleOpenEdit}
-              >
-                <Text style={styles.editButtonText}>Edit Profile</Text>
-              </Pressable>
-
               <Pressable
                 accessibilityRole="button"
                 testID="logout-button"
@@ -949,6 +951,10 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
   },
+  avatarContainer: {
+    position: 'relative',
+    alignSelf: 'center',
+  },
   avatar: {
     width: 86,
     height: 86,
@@ -956,6 +962,27 @@ const styles = StyleSheet.create({
     backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  pencilBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#2563EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+  },
+  pencilIcon: {
+    fontSize: 14,
   },
   avatarText: {
     color: '#FFFFFF',
