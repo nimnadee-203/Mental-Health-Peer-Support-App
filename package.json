@@ -21,7 +21,7 @@
     "expo-audio": "~57.0.5",
     "expo-image-picker": "~57.0.19",
     "expo-speech": "~57.0.3",
-    "expo-video": "~3.0.5",
+    "expo-video": "~57.0.5",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.3",

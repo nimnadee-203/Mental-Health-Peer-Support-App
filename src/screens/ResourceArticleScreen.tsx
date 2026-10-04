@@ -22,7 +22,7 @@ function ResourceArticleScreen({ article, onBack }: ResourceArticleScreenProps) 
             testID="resource-article-back"
             onPress={onBack}
             style={styles.backButton}>
-            <Text style={styles.backText}>{'<'}</Text>
+            <Text style={styles.backText}>‹</Text>
           </Pressable>
           <Text style={styles.headerTitle}>Resource</Text>
           <View style={styles.headerSpacer} />
@@ -77,9 +77,9 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E8E8E8',
@@ -88,8 +88,13 @@ const styles = StyleSheet.create({
   },
   backText: {
     color: '#1F2A37',
-    fontSize: 22,
+    fontSize: 26,
+    lineHeight: 26,
     fontWeight: '700',
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    includeFontPadding: false,
+    marginTop: -3,
   },
   headerTitle: {
     flex: 1,

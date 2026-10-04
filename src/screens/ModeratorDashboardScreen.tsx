@@ -22,6 +22,12 @@ import {
   warnUser,
 } from '../api/moderationApi';
 import ManageMembersScreen from './ManageMembersScreen';
+import {
+  approveVolunteerApplication,
+  getVolunteerApplications,
+  rejectVolunteerApplication,
+  VolunteerApplication,
+} from '../api/volunteerApi';
 
 type ModeratorDashboardScreenProps = { role: 'moderator'; onBack: () => void };
 const FILTERS = ['all', 'pending', 'under_review', 'resolved', 'dismissed'] as const;
@@ -36,6 +42,7 @@ function ModeratorDashboardScreen({ role, onBack }: ModeratorDashboardScreenProp
   const [showMembers, setShowMembers] = useState(false);
   const [stats, setStats] = useState<ModerationStats | null>(null);
   const [reports, setReports] = useState<ModerationReport[]>([]);
+  const [volunteerApps, setVolunteerApps] = useState<VolunteerApplication[]>([]);
   const [filter, setFilter] = useState<Filter>('pending');
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -51,20 +58,42 @@ function ModeratorDashboardScreen({ role, onBack }: ModeratorDashboardScreenProp
     setIsLoading(true);
     setError('');
     try {
-      const [statsResult, reportsResult, historyResult] = await Promise.all([
+      const [statsResult, reportsResult, historyResult, volunteerResult] = await Promise.all([
         getModerationStats(),
         getModerationReports(filter, search),
         getModerationHistory(),
+        getVolunteerApplications().catch(() => []),
       ]);
       setStats(statsResult.stats);
       setReports(reportsResult.reports);
       setRecentActivity(historyResult.history.slice(0, 5));
+      setVolunteerApps(volunteerResult);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Could not load moderation data.');
     } finally {
       setIsLoading(false);
     }
   }, [filter, search]);
+
+  const handleApproveVolunteer = async (id: string) => {
+    try {
+      await approveVolunteerApplication(id);
+      Alert.alert('Approved', 'User has been approved as a Peer Support Volunteer!');
+      load();
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to approve application.');
+    }
+  };
+
+  const handleRejectVolunteer = async (id: string) => {
+    try {
+      await rejectVolunteerApplication(id);
+      Alert.alert('Rejected', 'Application has been rejected.');
+      load();
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to reject application.');
+    }
+  };
 
   useEffect(() => { load(); }, [load]);
 
@@ -133,6 +162,37 @@ function ModeratorDashboardScreen({ role, onBack }: ModeratorDashboardScreenProp
         {recentActivity.length ? <>
           <Text style={styles.sectionTitle}>Recent moderation activity</Text>
           {recentActivity.map(item => <View key={item._id} style={styles.activityRow}><Text style={styles.historyAction}>{item.action.replace(/_/g, ' ')}</Text><Text style={styles.historyMeta}>{new Date(item.createdAt).toLocaleString()} | {item.moderator?.fullName || 'Moderator'}</Text></View>)}
+        </> : null}
+        {volunteerApps.length ? <>
+          <Text style={styles.sectionTitle}>Peer Support Volunteer Applications</Text>
+          {volunteerApps.map(app => (
+            <View key={app._id} style={styles.reportCard}>
+              <View style={styles.reportHeader}>
+                <Text style={styles.reportCategory}>{app.fullName} ({app.email})</Text>
+                <Text style={styles.status}>{app.status}</Text>
+              </View>
+              <Text style={styles.reportPreview}>"{app.reason}"</Text>
+              <Text style={styles.reportDate}>Submitted: {new Date(app.createdAt).toLocaleString()}</Text>
+              {app.status === 'pending' && (
+                <View style={styles.actions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => handleApproveVolunteer(app._id)}
+                    style={[styles.action, { backgroundColor: '#2673FF' }]}
+                  >
+                    <Text style={[styles.actionText, { color: '#FFFFFF' }]}>Approve Volunteer</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => handleRejectVolunteer(app._id)}
+                    style={[styles.action, { borderColor: '#EF4444' }]}
+                  >
+                    <Text style={[styles.actionText, { color: '#EF4444' }]}>Reject</Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
+          ))}
         </> : null}
         <Text style={styles.sectionTitle}>Reported community posts</Text>
         <TextInput accessibilityLabel="Search reports" onChangeText={setSearch} placeholder="Search content, author, category, or report ID" placeholderTextColor="#788493" style={styles.searchInput} value={search} />

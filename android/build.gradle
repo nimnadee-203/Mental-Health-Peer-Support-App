@@ -19,3 +19,16 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+subprojects {
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+        kotlinOptions {
+            freeCompilerArgs += [
+                "-opt-in=kotlin.RequiresOptIn",
+                "-opt-in=expo.modules.kotlin.apifeatures.EitherType",
+                "-opt-in=com.facebook.react.common.annotations.UnstableReactNativeAPI",
+                "-opt-in=androidx.media3.common.util.UnstableApi"
+            ]
+        }
+    }
+}

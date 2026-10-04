@@ -148,7 +148,7 @@ export default function HomeScreen({
         {/* Header Bar */}
         <View style={styles.headerRow}>
           <View style={styles.greetingContainer}>
-            <Text style={styles.subGreeting}>{greetingTime}</Text>
+            <Text style={styles.subGreeting}>WELCOME BACK</Text>
             <Text style={styles.mainGreeting}>{`${greetingTime}, ${firstName}`}</Text>
             <Text style={styles.headerSubtitle}>How are you feeling today?</Text>
           </View>
@@ -168,7 +168,9 @@ export default function HomeScreen({
               onPress={onOpenProfile}
               accessibilityLabel="Profile"
             >
-              <Text style={styles.iconEmoji}>😊</Text>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: '#2563EB' }}>
+                {(profile?.email || profile?.fullName || 'U').trim().charAt(0).toUpperCase()}
+              </Text>
             </Pressable>
           </View>
         </View>

@@ -49,7 +49,7 @@ const buildUserProfile = user => ({
   id: user._id,
   fullName: user.fullName,
   email: user.email,
-  role: user.role || 'user',
+  role: user.role || 'community_member',
   medicalExperience: user.medicalExperience,
   bio: user.bio,
   interests: user.interests,
