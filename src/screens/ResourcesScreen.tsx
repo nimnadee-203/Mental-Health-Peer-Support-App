@@ -78,6 +78,8 @@ type ResourcesScreenProps = {
 
   onOpenEmergencySupport: () => void;
 
+  onRequestProfessionalSupport?: () => void;
+
   // Opens the CreateResourceScreen
   onOpenCreateResource: () => void;
 
@@ -89,6 +91,7 @@ function ResourcesScreen({
   onOpenArticle,
   onOpenActivity,
   onOpenEmergencySupport,
+  onRequestProfessionalSupport = () => {},
   onOpenCreateResource,
   savedResources = [],
   resources = resourceArticles,
@@ -544,6 +547,28 @@ function ResourcesScreen({
           </Text>
         </Pressable>
 
+        {/* Professional Support */}
+
+        <Pressable
+          testID="request-professional-support-button"
+          style={({ pressed }) => [
+            styles.professionalSupportCard,
+            pressed && styles.professionalSupportCardPressed,
+          ]}
+          onPress={onRequestProfessionalSupport}
+        >
+          <View style={styles.professionalSupportIcon}>
+            <Text style={styles.professionalSupportIconText}>👩‍⚕️</Text>
+          </View>
+          <View style={styles.professionalSupportContent}>
+            <Text style={styles.professionalSupportTitle}>Need professional support?</Text>
+            <Text style={styles.professionalSupportDescription}>
+              Send a support request to the available professionals.
+            </Text>
+            <Text style={styles.professionalSupportLink}>Request support →</Text>
+          </View>
+        </Pressable>
+
         {/* Emergency Support */}
 
         <Pressable
@@ -995,6 +1020,59 @@ const styles = StyleSheet.create({
   },
 
   /* Emergency */
+
+  professionalSupportCard: {
+    backgroundColor: '#EEF6FF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#C9DFFF',
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+
+  professionalSupportCardPressed: {
+    opacity: 0.8,
+  },
+
+  professionalSupportIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: '#DCEBFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+
+  professionalSupportIconText: {
+    fontSize: 22,
+  },
+
+  professionalSupportContent: {
+    flex: 1,
+  },
+
+  professionalSupportTitle: {
+    color: '#1E4E8C',
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+
+  professionalSupportDescription: {
+    color: '#3F6B9F',
+    fontSize: 11,
+    lineHeight: 16,
+    marginBottom: 6,
+  },
+
+  professionalSupportLink: {
+    color: '#1E4E8C',
+    fontSize: 12,
+    fontWeight: '800',
+  },
 
   emergencyCard: {
     backgroundColor: '#FFF7ED',

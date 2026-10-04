@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { BackHandler, Pressable, StatusBar, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { Alert, BackHandler, Pressable, StatusBar, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -42,7 +42,10 @@ import {
   createResource as createResourceRequest,
   getResources,
 } from './src/api/resourcesApi';
+
 import { getUserProfile, updateUserProfile } from './src/api/profileApi';
+import { requestProfessionalSupport } from './src/api/conversationsApi';
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -69,6 +72,8 @@ type ResourcesScreenProps = {
   ) => void;
 
   onOpenEmergencySupport: () => void;
+
+  onRequestProfessionalSupport: () => void;
 
   onOpenCreateResource: () => void;
 
@@ -498,6 +503,19 @@ function App() {
     setIsEmergencyOpen(true);
   };
 
+  const handleRequestProfessionalSupport = async () => {
+    try {
+      const result = await requestProfessionalSupport();
+      Alert.alert(
+        'Support request sent',
+        `Your message was sent to ${result.sentTo} professional${result.sentTo === 1 ? '' : 's'}. You can continue the conversation in Messages.`,
+      );
+      changeTab('Messages');
+    } catch (error: any) {
+      Alert.alert('Unable to send request', error.message || 'Please try again later.');
+    }
+  };
+
   const handleBackFromEmergency = () => {
     setIsEmergencyOpen(false);
   };
@@ -783,6 +801,7 @@ function App() {
             onOpenArticle={handleOpenArticle}
             onOpenActivity={handleOpenActivity}
             onOpenEmergencySupport={handleOpenEmergencySupport}
+            onRequestProfessionalSupport={handleRequestProfessionalSupport}
             onOpenCreateResource={handleOpenCreateResource}
           />
         );
@@ -872,6 +891,7 @@ function App() {
     messagesView,
     selectedConversation,
     communities,
+    handleRequestProfessionalSupport,
   ]);
 
   const handleSplashFinish = useCallback(async () => {
