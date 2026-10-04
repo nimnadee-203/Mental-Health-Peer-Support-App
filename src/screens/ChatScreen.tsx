@@ -16,9 +16,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { API_BASE, COMMUNITY_API_BASE } from '../config/api';
+import { COMMUNITY_API_BASE } from '../config/api';
 import VideoPlayer from '../components/VideoPlayer';
 import type { Conversation } from './MessagesScreen';
+import { getAuthUserId } from '../api/authStore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface Message {
@@ -80,7 +81,7 @@ function MessageBubble({ message, showSender, isGroup, senderBg }: BubbleProps) 
       Animated.timing(fadeAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 220, useNativeDriver: true }),
     ]).start();
-  }, []);
+  }, [fadeAnim, slideAnim]);
 
   const renderMedia = () => {
     if (!message.mediaUrl) return null;
@@ -143,7 +144,6 @@ function MessageBubble({ message, showSender, isGroup, senderBg }: BubbleProps) 
 // ─── ChatScreen ───────────────────────────────────────────────────────────────
 export default function ChatScreen({ conversation, onBack }: ChatScreenProps) {
   const displayName = conversation.type === 'group' ? conversation.groupName : conversation.peerName;
-  const avatarEmoji = conversation.type === 'group' ? conversation.groupEmoji : conversation.avatarEmoji;
   const avatarBg = conversation.avatarBgColor;
   const avatarIsCircle = conversation.avatarIsCircle;
 
@@ -159,7 +159,7 @@ export default function ChatScreen({ conversation, onBack }: ChatScreenProps) {
     const fetchMessages = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${API_BASE}/conversations/${conversation._id}/messages`);
+        const res = await fetch(`${COMMUNITY_API_BASE}/conversations/${conversation._id}/messages?userId=${getAuthUserId() || ''}`);
         if (res.ok) {
           const data: Message[] = await res.json();
           setMessages(data);
@@ -236,10 +236,10 @@ export default function ChatScreen({ conversation, onBack }: ChatScreenProps) {
     setSelectedImage(null);
 
     try {
-      await fetch(`${API_BASE}/conversations/${conversation._id}/messages`, {
+      await fetch(`${COMMUNITY_API_BASE}/conversations/${conversation._id}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ senderName: 'You', text, mediaUrl: uploadedImageUrl, isOwn: true }),
+        body: JSON.stringify({ senderId: getAuthUserId(), senderName: 'You', text, mediaUrl: uploadedImageUrl, isOwn: true }),
       });
     } catch (e) {
       console.warn(e);
@@ -254,7 +254,7 @@ export default function ChatScreen({ conversation, onBack }: ChatScreenProps) {
     }
     
     try {
-      const res = await fetch(`${API_BASE}/conversations/${conversation._id}`, {
+      const res = await fetch(`${COMMUNITY_API_BASE}/conversations/${conversation._id}`, {
         method: 'DELETE',
       });
       if (res.ok) {

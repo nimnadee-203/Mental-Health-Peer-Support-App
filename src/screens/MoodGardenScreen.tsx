@@ -79,13 +79,111 @@ const getGardenStage = (count: number) => {
   return { label: 'A new seed', icon: '🌱', next: 1 };
 };
 
-const getGardenPlants = (count: number) => {
-  const plants = ['🌱'];
-  if (count >= 1) plants.push('🌿');
-  if (count >= 3) plants.push('🌸');
-  if (count >= 5) plants.push('🌳');
-  return plants;
+type GardenGameSceneProps = {
+  progress: number;
 };
+
+function GardenGameScene({ progress }: GardenGameSceneProps) {
+  const growth = useRef(new Animated.Value(0)).current;
+  const cloudDrift = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    growth.setValue(0);
+    Animated.spring(growth, {
+      toValue: 1,
+      useNativeDriver: true,
+      friction: 7,
+      tension: 45,
+    }).start();
+  }, [growth, progress]);
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(cloudDrift, {
+          toValue: 1,
+          duration: 4200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(cloudDrift, {
+          toValue: 0,
+          duration: 4200,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [cloudDrift]);
+
+  const plantScale = growth.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.2, 1],
+  });
+  const cloudTranslate = cloudDrift.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-6, 6],
+  });
+
+  return (
+    <View style={styles.gameScene}>
+      <View style={styles.gameSky}>
+        <View style={styles.gameSun} />
+        <Animated.View style={[styles.gameCloud, { transform: [{ translateX: cloudTranslate }] }]}>
+          <View style={styles.cloudPuffSmall} />
+          <View style={styles.cloudPuffLarge} />
+          <View style={styles.cloudPuffSmall} />
+        </Animated.View>
+        <View style={styles.gameHillBack} />
+        <View style={styles.gameHillFront} />
+      </View>
+
+      <View style={styles.gameGround}>
+        <View style={styles.gameSoilPatch} />
+        <View style={styles.gamePath} />
+        <View style={styles.gameGrassTuftLeft} />
+        <View style={styles.gameGrassTuftRight} />
+
+        <Animated.View style={[styles.gamePlant, styles.gamePlantLeft, { transform: [{ scale: plantScale }] }]}>
+          <View style={styles.gameStemSmall} />
+          {progress >= 1 && <View style={[styles.gameLeaf, styles.gameLeafLeft]} />}
+          {progress >= 2 && <View style={[styles.gameLeaf, styles.gameLeafRight]} />}
+          {progress >= 3 && <View style={styles.gameFlower}>
+            <View style={styles.gameFlowerCenter} />
+          </View>}
+        </Animated.View>
+
+        <Animated.View style={[styles.gamePlant, styles.gamePlantCenter, { transform: [{ scale: plantScale }] }]}>
+          <View style={styles.gameStem} />
+          {progress >= 1 && <View style={[styles.gameLeaf, styles.gameLeafLeft]} />}
+          {progress >= 2 && <View style={[styles.gameLeaf, styles.gameLeafRight]} />}
+          {progress >= 3 && <View style={styles.gameFlower}>
+            <View style={styles.gameFlowerCenter} />
+          </View>}
+        </Animated.View>
+
+        {progress >= 4 && (
+          <Animated.View style={[styles.gamePlant, styles.gamePlantRight, { transform: [{ scale: plantScale }] }]}>
+            <View style={styles.gameStemSmall} />
+            <View style={[styles.gameLeaf, styles.gameLeafLeft]} />
+            <View style={[styles.gameLeaf, styles.gameLeafRight]} />
+            <View style={styles.gameFlower}>
+              <View style={styles.gameFlowerCenter} />
+            </View>
+          </Animated.View>
+        )}
+
+        {progress >= 5 && (
+          <Animated.View style={[styles.gameTree, { transform: [{ scale: plantScale }] }]}>
+            <View style={styles.gameTreeTrunk} />
+            <View style={styles.gameTreeCrown} />
+            <View style={styles.gameTreeCrownSmall} />
+          </Animated.View>
+        )}
+      </View>
+    </View>
+  );
+}
 
 function MoodGardenScreen({ onBack }: MoodGardenProps) {
   const [view, setView] = useState<GardenView>('home');
@@ -102,7 +200,6 @@ function MoodGardenScreen({ onBack }: MoodGardenProps) {
   const storageKey = `${STORAGE_PREFIX}${userId || 'guest'}`;
   const selected = gardenActivities.find(item => item.id === selectedActivity);
   const stage = getGardenStage(progress.completedActivities);
-  const plants = getGardenPlants(progress.completedActivities);
 
   useEffect(() => {
     AsyncStorage.getItem(storageKey)
@@ -204,12 +301,9 @@ function MoodGardenScreen({ onBack }: MoodGardenProps) {
             <Text style={styles.backButtonText}>← Back to garden</Text>
           </Pressable>
           <Animated.View style={[styles.rewardCard, { transform: [{ scale: rewardScale }] }]}>
-            <Text style={styles.rewardIcon}>🌸</Text>
+            <GardenGameScene progress={progress.completedActivities} />
             <Text style={styles.rewardTitle}>Your garden is growing</Text>
             <Text style={styles.rewardText}>Small steps count. You made a little space for yourself today.</Text>
-            <View style={styles.plantRow}>
-              {plants.map((plant, index) => <Text key={`${plant}-${index}`} style={styles.plant}>{plant}</Text>)}
-            </View>
             <Text style={styles.progressText}>{progress.completedActivities} moments nurtured</Text>
             <Pressable testID="mood-garden-grow-again" style={styles.primaryButton} onPress={() => setView('choose')}>
               <Text style={styles.primaryButtonText}>Grow It Again</Text>
@@ -345,11 +439,7 @@ function MoodGardenScreen({ onBack }: MoodGardenProps) {
           <Text style={styles.eyebrow}>MOOD GARDEN</Text>
           <Text style={styles.title}>A softer place to grow</Text>
           <Text style={styles.detail}>Complete tiny, optional moments of care and watch your garden change.</Text>
-          <View style={styles.gardenScene}>
-            <Text style={styles.cloud}>☁️</Text>
-            <Text style={styles.gardenMain}>{stage.icon}</Text>
-            <View style={styles.plantRow}>{plants.map((plant, index) => <Text key={`${plant}-${index}`} style={styles.plant}>{plant}</Text>)}</View>
-          </View>
+          <GardenGameScene progress={progress.completedActivities} />
           <Text style={styles.stageLabel}>{stage.label}</Text>
           <Text style={styles.progressText}>{progress.completedActivities} moments nurtured</Text>
           <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${Math.min(progress.completedActivities / 5, 1) * 100}%` }]} /></View>
@@ -374,11 +464,34 @@ const styles = StyleSheet.create({
   eyebrow: { color: '#198F78', fontSize: 10, fontWeight: '900', letterSpacing: 1.4, textAlign: 'center' },
   title: { color: '#173B42', fontSize: 24, lineHeight: 31, fontWeight: '900', textAlign: 'center', marginTop: 8, marginBottom: 8 },
   detail: { color: '#65777D', fontSize: 13, lineHeight: 20, textAlign: 'center', marginBottom: 14 },
-  gardenScene: { width: '100%', minHeight: 190, backgroundColor: '#F0FAF0', borderRadius: 22, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 16, overflow: 'hidden' },
-  cloud: { position: 'absolute', top: 16, right: 24, fontSize: 28 },
-  gardenMain: { fontSize: 86, marginBottom: -2 },
-  plantRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 10, minHeight: 36 },
-  plant: { fontSize: 28 },
+  gameScene: { width: '100%', height: 220, borderRadius: 22, overflow: 'hidden', backgroundColor: '#BCE9F2' },
+  gameSky: { flex: 1, overflow: 'hidden' },
+  gameSun: { position: 'absolute', top: 18, right: 22, width: 34, height: 34, borderRadius: 17, backgroundColor: '#FFD977' },
+  gameCloud: { position: 'absolute', top: 24, left: 28, flexDirection: 'row', alignItems: 'flex-end' },
+  cloudPuffSmall: { width: 18, height: 13, borderRadius: 9, backgroundColor: '#FFFFFF', marginHorizontal: -3 },
+  cloudPuffLarge: { width: 31, height: 21, borderRadius: 16, backgroundColor: '#FFFFFF' },
+  gameHillBack: { position: 'absolute', bottom: -42, left: -25, width: 245, height: 105, borderRadius: 130, backgroundColor: '#91CFA8' },
+  gameHillFront: { position: 'absolute', bottom: -55, right: -50, width: 270, height: 125, borderRadius: 150, backgroundColor: '#70B98D' },
+  gameGround: { height: 91, backgroundColor: '#70B98D', borderTopWidth: 2, borderTopColor: '#559D76', position: 'relative' },
+  gameSoilPatch: { position: 'absolute', bottom: 13, left: '27%', width: '48%', height: 37, borderRadius: 21, backgroundColor: '#916D52', borderWidth: 3, borderColor: '#A98161' },
+  gamePath: { position: 'absolute', bottom: -16, right: 20, width: 42, height: 70, borderRadius: 22, backgroundColor: '#C5A071', transform: [{ rotate: '12deg' }] },
+  gameGrassTuftLeft: { position: 'absolute', left: 20, bottom: 19, width: 5, height: 19, backgroundColor: '#3D8D62', transform: [{ rotate: '-25deg' }] },
+  gameGrassTuftRight: { position: 'absolute', right: 25, bottom: 22, width: 5, height: 16, backgroundColor: '#3D8D62', transform: [{ rotate: '28deg' }] },
+  gamePlant: { position: 'absolute', bottom: 29, width: 42, height: 66, alignItems: 'center', justifyContent: 'flex-end' },
+  gamePlantLeft: { left: '25%' },
+  gamePlantCenter: { left: '43%' },
+  gamePlantRight: { right: '17%' },
+  gameStemSmall: { width: 5, height: 29, borderRadius: 3, backgroundColor: '#3C9A62' },
+  gameStem: { width: 6, height: 45, borderRadius: 3, backgroundColor: '#328B58' },
+  gameLeaf: { position: 'absolute', width: 22, height: 11, borderRadius: 14, backgroundColor: '#4BAE6E' },
+  gameLeafLeft: { left: 1, bottom: 29, transform: [{ rotate: '-30deg' }] },
+  gameLeafRight: { right: 1, bottom: 40, transform: [{ rotate: '30deg' }] },
+  gameFlower: { position: 'absolute', top: 3, width: 22, height: 22, borderRadius: 11, backgroundColor: '#F49DB8', borderWidth: 5, borderColor: '#F8C5D5' },
+  gameFlowerCenter: { position: 'absolute', top: 4, left: 4, width: 5, height: 5, borderRadius: 3, backgroundColor: '#F5C84B' },
+  gameTree: { position: 'absolute', bottom: 26, right: '4%', width: 52, height: 83, alignItems: 'center' },
+  gameTreeTrunk: { position: 'absolute', bottom: 0, width: 10, height: 37, borderRadius: 5, backgroundColor: '#76513D' },
+  gameTreeCrown: { position: 'absolute', top: 7, width: 52, height: 52, borderRadius: 27, backgroundColor: '#3D9862' },
+  gameTreeCrownSmall: { position: 'absolute', top: 0, left: 6, width: 31, height: 34, borderRadius: 18, backgroundColor: '#57B875' },
   stageLabel: { color: '#198F78', fontSize: 16, fontWeight: '900', marginTop: 14 },
   progressText: { color: '#775C20', fontSize: 12, fontWeight: '800', marginTop: 5 },
   progressTrack: { width: '100%', height: 9, borderRadius: 9, backgroundColor: '#DCEDE7', overflow: 'hidden', marginTop: 13 },
@@ -404,7 +517,6 @@ const styles = StyleSheet.create({
   breathPrompt: { color: '#173B42', fontSize: 17, fontWeight: '900', textAlign: 'center', marginTop: 8 },
   breathCircle: { width: 112, height: 112, borderRadius: 56, backgroundColor: '#BCEBD9', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginTop: 16 },
   breathCircleText: { color: '#176E5D', fontSize: 20, fontWeight: '900' },
-  rewardIcon: { fontSize: 64, marginBottom: 10 },
   rewardTitle: { color: '#775C20', fontSize: 22, fontWeight: '900', textAlign: 'center' },
   rewardText: { color: '#8A7545', fontSize: 13, lineHeight: 20, textAlign: 'center', marginTop: 8 },
 });

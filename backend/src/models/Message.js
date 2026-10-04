@@ -22,6 +22,11 @@ const messageSchema = new mongoose.Schema(
       trim: true,
     },
 
+    senderId: {
+      type: String,
+      default: null,
+    },
+
     text: {
       type: String,
       default: '',

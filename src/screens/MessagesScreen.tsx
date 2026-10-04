@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Animated,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StatusBar,
@@ -15,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { API_BASE, COMMUNITY_API_BASE } from '../config/api';
+import { COMMUNITY_API_BASE } from '../config/api';
 import { getAuthUserId } from '../api/authStore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -158,6 +157,11 @@ function ConversationRow({ conversation, onPress, onDelete }: { conversation: Co
             <Text style={[styles.lastMessage, isUnread && styles.lastMessageUnread]} numberOfLines={1}>
               {conversation.lastMessageText || 'No messages yet'}
             </Text>
+            {isUnread && (
+              <Text style={styles.unreadConversationLabel}>
+                {conversation.unreadCount} unread
+              </Text>
+            )}
           </View>
         </View>
       </Animated.View>
@@ -187,7 +191,7 @@ export default function MessagesScreen({ onOpenChat, onUnreadCountChange }: Mess
   const fetchConversations = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/conversations?userId=${userId}`);
+      const res = await fetch(`${COMMUNITY_API_BASE}/conversations?userId=${userId}`);
       if (res.ok) {
         const data: Conversation[] = await res.json();
         setConversations(data);
@@ -223,11 +227,29 @@ export default function MessagesScreen({ onOpenChat, onUnreadCountChange }: Mess
     }
   };
 
+  const handleOpenConversation = async (conversation: Conversation) => {
+    if (conversation.unreadCount > 0) {
+      try {
+        await fetch(`${COMMUNITY_API_BASE}/conversations/${conversation._id}/read`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId }),
+        });
+      } catch (e) {
+        console.warn('Failed to mark conversation as read:', e);
+      }
+      setConversations(prev => prev.map(item => (
+        item._id === conversation._id ? { ...item, unreadCount: 0 } : item
+      )));
+    }
+    onOpenChat({ ...conversation, unreadCount: 0 });
+  };
+
   const handleStartChat = async (member: TeamMember) => {
     if (creatingChat) return;
     setCreatingChat(true);
     try {
-      const res = await fetch(`${API_BASE}/conversations`, {
+      const res = await fetch(`${COMMUNITY_API_BASE}/conversations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -257,7 +279,7 @@ export default function MessagesScreen({ onOpenChat, onUnreadCountChange }: Mess
       if (!(window as any).confirm('Are you sure you want to delete this chat?')) return;
     }
     try {
-      const res = await fetch(`${API_BASE}/conversations/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${COMMUNITY_API_BASE}/conversations/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setConversations(prev => prev.filter(c => c._id !== id));
       }
@@ -289,6 +311,9 @@ export default function MessagesScreen({ onOpenChat, onUnreadCountChange }: Mess
             )}
           </View>
           <Text style={styles.subtitle}>Chat privately with professionals & moderators.</Text>
+          {totalUnread > 0 && (
+            <Text style={styles.unreadSummary}>Unread messages: {totalUnread}</Text>
+          )}
         </View>
       </View>
 
@@ -330,7 +355,7 @@ export default function MessagesScreen({ onOpenChat, onUnreadCountChange }: Mess
                 <ConversationRow 
                   key={conv._id} 
                   conversation={conv} 
-                  onPress={() => onOpenChat(conv)} 
+                  onPress={() => handleOpenConversation(conv)} 
                   onDelete={() => handleDeleteConversation(conv._id)} 
                 />
               ))
@@ -408,6 +433,7 @@ const styles = StyleSheet.create({
   badge: { backgroundColor: '#5A5AD8', borderRadius: 12, minWidth: 24, height: 24, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 7 },
   badgeText: { fontSize: 12, fontWeight: '800', color: '#FFFFFF' },
   subtitle: { fontSize: 14, fontWeight: '500', color: '#6B6B80', marginTop: 4 },
+  unreadSummary: { fontSize: 12, fontWeight: '800', color: '#5A5AD8', marginTop: 6 },
   newChatBtn: {
     backgroundColor: '#5A5AD8',
     width: 40,
@@ -443,6 +469,7 @@ const styles = StyleSheet.create({
   timestampUnread: { fontWeight: '700', color: '#5A5AD8' },
   lastMessage: { fontWeight: '500', fontSize: 14, color: '#8A8A9E', marginTop: 2 },
   lastMessageUnread: { fontWeight: '700', color: '#0D0D1A' },
+  unreadConversationLabel: { fontSize: 11, fontWeight: '800', color: '#5A5AD8', marginTop: 4 },
 
   emptyBox: { alignItems: 'center', paddingHorizontal: 32, paddingVertical: 60 },
   emptyIconBox: { width: 72, height: 72, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
