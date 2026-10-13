@@ -828,7 +828,16 @@ function App() {
       // ── Activities ─────────────────────────────────────────────────────────
 
       case 'Activities':
-        return null;
+        return (
+          <ActivitiesScreen
+            activity={selectedActivity}
+            onSelectActivity={setSelectedActivity}
+            onBack={() => {
+              setSelectedActivity(undefined);
+              changeTab('Home');
+            }}
+          />
+        );
 
       // ── Profile ────────────────────────────────────────────────────────────
 

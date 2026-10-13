@@ -76,7 +76,10 @@ export default function AdminUsersScreen({ onBack }: AdminUsersScreenProps) {
   };
 
   const openEditModal = (user: UserProfile) => {
-    setRole(user.role || 'user');
+    const validRole = (user.role === 'professional' || user.role === 'moderator' || user.role === 'admin')
+      ? user.role
+      : 'user';
+    setRole(validRole);
     setMedicalExperience(user.medicalExperience || '');
     setEditUser(user);
   };

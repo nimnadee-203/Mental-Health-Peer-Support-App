@@ -12,6 +12,83 @@ import { getAuthUserId } from '../api/authStore';
 import { getUserProfile } from '../api/profileApi';
 import { UserProfile } from '../types/user';
 import { ResourceArticle, resourceArticles } from '../types/ResourceArticle';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Feather } from '@expo/vector-icons';
+
+export interface AppNotification {
+  id: string;
+  type: 'checkin' | 'group' | 'resource' | 'activity' | 'welcome';
+  icon: keyof typeof Feather.glyphMap;
+  iconBg: string;
+  iconColor: string;
+  title: string;
+  body: string;
+  time: string;
+  isRead: boolean;
+  action?: 'checkin' | 'groups' | 'resources' | 'activity';
+}
+
+const INITIAL_NOTIFICATIONS: AppNotification[] = [
+  {
+    id: 'notif-1',
+    type: 'checkin',
+    icon: 'smile',
+    iconBg: '#ECFDF5',
+    iconColor: '#059669',
+    title: 'Daily Check-in Reminder',
+    body: 'Take a gentle moment to record how you are feeling today.',
+    time: '10m ago',
+    isRead: false,
+    action: 'checkin',
+  },
+  {
+    id: 'notif-2',
+    type: 'group',
+    icon: 'message-circle',
+    iconBg: '#EFF6FF',
+    iconColor: '#2563EB',
+    title: 'New Response in Support Group',
+    body: 'Someone replied to your post in Managing Academic Stress.',
+    time: '2h ago',
+    isRead: false,
+    action: 'groups',
+  },
+  {
+    id: 'notif-3',
+    type: 'resource',
+    icon: 'book-open',
+    iconBg: '#FEF3C7',
+    iconColor: '#D97706',
+    title: 'New Coping Resource Added',
+    body: 'Explore "Small Steps for Difficult Days" curated for your wellbeing.',
+    time: '5h ago',
+    isRead: false,
+    action: 'resources',
+  },
+  {
+    id: 'notif-4',
+    type: 'activity',
+    icon: 'activity',
+    iconBg: '#F3E8FF',
+    iconColor: '#7C3AED',
+    title: 'Mindfulness Break Reminder',
+    body: 'A quick 2-minute breathing exercise can help settle a busy mind.',
+    time: '1d ago',
+    isRead: true,
+    action: 'activity',
+  },
+  {
+    id: 'notif-5',
+    type: 'welcome',
+    icon: 'shield',
+    iconBg: '#ECFDF5',
+    iconColor: '#059669',
+    title: 'Safe Space Confirmation',
+    body: 'Your identity stays protected. Share only when and what you feel ready.',
+    time: '2d ago',
+    isRead: true,
+  },
+];
 
 const moods = [
   { label: 'Very low', emoji: '😭', key: 'Very low' },
@@ -52,6 +129,71 @@ export default function HomeScreen({
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [joinedGroups, setJoinedGroups] = useState<{ [key: string]: boolean }>({});
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [notifFilter, setNotifFilter] = useState<'all' | 'unread'>('all');
+
+  // Load and persist notifications
+  useEffect(() => {
+    const loadStoredNotifications = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('@peer_support_notifications_v1');
+        if (stored) {
+          setNotifications(JSON.parse(stored));
+        } else {
+          setNotifications(INITIAL_NOTIFICATIONS);
+          await AsyncStorage.setItem('@peer_support_notifications_v1', JSON.stringify(INITIAL_NOTIFICATIONS));
+        }
+      } catch {
+        setNotifications(INITIAL_NOTIFICATIONS);
+      }
+    };
+    loadStoredNotifications();
+  }, []);
+
+  const persistNotifications = useCallback(async (updated: AppNotification[]) => {
+    setNotifications(updated);
+    try {
+      await AsyncStorage.setItem('@peer_support_notifications_v1', JSON.stringify(updated));
+    } catch (e) {
+      console.warn('Failed to save notifications', e);
+    }
+  }, []);
+
+  const unreadNotifCount = notifications.filter(n => !n.isRead).length;
+
+  const markAllNotificationsAsRead = useCallback(() => {
+    const updated = notifications.map(n => ({ ...n, isRead: true }));
+    persistNotifications(updated);
+    setToastMessage('All notifications marked as read');
+  }, [notifications, persistNotifications]);
+
+  const dismissNotification = useCallback((id: string) => {
+    const updated = notifications.filter(n => n.id !== id);
+    persistNotifications(updated);
+  }, [notifications, persistNotifications]);
+
+  const clearAllNotifications = useCallback(() => {
+    persistNotifications([]);
+    setToastMessage('Notifications cleared');
+  }, [persistNotifications]);
+
+  const handleNotificationPress = useCallback((notif: AppNotification) => {
+    // Mark as read
+    const updated = notifications.map(n => n.id === notif.id ? { ...n, isRead: true } : n);
+    persistNotifications(updated);
+    setShowNotifications(false);
+
+    // Execute navigation action
+    if (notif.action === 'checkin') {
+      setToastMessage('How are you feeling right now? Tap a mood below 👇');
+    } else if (notif.action === 'groups') {
+      onOpenGroups?.();
+    } else if (notif.action === 'resources') {
+      onOpenResources?.();
+    } else if (notif.action === 'activity') {
+      onOpenActivity?.('breathing');
+    }
+  }, [notifications, persistNotifications, onOpenGroups, onOpenResources, onOpenActivity]);
 
   const fetchProfileData = useCallback(async () => {
     const userId = getAuthUserId();
@@ -108,21 +250,29 @@ export default function HomeScreen({
     if (userInterests && userInterests.length > 0) {
       const matched = resourceArticles.find(article =>
         userInterests.some(
-          interest =>
-            (Array.isArray(article?.tags) &&
-              article.tags.some(
-                t =>
-                  t &&
-                  t.toLowerCase().includes(interest.toString().toLowerCase()),
-              )) ||
-            (article?.title &&
-              article.title
-                .toLowerCase()
-                .includes(interest.toString().toLowerCase())) ||
-            (article?.summary &&
-              article.summary
-                .toLowerCase()
-                .includes(interest.toString().toLowerCase())),
+          interest => {
+            const articleAny = article as any;
+            return (
+              (Array.isArray(articleAny?.tags) &&
+                articleAny.tags.some(
+                  (t: any) =>
+                    t &&
+                    t.toString().toLowerCase().includes(interest.toString().toLowerCase()),
+                )) ||
+              (article?.title &&
+                article.title
+                  .toLowerCase()
+                  .includes(interest.toString().toLowerCase())) ||
+              (article?.description &&
+                article.description
+                  .toLowerCase()
+                  .includes(interest.toString().toLowerCase())) ||
+              (articleAny?.summary &&
+                articleAny.summary
+                  .toLowerCase()
+                  .includes(interest.toString().toLowerCase()))
+            );
+          },
         ),
       );
       if (matched) return matched;
@@ -136,7 +286,7 @@ export default function HomeScreen({
 
   const recommendedBadge =
     userInterests && userInterests.length > 0
-      ? (recommendedArticle?.tags?.[0] || 'FOR YOU').toUpperCase()
+      ? (((recommendedArticle as any)?.tags?.[0] || recommendedArticle?.category || 'FOR YOU')).toUpperCase()
       : 'STRESS';
 
   return (
@@ -157,10 +307,17 @@ export default function HomeScreen({
             <Pressable
               style={styles.iconButton}
               onPress={() => setShowNotifications(true)}
-              accessibilityLabel="Notifications"
+              accessibilityLabel={`Notifications, ${unreadNotifCount} unread`}
+              accessibilityRole="button"
             >
-              <Text style={styles.iconEmoji}>🔔</Text>
-              <View style={styles.notificationBadge} />
+              <Feather name="bell" size={20} color="#1E293B" />
+              {unreadNotifCount > 0 && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationBadgeText}>
+                    {unreadNotifCount > 9 ? '9+' : unreadNotifCount}
+                  </Text>
+                </View>
+              )}
             </Pressable>
 
             <Pressable
@@ -267,13 +424,17 @@ export default function HomeScreen({
           </View>
 
           <Text style={styles.recommendedTitle}>
-            {recommendedArticle.title}
+            {recommendedArticle?.title || 'Daily Wellness Reflection'}
           </Text>
           <Text style={styles.recommendedDesc}>
-            {recommendedArticle.summary}
+            {(recommendedArticle as any)?.summary || recommendedArticle?.description || 'Take a mindful pause for yourself today.'}
           </Text>
 
-          <Text style={styles.recommendedFooter}>{`${recommendedArticle.readTimeMinutes} min read`}</Text>
+          <Text style={styles.recommendedFooter}>
+            {(recommendedArticle as any)?.readTimeMinutes
+              ? `${(recommendedArticle as any).readTimeMinutes} min read`
+              : recommendedArticle?.readTime || '3 min read'}
+          </Text>
         </Pressable>
 
         {/* SOMETHING GOOD FOR YOU */}
@@ -481,33 +642,147 @@ export default function HomeScreen({
         animationType="fade"
         onRequestClose={() => setShowNotifications(false)}
       >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setShowNotifications(false)}
-        >
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setShowNotifications(false)}
+          />
           <View style={styles.modalContainer}>
+            {/* Modal Header */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Notifications</Text>
-              <Pressable onPress={() => setShowNotifications(false)}>
-                <Text style={styles.modalClose}>✕</Text>
+              <View style={styles.modalTitleRow}>
+                <Text style={styles.modalTitle}>Notifications</Text>
+                {unreadNotifCount > 0 && (
+                  <View style={styles.unreadCountBadge}>
+                    <Text style={styles.unreadCountBadgeText}>{unreadNotifCount} new</Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.modalHeaderActions}>
+                {unreadNotifCount > 0 && (
+                  <Pressable
+                    style={styles.markAllReadBtn}
+                    onPress={markAllNotificationsAsRead}
+                  >
+                    <Text style={styles.markAllReadText}>Mark all read</Text>
+                  </Pressable>
+                )}
+                <Pressable
+                  style={styles.modalCloseCircle}
+                  onPress={() => setShowNotifications(false)}
+                  accessibilityLabel="Close notifications"
+                >
+                  <Feather name="x" size={18} color="#64748B" />
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Filter Tabs */}
+            <View style={styles.notifFilterRow}>
+              <Pressable
+                style={[styles.notifFilterTab, notifFilter === 'all' && styles.notifFilterTabActive]}
+                onPress={() => setNotifFilter('all')}
+              >
+                <Text style={[styles.notifFilterText, notifFilter === 'all' && styles.notifFilterTextActive]}>
+                  All ({notifications.length})
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.notifFilterTab, notifFilter === 'unread' && styles.notifFilterTabActive]}
+                onPress={() => setNotifFilter('unread')}
+              >
+                <Text style={[styles.notifFilterText, notifFilter === 'unread' && styles.notifFilterTextActive]}>
+                  Unread ({unreadNotifCount})
+                </Text>
               </Pressable>
             </View>
-            <View style={styles.notificationItem}>
-              <Text style={styles.notifIcon}>🌿</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.notifTitle}>Daily Check-in Reminder</Text>
-                <Text style={styles.notifTime}>Take a moment to record your mood today.</Text>
+
+            {/* Notifications Scroll List */}
+            <ScrollView
+              style={styles.notifScrollView}
+              contentContainerStyle={styles.notifScrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {(() => {
+                const displayed = notifFilter === 'unread'
+                  ? notifications.filter(n => !n.isRead)
+                  : notifications;
+
+                if (displayed.length === 0) {
+                  return (
+                    <View style={styles.notifEmptyBox}>
+                      <View style={styles.notifEmptyIconCircle}>
+                        <Feather name="check" size={28} color="#059669" />
+                      </View>
+                      <Text style={styles.notifEmptyTitle}>All caught up!</Text>
+                      <Text style={styles.notifEmptySub}>
+                        {notifFilter === 'unread'
+                          ? 'You have no unread notifications.'
+                          : 'No notifications at this time.'}
+                      </Text>
+                    </View>
+                  );
+                }
+
+                return displayed.map(item => (
+                  <Pressable
+                    key={item.id}
+                    style={[
+                      styles.notificationItem,
+                      !item.isRead && styles.notificationItemUnread,
+                    ]}
+                    onPress={() => handleNotificationPress(item)}
+                  >
+                    <View style={[styles.notifIconBox, { backgroundColor: item.iconBg }]}>
+                      <Feather name={item.icon} size={18} color={item.iconColor} />
+                    </View>
+
+                    <View style={styles.notifBodyCol}>
+                      <View style={styles.notifTitleTimeRow}>
+                        <Text style={[styles.notifTitle, !item.isRead && styles.notifTitleUnread]}>
+                          {item.title}
+                        </Text>
+                        <Text style={styles.notifTimeText}>{item.time}</Text>
+                      </View>
+                      <Text style={styles.notifBodyText} numberOfLines={2}>
+                        {item.body}
+                      </Text>
+                      {item.action && (
+                        <View style={styles.notifActionRow}>
+                          <Text style={styles.notifActionLink}>Open ›</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    <Pressable
+                      style={styles.notifDismissBtn}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        dismissNotification(item.id);
+                      }}
+                      hitSlop={8}
+                      accessibilityLabel="Dismiss notification"
+                    >
+                      <Feather name="x" size={14} color="#94A3B8" />
+                    </Pressable>
+
+                    {!item.isRead && <View style={styles.notifUnreadDot} />}
+                  </Pressable>
+                ));
+              })()}
+            </ScrollView>
+
+            {/* Footer */}
+            {notifications.length > 0 && (
+              <View style={styles.notifFooterRow}>
+                <Pressable onPress={clearAllNotifications}>
+                  <Text style={styles.clearAllText}>Clear all</Text>
+                </Pressable>
               </View>
-            </View>
-            <View style={styles.notificationItem}>
-              <Text style={styles.notifIcon}>💬</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.notifTitle}>Community Update</Text>
-                <Text style={styles.notifTime}>New responses in Academic Stress group.</Text>
-              </View>
-            </View>
+            )}
           </View>
-        </Pressable>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -571,12 +846,23 @@ const styles = StyleSheet.create({
   },
   notificationBadge: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FF3B30',
+    top: -3,
+    right: -3,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#EF4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  notificationBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9.5,
+    fontWeight: '800',
+    lineHeight: 12,
   },
 
   /* Toast Box */
@@ -910,52 +1196,214 @@ const styles = StyleSheet.create({
   /* Modal */
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
   },
   modalContainer: {
     width: '100%',
+    maxWidth: 520,
+    maxHeight: '85%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 24,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 8,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  modalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1C1C1E',
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0F172A',
   },
-  modalClose: {
-    fontSize: 18,
-    color: '#8E8E93',
+  unreadCountBadge: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  unreadCountBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#5A5AD8',
+  },
+  modalHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  markAllReadBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  markAllReadText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#5A5AD8',
+  },
+  modalCloseCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notifFilterRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 12,
+  },
+  notifFilterTab: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+  },
+  notifFilterTabActive: {
+    backgroundColor: '#5A5AD8',
+  },
+  notifFilterText: {
+    fontSize: 12.5,
     fontWeight: '600',
+    color: '#64748B',
+  },
+  notifFilterTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  notifScrollView: {
+    maxHeight: 380,
+  },
+  notifScrollContent: {
+    paddingVertical: 4,
   },
   notificationItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F5',
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    marginBottom: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    position: 'relative',
   },
-  notifIcon: {
-    fontSize: 22,
+  notificationItemUnread: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+  },
+  notifIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 12,
   },
-  notifTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1C1C1E',
+  notifBodyCol: {
+    flex: 1,
+    paddingRight: 16,
   },
-  notifTime: {
+  notifTitleTimeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 3,
+  },
+  notifTitle: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  notifTitleUnread: {
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  notifTimeText: {
+    fontSize: 11,
+    color: '#94A3B8',
+  },
+  notifBodyText: {
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: '#64748B',
+  },
+  notifActionRow: {
+    marginTop: 4,
+  },
+  notifActionLink: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#5A5AD8',
+  },
+  notifDismissBtn: {
+    padding: 4,
+    marginLeft: 4,
+  },
+  notifUnreadDot: {
+    position: 'absolute',
+    top: 14,
+    right: 32,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#5A5AD8',
+  },
+  notifEmptyBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 36,
+    gap: 8,
+  },
+  notifEmptyIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  notifEmptyTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  notifEmptySub: {
+    fontSize: 12.5,
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  notifFooterRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  clearAllText: {
     fontSize: 12,
-    color: '#8E8E93',
-    marginTop: 2,
+    fontWeight: '600',
+    color: '#94A3B8',
   },
 });
