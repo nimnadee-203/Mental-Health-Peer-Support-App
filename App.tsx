@@ -297,7 +297,21 @@ function App() {
       try {
         const stored = await AsyncStorage.getItem(`@joined_groups_${userId}`);
         if (stored) {
-          setJoinedGroupIds(JSON.parse(stored));
+          const ids: string[] = JSON.parse(stored);
+          setJoinedGroupIds(ids);
+          if (Array.isArray(ids) && ids.length > 0) {
+            Promise.all(
+              ids.map(communityId =>
+                fetch(`${COMMUNITY_API_BASE}/communities/${communityId}/join`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ userId }),
+                }).catch(() => null)
+              )
+            ).then(() => {
+              fetchCommunities();
+            });
+          }
         } else {
           setJoinedGroupIds([]);
         }

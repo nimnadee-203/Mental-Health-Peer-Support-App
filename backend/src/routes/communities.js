@@ -37,15 +37,11 @@ router.get('/', async (_req, res) => {
   try {
     const communities = await Community.find().sort({ createdAt: -1 }).lean();
     
-    // Map to include real memberCount based on community memberCount and members array
-    const mapped = communities.map(c => {
-      const explicitMembers = Array.isArray(c.members) ? c.members.length : 0;
-      const count = Math.max(typeof c.memberCount === 'number' ? c.memberCount : 0, explicitMembers);
-      return {
-        ...c,
-        memberCount: count,
-      };
-    });
+    // Map to include real memberCount strictly based on actual members joined
+    const mapped = communities.map(c => ({
+      ...c,
+      memberCount: Array.isArray(c.members) ? c.members.length : 0,
+    }));
 
     res.json(mapped);
   } catch (err) {
@@ -64,8 +60,7 @@ router.get('/:id', async (req, res) => {
     if (!community) {
       return res.status(404).json({ error: 'Community not found' });
     }
-    const explicitMembers = Array.isArray(community.members) ? community.members.length : 0;
-    const realCount = Math.max(typeof community.memberCount === 'number' ? community.memberCount : 0, explicitMembers);
+    const realCount = Array.isArray(community.members) ? community.members.length : 0;
     res.json({
       ...community,
       memberCount: realCount,
@@ -99,19 +94,16 @@ router.post('/:id/join', async (req, res) => {
     const alreadyMember = community.members.includes(userId);
     if (!alreadyMember) {
       community.members.push(userId);
-      const baseCount = typeof community.memberCount === 'number' && community.memberCount > 0
-        ? community.memberCount
-        : Math.max(0, community.members.length - 1);
-      community.memberCount = baseCount + 1;
     }
+    community.memberCount = community.members.length;
     await community.save();
 
     res.json({
       success: true,
-      memberCount: community.memberCount,
+      memberCount: community.members.length,
       community: {
         ...community.toObject(),
-        memberCount: community.memberCount,
+        memberCount: community.members.length,
       },
     });
   } catch (err) {
@@ -140,22 +132,16 @@ router.post('/:id/leave', async (req, res) => {
       community.members = [];
     }
 
-    const wasMember = community.members.includes(userId);
-    if (wasMember) {
-      community.members = community.members.filter(id => id !== userId);
-      const baseCount = typeof community.memberCount === 'number' && community.memberCount > 0
-        ? community.memberCount
-        : 1;
-      community.memberCount = Math.max(community.members.length, baseCount - 1);
-    }
+    community.members = community.members.filter(id => id !== userId);
+    community.memberCount = community.members.length;
     await community.save();
 
     res.json({
       success: true,
-      memberCount: community.memberCount,
+      memberCount: community.members.length,
       community: {
         ...community.toObject(),
-        memberCount: community.memberCount,
+        memberCount: community.members.length,
       },
     });
   } catch (err) {

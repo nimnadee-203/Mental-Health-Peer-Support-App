@@ -325,7 +325,9 @@ export default function PostDetailScreen({
           <View style={styles.divider} />
 
           {/* COMMENTS LIST */}
-          <Text style={styles.commentsHeading}>Comments</Text>
+          <Text style={styles.commentsHeading}>
+            Comments {comments.length > 0 ? `(${comments.length})` : ''}
+          </Text>
           
           <View style={styles.commentsContainer}>
             {isLoading ? (

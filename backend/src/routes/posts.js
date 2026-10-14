@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Post = require('../models/Post');
+const Comment = require('../models/Comment');
 const auth = require('../middleware/auth');
 
 /**
@@ -10,8 +11,28 @@ const auth = require('../middleware/auth');
 router.get('/group/:groupId', async (req, res) => {
   try {
     const { groupId } = req.params;
-    const posts = await Post.find({ groupId, moderationStatus: { $ne: 'hidden' } }).sort({ createdAt: -1 });
-    res.json(posts);
+    const posts = await Post.find({ groupId, moderationStatus: { $ne: 'hidden' } })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Query real comment counts from Comment collection
+    const postIds = posts.map(p => p._id.toString());
+    const commentCounts = await Comment.aggregate([
+      { $match: { postId: { $in: postIds } } },
+      { $group: { _id: '$postId', count: { $sum: 1 } } },
+    ]);
+
+    const countsMap = {};
+    commentCounts.forEach(c => {
+      countsMap[c._id.toString()] = c.count;
+    });
+
+    const postsWithCounts = posts.map(p => ({
+      ...p,
+      commentsCount: countsMap[p._id.toString()] ?? 0,
+    }));
+
+    res.json(postsWithCounts);
   } catch (err) {
     console.error('GET /posts/group/:groupId —', err.message);
     res.status(500).json({ error: 'Failed to fetch posts' });

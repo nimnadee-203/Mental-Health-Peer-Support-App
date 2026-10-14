@@ -231,21 +231,19 @@ function PostCard({ post, isLiked, onLike, onPress, onReport, onShare }: {
       </View>
 
       {/* Engagement summary */}
-      {(post.likes > 0 || post.commentsCount > 0) && (
-        <View style={postSt.engRow}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            {post.likes > 0 && (
-              <View style={postSt.engChip}>
-                <Feather name="heart" size={11} color="#D97706" />
-                <Text style={postSt.engText}>{post.likes}</Text>
-              </View>
-            )}
-          </View>
-          {post.commentsCount > 0 && (
-            <Text style={postSt.engComments}>{post.commentsCount} comment{post.commentsCount !== 1 ? 's' : ''}</Text>
-          )}
+      <View style={postSt.engRow}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          {post.likes > 0 ? (
+            <View style={postSt.engChip}>
+              <Feather name="heart" size={11} color="#D97706" />
+              <Text style={postSt.engText}>{post.likes}</Text>
+            </View>
+          ) : <View />}
         </View>
-      )}
+        <Text style={postSt.engComments}>
+          {(post.commentsCount ?? 0) === 1 ? '1 comment' : `${post.commentsCount ?? 0} comments`}
+        </Text>
+      </View>
 
       {/* Actions */}
       <View style={postSt.actions}>
@@ -256,7 +254,11 @@ function PostCard({ post, isLiked, onLike, onPress, onReport, onShare }: {
         <View style={postSt.actionSep} />
         <Pressable style={postSt.actionBtn} onPress={onPress}>
           <Feather name="message-circle" size={16} color="#9CA3AF" />
-          <Text style={postSt.actionLabel}>Comment</Text>
+          <Text style={postSt.actionLabel}>
+            {typeof post.commentsCount === 'number' && post.commentsCount > 0
+              ? `Comment (${post.commentsCount})`
+              : 'Comment'}
+          </Text>
         </Pressable>
         <View style={postSt.actionSep} />
         <Pressable style={postSt.actionBtn} onPress={e => { e?.stopPropagation?.(); onShare(); }}>
