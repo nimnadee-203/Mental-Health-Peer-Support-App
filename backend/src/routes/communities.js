@@ -51,6 +51,106 @@ router.get('/', async (_req, res) => {
 });
 
 /**
+ * GET /api/communities/:id
+ * Get single community with accurate live memberCount
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const community = await Community.findById(req.params.id).lean();
+    if (!community) {
+      return res.status(404).json({ error: 'Community not found' });
+    }
+    const realCount = community.members && Array.isArray(community.members) ? community.members.length : 0;
+    res.json({
+      ...community,
+      memberCount: realCount,
+    });
+  } catch (err) {
+    console.error('Error fetching single community:', err);
+    res.status(500).json({ error: 'Failed to fetch community' });
+  }
+});
+
+/**
+ * POST /api/communities/:id/join
+ * Join a community and return accurate memberCount
+ */
+router.post('/:id/join', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required to join.' });
+    }
+
+    const community = await Community.findById(req.params.id);
+    if (!community) {
+      return res.status(404).json({ error: 'Community not found.' });
+    }
+
+    if (!community.members) {
+      community.members = [];
+    }
+
+    const alreadyMember = community.members.includes(userId);
+    if (!alreadyMember) {
+      community.members.push(userId);
+    }
+    community.memberCount = community.members.length;
+    await community.save();
+
+    res.json({
+      success: true,
+      memberCount: community.members.length,
+      community: {
+        ...community.toObject(),
+        memberCount: community.members.length,
+      },
+    });
+  } catch (err) {
+    console.error('Error joining community:', err);
+    res.status(500).json({ error: 'Failed to join community.' });
+  }
+});
+
+/**
+ * POST /api/communities/:id/leave
+ * Leave a community and return accurate memberCount
+ */
+router.post('/:id/leave', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required to leave.' });
+    }
+
+    const community = await Community.findById(req.params.id);
+    if (!community) {
+      return res.status(404).json({ error: 'Community not found.' });
+    }
+
+    if (!community.members) {
+      community.members = [];
+    }
+
+    community.members = community.members.filter(id => id !== userId);
+    community.memberCount = community.members.length;
+    await community.save();
+
+    res.json({
+      success: true,
+      memberCount: community.members.length,
+      community: {
+        ...community.toObject(),
+        memberCount: community.members.length,
+      },
+    });
+  } catch (err) {
+    console.error('Error leaving community:', err);
+    res.status(500).json({ error: 'Failed to leave community.' });
+  }
+});
+
+/**
  * POST /api/communities
  * Create a new community
  * Restricted to Peer Support Volunteers, Professionals, Moderators, and Admins.

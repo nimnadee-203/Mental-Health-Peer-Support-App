@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { COMMUNITY_API_BASE } from '../../config/api';
-import { getAuthToken } from '../../api/authStore';
+import { getAuthToken, getAuthUserId } from '../../api/authStore';
 import * as ImagePicker from 'expo-image-picker';
 import type { Community } from '../GroupDiscussionScreen';
 
@@ -58,18 +58,59 @@ export default function GroupDetailScreen({
   const [editGuidelines, setEditGuidelines] = useState(community.guidelines);
   const [editImage, setEditImage] = useState<string | null>(null);
 
-  const handleJoinToggle = () => {
+  const [memberCount, setMemberCount] = useState<number>(
+    typeof community.memberCount === 'number' ? community.memberCount : 0
+  );
+
+  // Fetch the real, live community details and member count from the database
+  useEffect(() => {
+    let isMounted = true;
+    const fetchLiveCommunity = async () => {
+      try {
+        const res = await fetch(`${COMMUNITY_API_BASE}/communities/${community._id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && typeof data.memberCount === 'number') {
+            setMemberCount(data.memberCount);
+          }
+        }
+      } catch {
+        // Fallback to initial community count
+      }
+    };
+    fetchLiveCommunity();
+    return () => {
+      isMounted = false;
+    };
+  }, [community._id]);
+
+  const handleJoinToggle = async () => {
     if (isAdmin) return;
     const next = !joined;
     setJoined(next);
 
     if (next) {
+      setMemberCount(prev => prev + 1);
       onJoin(community._id);
       Alert.alert(
         'Welcome to the Circle! 🎉',
         `You have joined ${community.name}. Feel free to participate in discussions.`,
         [{ text: 'Continue', style: 'default' }],
       );
+    } else {
+      setMemberCount(prev => Math.max(0, prev - 1));
+      const userId = getAuthUserId();
+      if (userId) {
+        try {
+          await fetch(`${COMMUNITY_API_BASE}/communities/${community._id}/leave`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId }),
+          });
+        } catch {
+          // ignore
+        }
+      }
     }
   };
 
@@ -160,9 +201,7 @@ export default function GroupDetailScreen({
     ? community.guidelines.split('\n').filter(g => g.trim().length > 0)
     : DEFAULT_GUIDELINES;
 
-  const displayMemberCount = community.memberCount && community.memberCount > 0
-    ? community.memberCount
-    : 1420;
+  const displayMemberCount = memberCount;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -270,7 +309,7 @@ export default function GroupDetailScreen({
                     ))}
                 </View>
                 <Text style={styles.statValue}>{displayMemberCount.toLocaleString()}</Text>
-                <Text style={styles.statLabel}>Peers</Text>
+                <Text style={styles.statLabel}>{displayMemberCount === 1 ? 'Peer' : 'Peers'}</Text>
               </View>
 
               <View style={styles.statDivider} />

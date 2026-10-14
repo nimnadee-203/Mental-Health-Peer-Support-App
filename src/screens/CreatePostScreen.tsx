@@ -32,6 +32,7 @@ const TOPICS = [
   { label: 'Breaks & Rest', icon: 'coffee' as const },
   { label: 'Sharing', icon: 'share-2' as const },
   { label: 'Asking for support', icon: 'help-circle' as const },
+  { label: 'Other', icon: 'edit-3' as const },
 ];
 
 const CONTENT_NOTES = [
@@ -40,6 +41,7 @@ const CONTENT_NOTES = [
   { label: 'Grief / loss', icon: 'cloud-rain' as const },
   { label: 'Academic pressure', icon: 'file-text' as const },
   { label: 'Sensitive topic', icon: 'alert-triangle' as const },
+  { label: 'Other', icon: 'plus-circle' as const },
 ];
 
 interface CreatePostScreenProps {
@@ -51,7 +53,9 @@ interface CreatePostScreenProps {
 export default function CreatePostScreen({ community, onBack, onPostCreated }: CreatePostScreenProps) {
   const [content, setContent] = useState('');
   const [topic, setTopic] = useState('General');
+  const [customTopic, setCustomTopic] = useState('');
   const [contentNote, setContentNote] = useState('None');
+  const [customContentNote, setCustomContentNote] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -78,6 +82,19 @@ export default function CreatePostScreen({ community, onBack, onPostCreated }: C
 
   const handleSubmit = async () => {
     if (!content.trim() || content.trim().length < 3 || isSubmitting) return;
+
+    const finalTopic = topic === 'Other' ? (customTopic.trim() || 'Other') : topic;
+    const finalContentNote = contentNote === 'Other' ? (customContentNote.trim() || 'Other') : contentNote;
+
+    if (topic === 'Other' && !customTopic.trim()) {
+      Alert.alert('Custom Topic', 'Please enter your custom topic.');
+      return;
+    }
+    if (contentNote === 'Other' && !customContentNote.trim()) {
+      Alert.alert('Custom Content Note', 'Please enter your custom content note or select None.');
+      return;
+    }
+
     setIsSubmitting(true);
     const controller = new AbortController();
     const tid = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -104,7 +121,7 @@ export default function CreatePostScreen({ community, onBack, onPostCreated }: C
       const res = await fetch(`${COMMUNITY_API_BASE}/posts/group/${encodeURIComponent(community._id)}`, {
         method: 'POST', signal: controller.signal,
         headers: { 'Content-Type': 'application/json', ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {}) },
-        body: JSON.stringify({ content: content.trim(), topic, contentNote, isAnonymous, imageUrl: uploadedImageUrl }),
+        body: JSON.stringify({ content: content.trim(), topic: finalTopic, contentNote: finalContentNote, isAnonymous, imageUrl: uploadedImageUrl }),
       });
       if (!res.ok) {
         const err = new Error(((await res.json().catch(() => null))?.error) || 'Failed') as any;
@@ -227,6 +244,24 @@ export default function CreatePostScreen({ community, onBack, onPostCreated }: C
                 );
               })}
             </ScrollView>
+            {topic === 'Other' && (
+              <View style={s.customTagInputBox}>
+                <Feather name="edit-2" size={14} color="#5A5AD8" />
+                <TextInput
+                  style={s.customTagInput}
+                  placeholder="Type custom topic (e.g. Exam Stress, Motivation)..."
+                  placeholderTextColor="#A0A0B8"
+                  value={customTopic}
+                  onChangeText={setCustomTopic}
+                  maxLength={35}
+                />
+                {customTopic.length > 0 && (
+                  <Pressable onPress={() => setCustomTopic('')} hitSlop={6}>
+                    <Feather name="x" size={14} color="#A0A0B8" />
+                  </Pressable>
+                )}
+              </View>
+            )}
           </View>
 
           {/* ── CONTENT NOTE ────────────────────────────────── */}
@@ -248,6 +283,24 @@ export default function CreatePostScreen({ community, onBack, onPostCreated }: C
                 );
               })}
             </ScrollView>
+            {contentNote === 'Other' && (
+              <View style={s.customTagInputBox}>
+                <Feather name="alert-triangle" size={14} color="#D97706" />
+                <TextInput
+                  style={s.customTagInput}
+                  placeholder="Type custom content note (e.g. Trauma, Medical, Family)..."
+                  placeholderTextColor="#A0A0B8"
+                  value={customContentNote}
+                  onChangeText={setCustomContentNote}
+                  maxLength={45}
+                />
+                {customContentNote.length > 0 && (
+                  <Pressable onPress={() => setCustomContentNote('')} hitSlop={6}>
+                    <Feather name="x" size={14} color="#A0A0B8" />
+                  </Pressable>
+                )}
+              </View>
+            )}
           </View>
 
           {/* ── ANONYMOUS TOGGLE ────────────────────────────── */}
@@ -354,4 +407,23 @@ const s = StyleSheet.create({
   submitBtnOff: { backgroundColor: '#ECEEF8', shadowOpacity: 0, elevation: 0 },
   submitText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800', letterSpacing: -0.2 },
   submitTextOff: { color: '#C0C0D8' },
+  customTagInputBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#D4D0F8',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 10,
+    gap: 8,
+  },
+  customTagInput: {
+    flex: 1,
+    fontSize: 13,
+    color: '#0D0D1A',
+    fontWeight: '600',
+    padding: 0,
+  },
 });

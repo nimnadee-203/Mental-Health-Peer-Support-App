@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Feather } from '@expo/vector-icons';
 import {
   ActivityIndicator,
   Image,
@@ -30,6 +31,7 @@ export interface Comment {
   likes: number;
   createdAt: string;
   likedBy?: string[];
+  parentCommentId?: string | null;
 }
 
 interface PostDetailScreenProps {
@@ -64,6 +66,8 @@ export default function PostDetailScreen({
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [likedCommentIds, setLikedCommentIds] = useState<string[]>([]);
+  const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
+  const commentInputRef = useRef<TextInput>(null);
 
   // Reporting and moderation state
   const [reportingTarget, setReportingTarget] = useState<{
@@ -101,9 +105,22 @@ export default function PostDetailScreen({
     }
   };
 
+  const handleStartReply = (targetComment: Comment) => {
+    setReplyingTo(targetComment);
+    setTimeout(() => {
+      commentInputRef.current?.focus();
+    }, 120);
+  };
+
+  const handleCancelReply = () => {
+    setReplyingTo(null);
+  };
+
   const handlePostComment = async () => {
     if (!newComment.trim() || isSubmitting) return;
     setIsSubmitting(true);
+
+    const parentId = replyingTo ? (replyingTo.parentCommentId || replyingTo._id) : null;
 
     try {
       const encodedPostId = encodeURIComponent(post._id);
@@ -113,6 +130,7 @@ export default function PostDetailScreen({
         body: JSON.stringify({
           content: newComment.trim(),
           isAnonymous: true,
+          parentCommentId: parentId,
         }),
       });
 
@@ -122,6 +140,7 @@ export default function PostDetailScreen({
       // Add the new comment directly to the list
       setComments(prev => [...prev, data]);
       setNewComment('');
+      setReplyingTo(null);
     } catch (error) {
       console.error(error);
       // Fallback for demo mode if backend is unreachable
@@ -134,9 +153,11 @@ export default function PostDetailScreen({
           authorName: 'Anonymous Member',
           likes: 0,
           createdAt: new Date().toISOString(),
+          parentCommentId: parentId,
         },
       ]);
       setNewComment('');
+      setReplyingTo(null);
     } finally {
       setIsSubmitting(false);
     }
@@ -315,8 +336,10 @@ export default function PostDetailScreen({
               </View>
             ) : (
               comments
-                .filter(comment => !blockedAuthors.includes(comment.authorName))
+                .filter(comment => !comment.parentCommentId && !blockedAuthors.includes(comment.authorName))
                 .map(comment => {
+                  const replies = comments.filter(c => c.parentCommentId === comment._id);
+
                   if (hiddenCommentIds.includes(comment._id)) {
                     return (
                       <View key={comment._id} style={styles.hiddenCommentCard}>
@@ -364,7 +387,80 @@ export default function PostDetailScreen({
                           <Text style={styles.actionEmoji}>{likedCommentIds.includes(comment._id) ? '💖' : '🤍'}</Text>
                           <Text style={[styles.likeCountText, likedCommentIds.includes(comment._id) && { color: '#E11D48' }]}>{comment.likes}</Text>
                         </Pressable>
+
+                        <Pressable
+                          style={styles.replyButton}
+                          onPress={() => handleStartReply(comment)}>
+                          <Feather name="corner-down-right" size={13} color="#6B7280" style={{ marginRight: 4 }} />
+                          <Text style={styles.replyButtonText}>Reply</Text>
+                        </Pressable>
                       </View>
+
+                      {/* Nested Replies Thread (Facebook Style) */}
+                      {replies.length > 0 && (
+                        <View style={styles.repliesThreadContainer}>
+                          {replies
+                            .filter(reply => !blockedAuthors.includes(reply.authorName))
+                            .map(reply => {
+                              if (hiddenCommentIds.includes(reply._id)) {
+                                return (
+                                  <View key={reply._id} style={styles.hiddenCommentCard}>
+                                    <Text style={styles.hiddenCommentText}>🙈 Reply hidden</Text>
+                                    <Pressable
+                                      style={styles.unhideCommentButton}
+                                      onPress={() => unhideComment(reply._id)}>
+                                      <Text style={styles.unhideCommentText}>Undo</Text>
+                                    </Pressable>
+                                  </View>
+                                );
+                              }
+
+                              return (
+                                <View key={reply._id} style={styles.replyCard}>
+                                  <View style={styles.commentHeader}>
+                                    <View style={[styles.avatarPlaceholder, styles.extraSmallAvatar]}>
+                                      <Text style={styles.extraSmallAvatarEmoji}>💬</Text>
+                                    </View>
+                                    <View style={styles.postMetaInfo}>
+                                      <Text style={styles.replyAuthor}>{reply.authorName}</Text>
+                                      <Text style={styles.timeAgo}>{timeAgo(reply.createdAt)}</Text>
+                                    </View>
+                                    <Pressable
+                                      style={styles.commentReportBtn}
+                                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                      onPress={() =>
+                                        setReportingTarget({
+                                          type: 'Comment',
+                                          id: reply._id,
+                                          authorName: reply.authorName,
+                                          content: reply.content,
+                                        })
+                                      }>
+                                      <Text style={styles.commentReportIcon}>🚩</Text>
+                                    </Pressable>
+                                  </View>
+
+                                  <Text style={styles.replyContent}>{reply.content}</Text>
+
+                                  <View style={styles.replyActions}>
+                                    <Pressable
+                                      style={styles.likeButton}
+                                      onPress={() => handleLikeComment(reply._id)}>
+                                      <Text style={styles.actionEmoji}>{likedCommentIds.includes(reply._id) ? '💖' : '🤍'}</Text>
+                                      <Text style={[styles.likeCountText, likedCommentIds.includes(reply._id) && { color: '#E11D48' }]}>{reply.likes}</Text>
+                                    </Pressable>
+                                    <Pressable
+                                      style={styles.replyButton}
+                                      onPress={() => handleStartReply(comment)}>
+                                      <Feather name="corner-down-right" size={12} color="#6B7280" style={{ marginRight: 4 }} />
+                                      <Text style={styles.replyButtonText}>Reply</Text>
+                                    </Pressable>
+                                  </View>
+                                </View>
+                              );
+                            })}
+                        </View>
+                      )}
                     </View>
                   );
                 })
@@ -373,11 +469,27 @@ export default function PostDetailScreen({
 
         </ScrollView>
 
+        {/* REPLYING TO BANNER */}
+        {replyingTo && (
+          <View style={styles.replyingToBanner}>
+            <View style={styles.replyingToLeft}>
+              <Feather name="corner-down-right" size={13} color="#5A5AD8" />
+              <Text style={styles.replyingToText}>
+                Replying to <Text style={styles.replyingToAuthor}>@{replyingTo.authorName}</Text>
+              </Text>
+            </View>
+            <Pressable onPress={handleCancelReply} hitSlop={8} style={styles.cancelReplyBtn}>
+              <Feather name="x" size={14} color="#6B7280" />
+            </Pressable>
+          </View>
+        )}
+
         {/* BOTTOM INPUT BAR */}
         <View style={styles.inputContainer}>
           <TextInput
+            ref={commentInputRef}
             style={styles.textInput}
-            placeholder="Add a supportive comment..."
+            placeholder={replyingTo ? `Reply to @${replyingTo.authorName}...` : "Add a supportive comment..."}
             placeholderTextColor="#A0A0B8"
             value={newComment}
             onChangeText={setNewComment}
@@ -772,5 +884,91 @@ const styles = StyleSheet.create({
   commentReportIcon: {
     fontSize: 12,
     opacity: 0.5,
+  },
+  replyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 16,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+  },
+  replyButtonText: {
+    fontFamily: 'Nunito',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6B7280',
+  },
+  repliesThreadContainer: {
+    marginLeft: 24,
+    paddingLeft: 12,
+    borderLeftWidth: 2,
+    borderLeftColor: '#E2E8F0',
+    marginTop: 12,
+    gap: 10,
+  },
+  replyCard: {
+    backgroundColor: '#F8F9FE',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#ECEFF6',
+  },
+  extraSmallAvatar: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#EDE8FF',
+  },
+  extraSmallAvatarEmoji: {
+    fontSize: 13,
+  },
+  replyAuthor: {
+    fontFamily: 'Nunito',
+    fontWeight: '700',
+    fontSize: 13,
+    color: '#3B3B4F',
+  },
+  replyContent: {
+    fontFamily: 'Nunito',
+    fontWeight: '500',
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#4B5563',
+    paddingLeft: 36,
+  },
+  replyActions: {
+    flexDirection: 'row',
+    paddingLeft: 36,
+    marginTop: 6,
+    alignItems: 'center',
+  },
+  replyingToBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    backgroundColor: '#F3F0FF',
+    borderTopWidth: 1,
+    borderTopColor: '#DDD6FE',
+  },
+  replyingToLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  replyingToText: {
+    fontFamily: 'Nunito',
+    fontSize: 12,
+    color: '#4B5563',
+  },
+  replyingToAuthor: {
+    fontWeight: '700',
+    color: '#5A5AD8',
+  },
+  cancelReplyBtn: {
+    padding: 4,
+    marginLeft: 8,
   },
 });
