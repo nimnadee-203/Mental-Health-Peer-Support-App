@@ -16,7 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { Post } from './GroupDiscussionScreen';
 
-import { API_BASE } from '../config/api';
+import { COMMUNITY_API_BASE } from '../config/api';
 import ReportModal from '../components/ReportModal';
 import { getAuthUserId } from '../api/authStore';
 import SharePostModal from '../components/SharePostModal';
@@ -88,7 +88,7 @@ export default function PostDetailScreen({
   const fetchComments = async () => {
     try {
       const encodedPostId = encodeURIComponent(post._id);
-      const response = await fetch(`${API_BASE}/comments/post/${encodedPostId}`);
+      const response = await fetch(`${COMMUNITY_API_BASE}/comments/post/${encodedPostId}`);
       if (!response.ok) throw new Error('Failed to fetch comments');
       const data: Comment[] = await response.json();
       setComments(data);
@@ -124,7 +124,7 @@ export default function PostDetailScreen({
 
     try {
       const encodedPostId = encodeURIComponent(post._id);
-      const response = await fetch(`${API_BASE}/comments/post/${encodedPostId}`, {
+      const response = await fetch(`${COMMUNITY_API_BASE}/comments/post/${encodedPostId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -174,7 +174,7 @@ export default function PostDetailScreen({
     
     try {
       const currentUserId = getAuthUserId() || 'mock-user-1';
-      const res = await fetch(`${API_BASE}/comments/${commentId}/like`, {
+      const res = await fetch(`${COMMUNITY_API_BASE}/comments/${commentId}/like`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: currentUserId }),

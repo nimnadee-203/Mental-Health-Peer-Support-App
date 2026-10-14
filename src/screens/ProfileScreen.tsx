@@ -19,6 +19,12 @@ import {
   getVolunteerStatus,
   VolunteerApplication,
 } from '../api/volunteerApi';
+import {
+  getFeelingEntries,
+  deleteFeelingEntry,
+  clearFeelingEntries,
+  FeelingEntry,
+} from '../api/feelingsStore';
 import { MessagingOption, UserProfile, VisibilityOption } from '../types/user';
 
 type ProfileScreenProps = {
@@ -29,7 +35,7 @@ type ProfileScreenProps = {
   onOpenAdminDashboard?: () => void;
 };
 
-const DEFAULT_INTERESTS = ['Anxiety support', 'Mindfulness', 'Daily journaling'];
+const DEFAULT_INTERESTS: string[] = ['Anxiety support', 'Mindfulness', 'Daily journaling'];
 
 function PencilIcon({ color = '#2563EB', size = 14 }: { color?: string; size?: number }) {
   return (
@@ -51,6 +57,21 @@ function PencilIcon({ color = '#2563EB', size = 14 }: { color?: string; size?: n
       />
     </View>
   );
+}
+
+function formatFeelingTime(dateStr: string) {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration, onOpenAdminDashboard }: ProfileScreenProps) {
@@ -88,6 +109,48 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration, o
   const [isSubmittingVolunteer, setIsSubmittingVolunteer] = useState(false);
   const [volunteerError, setVolunteerError] = useState<string | null>(null);
 
+  // Feeling & Mood History state
+  const [feelings, setFeelings] = useState<FeelingEntry[]>([]);
+  const [isLoadingFeelings, setIsLoadingFeelings] = useState(false);
+
+  const loadFeelings = useCallback(async () => {
+    try {
+      setIsLoadingFeelings(true);
+      const items = await getFeelingEntries();
+      setFeelings(items);
+    } catch (e) {
+      console.warn('Failed to load feeling entries:', e);
+    } finally {
+      setIsLoadingFeelings(false);
+    }
+  }, []);
+
+  const handleDeleteFeeling = async (id: string) => {
+    await deleteFeelingEntry(id);
+    setFeelings(prev => prev.filter(f => f.id !== id));
+  };
+
+  const handleClearFeelings = async () => {
+    if (typeof window !== 'undefined' && (window as any).confirm) {
+      if ((window as any).confirm('Are you sure you want to clear your mood history?')) {
+        await clearFeelingEntries();
+        setFeelings([]);
+      }
+      return;
+    }
+    Alert.alert('Clear Mood History', 'Are you sure you want to clear your mood check-in history?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Clear All',
+        style: 'destructive',
+        onPress: async () => {
+          await clearFeelingEntries();
+          setFeelings([]);
+        },
+      },
+    ]);
+  };
+
   const fetchProfile = useCallback(async () => {
     const currentUserId = getAuthUserId();
     setUserId(currentUserId);
@@ -110,6 +173,7 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration, o
       } catch {
         // Ignore if volunteer status fetch fails
       }
+      loadFeelings();
     } catch (err: any) {
       setError(err?.message || 'Failed to load profile.');
     } finally {
@@ -501,17 +565,92 @@ function ProfileScreen({ onBack, onNavigateToAuth, onLogout, onOpenModeration, o
               </View>
             ) : null}
 
-            {/* Recent Activity */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Recent Activity</Text>
-              <View style={styles.activityItem}>
-                <Text style={styles.activityTitle}>Shared a story</Text>
-                <Text style={styles.activityText}>A small win today</Text>
+            {/* ─── MOOD & FEELING JOURNEY ────────────────────────── */}
+            <View style={styles.section} testID="mood-history-section">
+              <View style={styles.sectionHeaderRow}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Feather name="activity" size={17} color="#5A5AD8" />
+                  <Text style={styles.sectionTitle}>Mood & Feeling Journey</Text>
+                </View>
+                {feelings.length > 0 && (
+                  <Pressable onPress={handleClearFeelings} hitSlop={8}>
+                    <Text style={styles.clearHistoryText}>Clear</Text>
+                  </Pressable>
+                )}
               </View>
-              <View style={styles.activityItem}>
-                <Text style={styles.activityTitle}>Supported a post</Text>
-                <Text style={styles.activityText}>Breathing through a difficult morning</Text>
-              </View>
+              <Text style={styles.sectionSubtitle}>
+                Your emotional check-in history and reflections
+              </Text>
+
+              {isLoadingFeelings ? (
+                <ActivityIndicator size="small" color="#5A5AD8" style={{ marginVertical: 12 }} />
+              ) : feelings.length === 0 ? (
+                <View style={styles.emptyFeelingsCard}>
+                  <Text style={styles.emptyFeelingsEmoji}>🌱</Text>
+                  <Text style={styles.emptyFeelingsTitle}>No feeling check-ins yet</Text>
+                  <Text style={styles.emptyFeelingsSub}>
+                    Check in how you are feeling from the Home screen or within your support circles to start tracking your mood journey here.
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.feelingsList}>
+                  {/* Stats Bar */}
+                  <View style={styles.feelingsStatsRow}>
+                    <View style={styles.feelingsStatPill}>
+                      <Text style={styles.feelingsStatPillNumber}>{feelings.length}</Text>
+                      <Text style={styles.feelingsStatPillLabel}>Check-in{feelings.length === 1 ? '' : 's'}</Text>
+                    </View>
+                    <View style={styles.feelingsLatestBadge}>
+                      <Text style={styles.feelingsLatestLabel}>Latest: </Text>
+                      <Text style={styles.feelingsLatestMood}>{feelings[0].mood}</Text>
+                      <Text style={styles.feelingsLatestTime}> · {formatFeelingTime(feelings[0].timestamp)}</Text>
+                    </View>
+                  </View>
+
+                  {/* Entry Cards */}
+                  {feelings.slice(0, 10).map(item => (
+                    <View key={item.id} style={styles.feelingItemCard}>
+                      <View style={styles.feelingItemTop}>
+                        <View style={[styles.feelingMoodTag, { backgroundColor: item.bg || '#EEF2FF', borderColor: item.border || '#C7D2FE' }]}>
+                          {item.icon ? (
+                            <Feather name={item.icon as any} size={14} color={item.iconColor || '#4F46E5'} style={{ marginRight: 4 }} />
+                          ) : item.emoji ? (
+                            <Text style={{ fontSize: 13, marginRight: 4 }}>{item.emoji}</Text>
+                          ) : null}
+                          <Text style={[styles.feelingMoodTagText, { color: item.text || '#3730A3' }]}>{item.mood}</Text>
+                        </View>
+
+                        {item.tag ? (
+                          <View style={styles.feelingFactorBadge}>
+                            <Text style={styles.feelingFactorText}>#{item.tag}</Text>
+                          </View>
+                        ) : null}
+
+                        <View style={{ flex: 1 }} />
+                        <Text style={styles.feelingTime}>{formatFeelingTime(item.timestamp)}</Text>
+                        <Pressable
+                          style={styles.deleteFeelingBtn}
+                          onPress={() => handleDeleteFeeling(item.id)}
+                          hitSlop={8}
+                        >
+                          <Feather name="trash-2" size={13} color="#94A3B8" />
+                        </Pressable>
+                      </View>
+
+                      {item.note ? (
+                        <Text style={styles.feelingNoteText}>"{item.note}"</Text>
+                      ) : null}
+
+                      {item.communityName ? (
+                        <View style={styles.feelingCommunityRow}>
+                          <Feather name="users" size={11} color="#94A3B8" />
+                          <Text style={styles.feelingCommunityName}>{item.communityName}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
 
             {/* Privacy Settings Section */}
@@ -1588,6 +1727,155 @@ const styles = StyleSheet.create({
     fontSize: 13,
     flex: 1,
     lineHeight: 18,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 12,
+  },
+  clearHistoryText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#94A3B8',
+  },
+  emptyFeelingsCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderStyle: 'dashed',
+    padding: 20,
+    alignItems: 'center',
+  },
+  emptyFeelingsEmoji: {
+    fontSize: 28,
+    marginBottom: 6,
+  },
+  emptyFeelingsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  emptyFeelingsSub: {
+    fontSize: 12,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  feelingsList: {
+    gap: 10,
+  },
+  feelingsStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 4,
+  },
+  feelingsStatPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  feelingsStatPillNumber: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#5A5AD8',
+  },
+  feelingsStatPillLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  feelingsLatestBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  feelingsLatestLabel: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  feelingsLatestMood: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#5A5AD8',
+  },
+  feelingsLatestTime: {
+    fontSize: 11,
+    color: '#94A3B8',
+  },
+  feelingItemCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 12,
+  },
+  feelingItemTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  feelingMoodTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  feelingMoodTagText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  feelingFactorBadge: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  feelingFactorText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  feelingTime: {
+    fontSize: 11,
+    color: '#94A3B8',
+    marginRight: 6,
+  },
+  deleteFeelingBtn: {
+    padding: 4,
+  },
+  feelingNoteText: {
+    fontSize: 13,
+    color: '#334155',
+    lineHeight: 18,
+    fontStyle: 'italic',
+    marginTop: 8,
+    paddingLeft: 4,
+  },
+  feelingCommunityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 6,
+    paddingLeft: 4,
+  },
+  feelingCommunityName: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '500',
   },
 });
 

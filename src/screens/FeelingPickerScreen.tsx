@@ -17,6 +17,7 @@ import { Feather } from '@expo/vector-icons';
 
 import { COMMUNITY_API_BASE } from '../config/api';
 import { getAuthToken, clearAuthSession } from '../api/authStore';
+import { saveFeelingEntry } from '../api/feelingsStore';
 import type { Community } from './GroupDiscussionScreen';
 
 // ─── Moods ────────────────────────────────────────────────────────────────────
@@ -42,6 +43,43 @@ const MOODS: {
   { icon: 'feather',       label: 'At peace',      bg: '#F0F9FF', border: '#7DD3FC', text: '#0C4A6E', iconColor: '#0EA5E9' },
 ];
 
+const FACTORS = [
+  'General Life',
+  'Studies & Exams',
+  'Relationships',
+  'Sleep & Rest',
+  'Physical Health',
+  'Work & Career',
+];
+
+function getMoodAffirmation(moodLabel: string): string {
+  switch (moodLabel.toLowerCase()) {
+    case 'happy':
+    case 'excited':
+      return 'Savor this positive energy and share your joy with others! ✨';
+    case 'calm':
+    case 'at peace':
+      return 'Enjoy this balanced state of tranquility and centeredness. 🌿';
+    case 'grateful':
+      return 'Gratitude nurtures a resilient, grounded heart. 💖';
+    case 'strong':
+      return 'Your resilience and inner courage will carry you through anything. 💪';
+    case 'anxious':
+      return 'Take three slow, gentle breaths. You are safe in this present moment. 🌊';
+    case 'frustrated':
+      return 'It is completely valid to feel upset. Give yourself space to decompress. 🕯️';
+    case 'sad':
+    case 'numb':
+      return 'It is okay not to be okay. Take things one small step at a time. 💙';
+    case 'tired':
+      return 'Rest is not a reward—it is a necessity. Be gentle with your body. 🌙';
+    case 'need support':
+      return 'Reaching out is a sign of strength. Your peer community is here for you. 🤝';
+    default:
+      return 'Honoring how you feel is the first step toward true well-being. 🌱';
+  }
+}
+
 interface FeelingPickerScreenProps {
   community: Community;
   onBack: () => void;
@@ -52,6 +90,7 @@ const REQUEST_TIMEOUT_MS = 10000;
 
 export default function FeelingPickerScreen({ community, onBack, onPostCreated }: FeelingPickerScreenProps) {
   const [selectedMood, setSelectedMood] = useState<typeof MOODS[0] | null>(null);
+  const [selectedFactor, setSelectedFactor] = useState<string>('General Life');
   const [note, setNote] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -72,9 +111,23 @@ export default function FeelingPickerScreen({ community, onBack, onPostCreated }
     const controller = new AbortController();
     const tid = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
+      // 1. Save to user's persistent profile feeling history
+      await saveFeelingEntry({
+        mood: selectedMood.label,
+        icon: selectedMood.icon,
+        bg: selectedMood.bg,
+        border: selectedMood.border,
+        text: selectedMood.text,
+        iconColor: selectedMood.iconColor,
+        note: note.trim(),
+        tag: selectedFactor,
+        communityName: community.name,
+      });
+
+      // 2. Share post to the community
       const content = note.trim()
-        ? `I'm feeling ${selectedMood.label}\n\n${note.trim()}`
-        : `I'm feeling ${selectedMood.label}`;
+        ? `I'm feeling ${selectedMood.label} (${selectedFactor})\n\n${note.trim()}`
+        : `I'm feeling ${selectedMood.label} (${selectedFactor})`;
 
       const res = await fetch(`${COMMUNITY_API_BASE}/posts/group/${encodeURIComponent(community._id)}`, {
         method: 'POST', signal: controller.signal,
@@ -117,7 +170,7 @@ export default function FeelingPickerScreen({ community, onBack, onPostCreated }
               ? <ActivityIndicator size="small" color="#FFF" />
               : <>
                   <Feather name="send" size={14} color={selectedMood ? '#FFF' : '#C0C0D8'} />
-                  <Text style={[s.postBtnText, !selectedMood && s.postBtnTextOff]}>Post</Text>
+                  <Text style={[s.postBtnText, !selectedMood && s.postBtnTextOff]}>Share</Text>
                 </>
             }
           </Pressable>
@@ -127,31 +180,42 @@ export default function FeelingPickerScreen({ community, onBack, onPostCreated }
 
           {/* ── PREVIEW ────────────────────────────────────── */}
           {selectedMood ? (
-            <Animated.View style={[s.previewCard, { backgroundColor: selectedMood.bg, borderColor: selectedMood.border, transform: [{ scale: scaleAnim }] }]}>
-              <View style={[s.previewIconBox, { backgroundColor: selectedMood.border + '40' }]}>
-                <Feather name={selectedMood.icon} size={28} color={selectedMood.iconColor} />
+            <View style={{ marginBottom: 20 }}>
+              <Animated.View style={[s.previewCard, { backgroundColor: selectedMood.bg, borderColor: selectedMood.border, transform: [{ scale: scaleAnim }] }]}>
+                <View style={[s.previewIconBox, { backgroundColor: selectedMood.border + '50' }]}>
+                  <Feather name={selectedMood.icon} size={28} color={selectedMood.iconColor} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.previewTopLabel}>Currently feeling</Text>
+                  <Text style={[s.previewMoodLabel, { color: selectedMood.text }]}>{selectedMood.label}</Text>
+                </View>
+                <Pressable style={s.clearBtn} onPress={() => setSelectedMood(null)}>
+                  <Feather name="x" size={14} color="#888" />
+                </Pressable>
+              </Animated.View>
+
+              {/* Affirmation / Insight Pill */}
+              <View style={s.affirmationBox}>
+                <Feather name="heart" size={13} color="#5A5AD8" style={{ marginTop: 2 }} />
+                <Text style={s.affirmationText}>{getMoodAffirmation(selectedMood.label)}</Text>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.previewTopLabel}>I'm feeling</Text>
-                <Text style={[s.previewMoodLabel, { color: selectedMood.text }]}>{selectedMood.label}</Text>
-              </View>
-              <Pressable style={s.clearBtn} onPress={() => setSelectedMood(null)}>
-                <Feather name="x" size={14} color="#888" />
-              </Pressable>
-            </Animated.View>
+            </View>
           ) : (
             <View style={s.placeholderCard}>
               <View style={s.placeholderIconBox}>
                 <Feather name="help-circle" size={28} color="#C0C0D4" />
               </View>
-              <Text style={s.placeholderText}>Choose a mood below</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={s.placeholderTitle}>Choose a feeling</Text>
+                <Text style={s.placeholderText}>Select an emotion below to reflect and log your check-in</Text>
+              </View>
             </View>
           )}
 
           {/* ── MOOD GRID ──────────────────────────────────── */}
           <View style={s.gridHeader}>
-            <Feather name="grid" size={11} color="#A0A0B8" />
-            <Text style={s.gridLabel}>SELECT YOUR MOOD</Text>
+            <Feather name="smile" size={12} color="#5A5AD8" />
+            <Text style={s.gridLabel}>CHOOSE YOUR FEELING</Text>
           </View>
 
           <View style={s.grid}>
@@ -170,15 +234,37 @@ export default function FeelingPickerScreen({ community, onBack, onPostCreated }
             })}
           </View>
 
+          {/* ── CONTRIBUTING FACTORS ────────────────────────── */}
+          <View style={s.sectionBlock}>
+            <View style={s.gridHeader}>
+              <Feather name="tag" size={12} color="#5A5AD8" />
+              <Text style={s.gridLabel}>WHAT'S INFLUENCING THIS?</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.factorRow}>
+              {FACTORS.map(factor => {
+                const isSel = selectedFactor === factor;
+                return (
+                  <Pressable
+                    key={factor}
+                    style={[s.factorPill, isSel && s.factorPillSel]}
+                    onPress={() => setSelectedFactor(factor)}
+                  >
+                    <Text style={[s.factorText, isSel && s.factorTextSel]}>{factor}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+
           {/* ── NOTE ───────────────────────────────────────── */}
           <View style={s.noteSection}>
             <View style={s.noteLabelRow}>
               <Feather name="edit-2" size={12} color="#6B6B80" />
-              <Text style={s.noteLabel}>Add a note (optional)</Text>
+              <Text style={s.noteLabel}>Add a reflection note (optional)</Text>
             </View>
             <TextInput
               style={s.noteInput}
-              placeholder="Want to share more about how you're feeling?"
+              placeholder="What thoughts or experiences are on your mind?"
               placeholderTextColor="#C0C0D4"
               multiline
               textAlignVertical="top"
@@ -189,14 +275,22 @@ export default function FeelingPickerScreen({ community, onBack, onPostCreated }
             <Text style={s.charCount}>{note.length}/300</Text>
           </View>
 
+          {/* ── PROFILE SYNC BANNER ────────────────────────── */}
+          <View style={s.historySyncBanner}>
+            <Feather name="bookmark" size={14} color="#059669" />
+            <Text style={s.historySyncText}>
+              This check-in will be automatically saved to your <Text style={{ fontWeight: '700' }}>Profile Mood Journey</Text>.
+            </Text>
+          </View>
+
           {/* ── ANONYMOUS TOGGLE ───────────────────────────── */}
           <Pressable style={s.anonCard} onPress={() => setIsAnonymous(v => !v)}>
             <View style={[s.anonIconBox, { backgroundColor: isAnonymous ? '#EDE8FF' : '#F2F3F8' }]}>
               <Feather name={isAnonymous ? 'eye-off' : 'eye'} size={18} color={isAnonymous ? '#7C67D6' : '#9CA3AF'} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.anonTitle}>{isAnonymous ? 'Posting anonymously' : 'Posting as yourself'}</Text>
-              <Text style={s.anonSub}>{isAnonymous ? 'Your identity is hidden' : 'Your name will be visible'}</Text>
+              <Text style={s.anonTitle}>{isAnonymous ? 'Share in circle anonymously' : 'Share in circle as yourself'}</Text>
+              <Text style={s.anonSub}>{isAnonymous ? 'Other members will see Anonymous Member' : 'Your name will be visible to peers'}</Text>
             </View>
             <View style={[s.toggle, isAnonymous && s.toggleOn]}>
               <View style={[s.toggleThumb, isAnonymous && s.toggleThumbOn]} />
@@ -211,7 +305,7 @@ export default function FeelingPickerScreen({ community, onBack, onPostCreated }
 }
 
 const s = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F5FA' },
+  safeArea: { flex: 1, backgroundColor: '#F8F9FD' },
 
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#F0F1F8', gap: 12 },
   backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F2F3F8', alignItems: 'center', justifyContent: 'center' },
@@ -225,28 +319,95 @@ const s = StyleSheet.create({
   scroll: { paddingHorizontal: 16, paddingTop: 18, paddingBottom: 32 },
 
   // Preview
-  previewCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, borderWidth: 1.5, padding: 16, marginBottom: 24, gap: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
-  previewIconBox: { width: 56, height: 56, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  previewTopLabel: { fontSize: 11, color: '#9CA3AF', fontWeight: '600', marginBottom: 2 },
+  previewCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, borderWidth: 1.5, padding: 16, gap: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  previewIconBox: { width: 54, height: 54, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  previewTopLabel: { fontSize: 11, color: '#6B7280', fontWeight: '600', marginBottom: 2 },
   previewMoodLabel: { fontSize: 22, fontWeight: '900', letterSpacing: -0.4 },
   clearBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.07)', alignItems: 'center', justifyContent: 'center' },
-  placeholderCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1.5, borderColor: '#E8EAEF', borderStyle: 'dashed', paddingVertical: 22, paddingHorizontal: 20, marginBottom: 24 },
-  placeholderIconBox: { width: 52, height: 52, borderRadius: 14, backgroundColor: '#F5F5FA', alignItems: 'center', justifyContent: 'center' },
-  placeholderText: { fontSize: 14, color: '#B0B0C8', fontWeight: '600' },
+  
+  affirmationBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#F3F0FF',
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 10,
+  },
+  affirmationText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#4338CA',
+    fontWeight: '600',
+  },
+
+  placeholderCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1.5, borderColor: '#E8EAEF', borderStyle: 'dashed', paddingVertical: 20, paddingHorizontal: 18, marginBottom: 22 },
+  placeholderIconBox: { width: 48, height: 48, borderRadius: 14, backgroundColor: '#F5F5FA', alignItems: 'center', justifyContent: 'center' },
+  placeholderTitle: { fontSize: 15, fontWeight: '700', color: '#1E293B', marginBottom: 2 },
+  placeholderText: { fontSize: 12, color: '#94A3B8', fontWeight: '500', lineHeight: 17 },
 
   // Grid
-  gridHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
-  gridLabel: { fontSize: 10, fontWeight: '900', color: '#A0A0B8', letterSpacing: 1 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 28 },
-  moodChip: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 24, borderWidth: 1.5, backgroundColor: '#F8F9FC', borderColor: '#E8EAEF' },
-  moodLabel: { fontSize: 13, fontWeight: '600', color: '#8080A0' },
+  gridHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  gridLabel: { fontSize: 11, fontWeight: '900', color: '#64748B', letterSpacing: 0.8 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+  moodChip: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 24, borderWidth: 1.5, backgroundColor: '#FFFFFF', borderColor: '#E8EAEF' },
+  moodLabel: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+
+  // Factors
+  sectionBlock: { marginBottom: 20 },
+  factorRow: { flexDirection: 'row', gap: 8, paddingVertical: 4 },
+  factorPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+  },
+  factorPillSel: {
+    backgroundColor: '#5A5AD8',
+    borderColor: '#5A5AD8',
+  },
+  factorText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  factorTextSel: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
 
   // Note
-  noteSection: { marginBottom: 16 },
+  noteSection: { marginBottom: 14 },
   noteLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   noteLabel: { fontSize: 12, fontWeight: '700', color: '#4A4A65', letterSpacing: 0.1 },
-  noteInput: { backgroundColor: '#FFFFFF', borderRadius: 14, borderWidth: 1.5, borderColor: '#E8EAEF', padding: 14, minHeight: 100, fontSize: 14, color: '#2D2D3A', lineHeight: 22 },
+  noteInput: { backgroundColor: '#FFFFFF', borderRadius: 14, borderWidth: 1.5, borderColor: '#E8EAEF', padding: 14, minHeight: 90, fontSize: 14, color: '#2D2D3A', lineHeight: 22 },
   charCount: { fontSize: 11, color: '#C0C0D4', fontWeight: '500', textAlign: 'right', marginTop: 6 },
+
+  // Sync banner
+  historySyncBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginBottom: 16,
+  },
+  historySyncText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#065F46',
+    fontWeight: '500',
+  },
 
   // Anonymous
   anonCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#ECEEF8', gap: 12 },
@@ -258,3 +419,4 @@ const s = StyleSheet.create({
   toggleThumb: { width: 19, height: 19, borderRadius: 10, backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 2, elevation: 2 },
   toggleThumbOn: { alignSelf: 'flex-end' },
 });
+

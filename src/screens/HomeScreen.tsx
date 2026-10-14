@@ -14,6 +14,7 @@ import { UserProfile } from '../types/user';
 import { ResourceArticle, resourceArticles } from '../types/ResourceArticle';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Feather } from '@expo/vector-icons';
+import { saveFeelingEntry } from '../api/feelingsStore';
 
 export interface AppNotification {
   id: string;
@@ -227,6 +228,12 @@ export default function HomeScreen({
       setLoggedMoods(prev => [...prev, moodLabel]);
     }
     setToastMessage(`Checked in as ${moodLabel} ${emoji}`);
+    saveFeelingEntry({
+      mood: moodLabel,
+      emoji: emoji,
+      note: 'Daily check-in from Home',
+      tag: 'Daily Check-in',
+    }).catch(() => {});
   };
 
   const toggleGroupJoin = (groupName: string) => {
