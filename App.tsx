@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, BackHandler, Pressable, StatusBar, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { Alert, BackHandler, Platform, Pressable, StatusBar, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -37,7 +37,7 @@ import EmergencySupportScreen from './src/screens/EmergencySupportScreen';
 import MessagesScreen, { Conversation } from './src/screens/MessagesScreen';
 import ChatScreen from './src/screens/ChatScreen';
 import { API_BASE, COMMUNITY_API_BASE } from './src/config/api';
-import { getAuthRole, getAuthUserId, setAuthUserId, loadAuthSession } from './src/api/authStore';
+import { getAuthRole, getAuthUserId, setAuthUserId, loadAuthSession, clearAuthSession } from './src/api/authStore';
 import {
   createResource as createResourceRequest,
   getResources,
@@ -919,9 +919,9 @@ function App() {
               getAuthRole() === 'admin' ? () => setActiveScreen('adminDashboard') : undefined
             }
             onLogout={() => {
-              setAuthUserId(null);
+              clearAuthSession();
               setJoinedGroupIds([]);
-              setActiveScreen('auth');
+              setActiveScreen('welcome');
               setActiveTab('Home');
             }}
           />
@@ -968,6 +968,18 @@ function App() {
   ]);
 
   const handleSplashFinish = useCallback(async () => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const forced = params.get('screen');
+      if (forced === 'welcome' || forced === 'auth') {
+        const mode = params.get('mode');
+        if (mode === 'signup' || mode === 'login' || mode === 'resetPassword') {
+          setAuthInitialMode(mode);
+        }
+        setActiveScreen(forced as AppScreen);
+        return;
+      }
+    }
     const hasSession = await loadAuthSession();
     setActiveScreen(hasSession ? 'home' : 'welcome');
   }, []);
@@ -993,6 +1005,7 @@ function App() {
         />
       ) : activeScreen === 'auth' ? (
         <AuthScreen
+          key={authInitialMode}
           initialMode={authInitialMode}
           onBack={() => setActiveScreen('welcome')}
           onAuthenticated={isSignup =>

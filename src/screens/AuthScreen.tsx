@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -34,7 +34,7 @@ interface FieldErrors {
 const API_BASE_URL = AUTH_BASE;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function AuthScreen({
+export default function AuthScreen({
   initialMode = 'login',
   onBack,
   onAuthenticated,
@@ -48,6 +48,13 @@ function AuthScreen({
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    setMode(initialMode);
+    setFieldErrors({});
+    setErrorMessage('');
+    setSuccessMessage('');
+  }, [initialMode]);
 
   const isSignup = mode === 'signup';
   const isReset = mode === 'resetPassword';
@@ -101,36 +108,38 @@ function AuthScreen({
       setIsSubmitting(true);
       setTimeout(() => {
         setIsSubmitting(false);
-        setSuccessMessage(`Reset link sent! Please check ${email.trim()} for instructions.`);
-        Alert.alert(
-          'Reset Link Sent 📬',
-          `We have sent a password reset link to ${email.trim()}. Please check your inbox.`,
-          [{ text: 'Return to Sign In', onPress: () => handleToggleMode('login') }]
-        );
-      }, 700);
+        setSuccessMessage('Password reset link sent to your email.');
+      }, 900);
       return;
     }
 
     setIsSubmitting(true);
+    const endpoint = isSignup ? '/api/auth/register' : '/api/auth/login';
+
+    const payload = isSignup
+      ? {
+          name: fullName.trim(),
+          email: email.trim().toLowerCase(),
+          password,
+        }
+      : {
+          email: email.trim().toLowerCase(),
+          password,
+        };
+
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/auth/${isSignup ? 'signup' : 'login'}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            fullName: fullName.trim(),
-            email: email.trim(),
-            password,
-          }),
-          signal: controller.signal,
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
         },
-      );
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
 
       const result = await response.json();
 
@@ -165,7 +174,6 @@ function AuthScreen({
   };
 
   const handleGoogleSignIn = () => {
-    // Demo Google Sign In
     Alert.alert(
       'Continue with Google',
       'Signing in with Google Account...',
@@ -181,22 +189,26 @@ function AuthScreen({
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.keyboardView}
-      >
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+    <View style={styles.webOuter}>
+      <SafeAreaView style={styles.screen}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.keyboardContainer}
         >
-          {/* Top Row / Back Button for Signup & Reset */}
-          {(isSignup || isReset) && (
+          <ScrollView
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            {/* Top Navigation Row */}
             <View style={styles.topBar}>
               <Pressable
                 accessibilityLabel="Back"
-                style={styles.backButton}
+                style={({ pressed }) => [
+                  styles.backButton,
+                  pressed && styles.backButtonPressed,
+                ]}
                 onPress={() => {
                   if (isReset) {
                     handleToggleMode('login');
@@ -207,447 +219,550 @@ function AuthScreen({
                   }
                 }}
               >
-                <Feather name="chevron-left" size={24} color="#1E2432" />
+                <Feather name="chevron-left" size={24} color="#1E232C" />
               </Pressable>
             </View>
-          )}
 
-          {/* Reset Password Icon Box */}
-          {isReset && (
-            <View style={styles.mailIconBox}>
-              <Feather name="mail" size={26} color="#2563EB" />
-            </View>
-          )}
-
-          {/* Hero Illustration for Sign In Mode */}
-          {mode === 'login' && (
-            <View style={styles.illustrationContainer}>
-              <Image
-                source={require('../assets/signin-hero.png')}
-                style={styles.signinHero}
-                resizeMode="contain"
-              />
-            </View>
-          )}
-
-          {/* Header Title & Subtitle */}
-          <View style={styles.header}>
-            <Text style={styles.title}>
-              {isReset
-                ? 'Reset password'
-                : isSignup
-                ? 'Create your account'
-                : 'Welcome back'}
-            </Text>
-            <Text style={styles.helperText}>
-              {isReset
-                ? "Enter the email address linked to your account and we'll send you a reset link."
-                : isSignup
-                ? 'You deserve a place to feel heard.'
-                : "We're glad to see you again."}
-            </Text>
-          </View>
-
-          {/* Form Fields */}
-          <View style={styles.form}>
-            {/* Display Name (Only in Signup) */}
-            {isSignup && (
-              <View style={styles.field}>
-                <Text style={styles.label}>Display name</Text>
-                <TextInput
-                  autoCapitalize="words"
-                  placeholder="How should we call you?"
-                  placeholderTextColor="#9CA3AF"
-                  style={[
-                    styles.input,
-                    fieldErrors.fullName ? styles.inputError : null,
-                  ]}
-                  value={fullName}
-                  onChangeText={text => {
-                    setFullName(text);
-                    if (fieldErrors.fullName) {
-                      setFieldErrors(prev => ({ ...prev, fullName: undefined }));
-                    }
-                  }}
-                  testID="signup-name-input"
-                />
-                {fieldErrors.fullName ? (
-                  <Text style={styles.fieldErrorText}>
-                    {fieldErrors.fullName}
-                  </Text>
-                ) : null}
+            {/* Reset Password Icon Badge */}
+            {isReset && (
+              <View style={styles.mailIconBox}>
+                <Feather name="mail" size={26} color="#2563EB" />
               </View>
             )}
 
-            {/* Email Field */}
-            <View style={styles.field}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                autoCapitalize="none"
-                autoCorrect={false}
-                inputMode="email"
-                keyboardType="email-address"
-                placeholder="you@example.com"
-                placeholderTextColor="#9CA3AF"
-                style={[
-                  styles.input,
-                  fieldErrors.email ? styles.inputError : null,
-                ]}
-                value={email}
-                onChangeText={text => {
-                  setEmail(text);
-                  if (fieldErrors.email) {
-                    setFieldErrors(prev => ({ ...prev, email: undefined }));
-                  }
-                }}
-                testID="auth-email-input"
-              />
-              {fieldErrors.email ? (
-                <Text style={styles.fieldErrorText}>{fieldErrors.email}</Text>
-              ) : null}
+            {/* Hero Illustration for Sign In (Welcome Back) */}
+            {mode === 'login' && (
+              <View style={styles.illustrationContainer}>
+                <Image
+                  source={require('../assets/signin-hero.png')}
+                  style={styles.signinHero}
+                  resizeMode="contain"
+                />
+              </View>
+            )}
+
+            {/* Header Titles */}
+            <View style={styles.header}>
+              <Text style={styles.title}>
+                {isReset
+                  ? 'Reset password'
+                  : isSignup
+                  ? 'Create your account'
+                  : 'Welcome back'}
+              </Text>
+              <Text style={styles.helperText}>
+                {isReset
+                  ? "Enter the email address linked to your account and we'll send you a reset link."
+                  : isSignup
+                  ? 'You deserve a place to feel heard.'
+                  : "We're glad to see you again."}
+              </Text>
             </View>
 
-            {/* Password Field (Only in Login & Signup) */}
-            {!isReset && (
-              <View style={styles.field}>
-                <Text style={styles.label}>Password</Text>
-                <View
-                  style={[
-                    styles.passwordContainer,
-                    fieldErrors.password ? styles.inputError : null,
-                  ]}
-                >
+            {/* Input Form */}
+            <View style={styles.form}>
+              {/* Display Name (Only in Signup) */}
+              {isSignup && (
+                <View style={styles.field}>
+                  <Text style={styles.label}>Display name</Text>
                   <TextInput
-                    placeholder={
-                      isSignup ? 'Create a password' : 'Your password'
-                    }
-                    placeholderTextColor="#9CA3AF"
-                    secureTextEntry={!showPassword}
-                    style={styles.passwordInput}
-                    value={password}
+                    autoCapitalize="words"
+                    placeholder="How should we call you?"
+                    placeholderTextColor="#94A3B8"
+                    style={[
+                      styles.input,
+                      fieldErrors.fullName ? styles.inputError : null,
+                    ]}
+                    value={fullName}
                     onChangeText={text => {
-                      setPassword(text);
-                      if (fieldErrors.password) {
-                        setFieldErrors(prev => ({ ...prev, password: undefined }));
+                      setFullName(text);
+                      if (fieldErrors.fullName) {
+                        setFieldErrors(prev => ({ ...prev, fullName: undefined }));
                       }
                     }}
-                    testID="auth-password-input"
+                    testID="signup-name-input"
                   />
-                  <Pressable
-                    style={styles.eyeButton}
-                    onPress={() => setShowPassword(prev => !prev)}
-                    hitSlop={8}
-                  >
-                    <Feather
-                      name={showPassword ? 'eye' : 'eye-off'}
-                      size={18}
-                      color="#8A94A6"
-                    />
-                  </Pressable>
+                  {fieldErrors.fullName ? (
+                    <Text style={styles.fieldErrorText}>{fieldErrors.fullName}</Text>
+                  ) : null}
                 </View>
-                {fieldErrors.password ? (
-                  <Text style={styles.fieldErrorText}>
-                    {fieldErrors.password}
-                  </Text>
+              )}
+
+              {/* Email Address */}
+              <View style={styles.field}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  placeholder="you@example.com"
+                  placeholderTextColor="#94A3B8"
+                  style={[
+                    styles.input,
+                    fieldErrors.email ? styles.inputError : null,
+                  ]}
+                  value={email}
+                  onChangeText={text => {
+                    setEmail(text);
+                    if (fieldErrors.email) {
+                      setFieldErrors(prev => ({ ...prev, email: undefined }));
+                    }
+                  }}
+                  testID="auth-email-input"
+                />
+                {fieldErrors.email ? (
+                  <Text style={styles.fieldErrorText}>{fieldErrors.email}</Text>
                 ) : null}
               </View>
-            )}
 
-            {/* Forgot Password Link in Login Mode */}
-            {mode === 'login' && (
-              <Pressable
-                style={styles.forgotPasswordButton}
-                onPress={() => handleToggleMode('resetPassword')}
-                hitSlop={6}
-              >
-                <Text style={styles.forgotPasswordText}>Forgot password?</Text>
-              </Pressable>
-            )}
-
-            {/* Error & Success Messages */}
-            {errorMessage ? (
-              <Text accessibilityRole="alert" style={styles.errorText}>
-                {errorMessage}
-              </Text>
-            ) : null}
-
-            {successMessage ? (
-              <Text accessibilityRole="alert" style={styles.successText}>
-                {successMessage}
-              </Text>
-            ) : null}
-
-            {/* Primary Action Button */}
-            <Pressable
-              accessibilityRole="button"
-              disabled={isSubmitting}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                isSubmitting && styles.primaryButtonDisabled,
-                pressed && !isSubmitting && styles.primaryButtonPressed,
-              ]}
-              onPress={handleSubmit}
-              testID="auth-submit-button"
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color="#1E2432" />
-              ) : (
-                <Text style={styles.primaryButtonText}>
-                  {isReset
-                    ? 'Send Reset Link'
-                    : isSignup
-                    ? 'Create Account'
-                    : 'Sign In'}
-                </Text>
-              )}
-            </Pressable>
-
-            {/* Social Divider & Google Button (Login & Signup) */}
-            {!isReset && (
-              <>
-                <View style={styles.dividerRow}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>or</Text>
-                  <View style={styles.dividerLine} />
+              {/* Password Field (Only in Login & Signup) */}
+              {!isReset && (
+                <View style={styles.field}>
+                  <Text style={styles.label}>Password</Text>
+                  <View
+                    style={[
+                      styles.passwordContainer,
+                      fieldErrors.password ? styles.inputError : null,
+                    ]}
+                  >
+                    <TextInput
+                      placeholder={
+                        isSignup ? 'Create a password' : 'Your password'
+                      }
+                      placeholderTextColor="#94A3B8"
+                      secureTextEntry={!showPassword}
+                      style={styles.passwordInput}
+                      value={password}
+                      onChangeText={text => {
+                        setPassword(text);
+                        if (fieldErrors.password) {
+                          setFieldErrors(prev => ({ ...prev, password: undefined }));
+                        }
+                      }}
+                      testID="auth-password-input"
+                    />
+                    <Pressable
+                      style={styles.eyeButton}
+                      onPress={() => setShowPassword(prev => !prev)}
+                      hitSlop={10}
+                    >
+                      <Feather
+                        name={showPassword ? 'eye' : 'eye-off'}
+                        size={19}
+                        color="#8A94A6"
+                      />
+                    </Pressable>
+                  </View>
+                  {fieldErrors.password ? (
+                    <Text style={styles.fieldErrorText}>
+                      {fieldErrors.password}
+                    </Text>
+                  ) : null}
                 </View>
+              )}
 
+              {/* Forgot Password Link in Login Mode */}
+              {mode === 'login' && (
                 <Pressable
-                  style={({ pressed }) => [
-                    styles.googleButton,
-                    pressed && styles.googleButtonPressed,
-                  ]}
-                  onPress={handleGoogleSignIn}
+                  style={styles.forgotPasswordButton}
+                  onPress={() => handleToggleMode('resetPassword')}
+                  hitSlop={8}
                 >
-                  <Image
-                    source={require('../assets/google-icon.png')}
-                    style={styles.googleIcon}
-                    resizeMode="contain"
-                  />
-                  <Text style={styles.googleButtonText}>
-                    Continue with Google
+                  <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+                </Pressable>
+              )}
+
+              {/* Error & Success Messages */}
+              {errorMessage ? (
+                <View style={styles.alertCardError}>
+                  <Text accessibilityRole="alert" style={styles.errorText}>
+                    {errorMessage}
                   </Text>
-                </Pressable>
-              </>
-            )}
-          </View>
+                </View>
+              ) : null}
 
-          {/* Footer Navigation */}
-          <View style={styles.footer}>
-            {isReset ? (
-              <View style={styles.footerRow}>
-                <Text style={styles.footerText}>Remembered it? </Text>
-                <Pressable
-                  onPress={() => handleToggleMode('login')}
-                  testID="auth-toggle-mode-button"
-                >
-                  <Text style={styles.footerLink}>Sign In</Text>
-                </Pressable>
-              </View>
-            ) : isSignup ? (
-              <View style={styles.footerRow}>
-                <Text style={styles.footerText}>Already have an account? </Text>
-                <Pressable
-                  onPress={() => handleToggleMode('login')}
-                  testID="auth-toggle-mode-button"
-                >
-                  <Text style={styles.footerLink}>Sign In</Text>
-                </Pressable>
-              </View>
-            ) : (
-              <View style={styles.footerRow}>
-                <Text style={styles.footerText}>Don't have an account? </Text>
-                <Pressable
-                  onPress={() => handleToggleMode('signup')}
-                  testID="auth-toggle-mode-button"
-                >
-                  <Text style={styles.footerLink}>Sign Up</Text>
-                </Pressable>
-              </View>
-            )}
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+              {successMessage ? (
+                <View style={styles.alertCardSuccess}>
+                  <Text accessibilityRole="alert" style={styles.successText}>
+                    {successMessage}
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* Primary Action Button */}
+              <Pressable
+                accessibilityRole="button"
+                disabled={isSubmitting}
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  isSubmitting && styles.primaryButtonDisabled,
+                  pressed && !isSubmitting && styles.primaryButtonPressed,
+                ]}
+                onPress={handleSubmit}
+                testID="auth-submit-button"
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color="#1E293B" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>
+                    {isReset
+                      ? 'Send Reset Link'
+                      : isSignup
+                      ? 'Create Account'
+                      : 'Sign In'}
+                  </Text>
+                )}
+              </Pressable>
+
+              {/* Divider & Google Button (Login & Signup) */}
+              {!isReset && (
+                <>
+                  <View style={styles.dividerRow}>
+                    <View style={styles.dividerLine} />
+                    <Text style={styles.dividerText}>or</Text>
+                    <View style={styles.dividerLine} />
+                  </View>
+
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.googleButton,
+                      pressed && styles.googleButtonPressed,
+                    ]}
+                    onPress={handleGoogleSignIn}
+                  >
+                    <Image
+                      source={require('../assets/google-icon.png')}
+                      style={styles.googleIcon}
+                      resizeMode="contain"
+                    />
+                    <Text style={styles.googleButtonText}>
+                      Continue with Google
+                    </Text>
+                  </Pressable>
+                </>
+              )}
+            </View>
+
+            {/* Footer Links */}
+            <View style={styles.footer}>
+              {isReset ? (
+                <View style={styles.footerRow}>
+                  <Text style={styles.footerText}>Remembered it? </Text>
+                  <Pressable
+                    onPress={() => handleToggleMode('login')}
+                    testID="auth-toggle-mode-button"
+                    hitSlop={8}
+                  >
+                    <Text style={styles.footerLink}>Sign In</Text>
+                  </Pressable>
+                </View>
+              ) : isSignup ? (
+                <View style={styles.footerRow}>
+                  <Text style={styles.footerText}>Already have an account? </Text>
+                  <Pressable
+                    onPress={() => handleToggleMode('login')}
+                    testID="auth-toggle-mode-button"
+                    hitSlop={8}
+                  >
+                    <Text style={styles.footerLink}>Sign In</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <View style={styles.footerRow}>
+                  <Text style={styles.footerText}>Don't have an account? </Text>
+                  <Pressable
+                    onPress={() => handleToggleMode('signup')}
+                    testID="auth-toggle-mode-button"
+                    hitSlop={8}
+                  >
+                    <Text style={styles.footerLink}>Sign Up</Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  webOuter: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    minHeight: Platform.OS === 'web' ? ('100vh' as any) : '100%',
+  },
   screen: {
     flex: 1,
+    width: '100%',
+    maxWidth: 440,
     backgroundColor: '#FFFFFF',
+    ...Platform.select({
+      web: {
+        minHeight: '100vh' as any,
+        borderLeftWidth: 1,
+        borderRightWidth: 1,
+        borderColor: '#E2E8F0',
+        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.05)',
+      },
+      default: {},
+    }),
   },
-  keyboardView: {
+  keyboardContainer: {
     flex: 1,
   },
   content: {
     flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 28,
-    justifyContent: 'space-between',
+    paddingHorizontal: 28,
+    paddingTop: 16,
+    paddingBottom: 36,
   },
   topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
+    height: 48,
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   backButton: {
-    width: 44,
-    height: 44,
+    width: 42,
+    height: 42,
     borderRadius: 12,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#EDF0F5',
+    borderColor: '#E8ECF4',
     alignItems: 'center',
     justifyContent: 'center',
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+      },
+      default: {},
+    }),
+  },
+  backButtonPressed: {
+    backgroundColor: '#F1F5F9',
   },
   mailIconBox: {
     width: 56,
     height: 56,
-    borderRadius: 18,
+    borderRadius: 16,
     backgroundColor: '#DBEAFE',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 18,
-    marginBottom: 6,
+    marginTop: 8,
+    marginBottom: 20,
   },
   illustrationContainer: {
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
-    marginBottom: 4,
+    marginBottom: 12,
+    marginTop: 4,
   },
   signinHero: {
     width: 290,
-    height: 220,
+    height: 210,
   },
   header: {
-    marginTop: 14,
-    marginBottom: 20,
+    marginBottom: 24,
   },
   title: {
-    color: '#1E2432',
     fontSize: 28,
     fontWeight: '800',
-    letterSpacing: -0.5,
+    color: '#1E232C',
+    letterSpacing: -0.4,
+    marginBottom: 8,
   },
   helperText: {
-    color: '#64748B',
-    fontSize: 14.5,
-    lineHeight: 21,
-    marginTop: 6,
+    fontSize: 15,
+    color: '#6A707C',
+    lineHeight: 22,
   },
   form: {
-    gap: 16,
+    width: '100%',
   },
   field: {
-    gap: 6,
+    marginBottom: 16,
   },
   label: {
-    color: '#1E2432',
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1E232C',
+    marginBottom: 8,
   },
   input: {
-    height: 50,
+    height: 52,
+    backgroundColor: '#F7F8F9',
+    borderWidth: 1,
+    borderColor: '#E8ECF4',
     borderRadius: 12,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1.2,
-    borderColor: '#EDF0F5',
     paddingHorizontal: 16,
-    fontSize: 14.5,
-    color: '#1E2432',
+    fontSize: 15,
+    color: '#1E232C',
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none' as any,
+      },
+      default: {},
+    }),
+  },
+  inputError: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+  },
+  fieldErrorText: {
+    fontSize: 12.5,
+    color: '#EF4444',
+    marginTop: 5,
+    marginLeft: 4,
   },
   passwordContainer: {
-    height: 50,
+    height: 52,
+    backgroundColor: '#F7F8F9',
+    borderWidth: 1,
+    borderColor: '#E8ECF4',
     borderRadius: 12,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1.2,
-    borderColor: '#EDF0F5',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
   },
   passwordInput: {
     flex: 1,
+    fontSize: 15,
+    color: '#1E232C',
     height: '100%',
-    fontSize: 14.5,
-    color: '#1E2432',
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none' as any,
+      },
+      default: {},
+    }),
   },
   eyeButton: {
     padding: 6,
-    marginLeft: 6,
-  },
-  inputError: {
-    borderColor: '#EF4444',
-  },
-  fieldErrorText: {
-    color: '#EF4444',
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 2,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+      },
+      default: {},
+    }),
   },
   forgotPasswordButton: {
     alignSelf: 'flex-end',
-    marginTop: -4,
+    marginTop: 2,
+    marginBottom: 22,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+      },
+      default: {},
+    }),
   },
   forgotPasswordText: {
-    color: '#64748B',
-    fontSize: 13,
+    color: '#6A707C',
+    fontSize: 13.5,
+    fontWeight: '600',
+  },
+  alertCardError: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 13.5,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  alertCardSuccess: {
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+  },
+  successText: {
+    color: '#065F46',
+    fontSize: 13.5,
+    textAlign: 'center',
     fontWeight: '600',
   },
   primaryButton: {
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#A8E4D8',
+    width: '100%',
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#A3E7D3',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 6,
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 2,
+    marginTop: 8,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+        boxShadow: '0 6px 14px rgba(163, 231, 211, 0.45)',
+        transition: 'all 0.15s ease-in-out',
+      },
+      default: {
+        shadowColor: '#10B981',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        elevation: 3,
+      },
+    }),
+  },
+  primaryButtonPressed: {
+    backgroundColor: '#90DEC8',
+    transform: [{ scale: 0.99 }],
   },
   primaryButtonDisabled: {
     opacity: 0.65,
   },
-  primaryButtonPressed: {
-    backgroundColor: '#95D6C9',
-    transform: [{ scale: 0.99 }],
-  },
   primaryButtonText: {
-    color: '#1E2432',
+    color: '#1E293B',
     fontSize: 16,
     fontWeight: '700',
+    letterSpacing: 0.2,
   },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 4,
+    marginVertical: 22,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#EDF0F5',
+    backgroundColor: '#E8ECF4',
   },
   dividerText: {
-    paddingHorizontal: 12,
-    color: '#94A3B8',
-    fontSize: 13,
+    color: '#9CA3AF',
+    fontSize: 13.5,
     fontWeight: '500',
+    marginHorizontal: 16,
   },
   googleButton: {
-    height: 50,
-    borderRadius: 25,
+    width: '100%',
+    height: 52,
+    borderRadius: 26,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1.2,
-    borderColor: '#E2E8F0',
+    borderWidth: 1,
+    borderColor: '#E8ECF4',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+        transition: 'all 0.15s ease-in-out',
+      },
+      default: {},
+    }),
   },
   googleButtonPressed: {
     backgroundColor: '#F8FAFC',
@@ -655,35 +770,18 @@ const styles = StyleSheet.create({
   googleIcon: {
     width: 20,
     height: 20,
+    marginRight: 10,
   },
   googleButtonText: {
-    color: '#1E2432',
+    color: '#1E232C',
     fontSize: 15,
     fontWeight: '600',
   },
-  errorText: {
-    color: '#DC2626',
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FCA5A5',
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  successText: {
-    color: '#065F46',
-    backgroundColor: '#ECFDF5',
-    borderColor: '#A7F3D0',
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 13,
-    textAlign: 'center',
-  },
   footer: {
-    marginTop: 24,
+    marginTop: 32,
+    marginBottom: 16,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   footerRow: {
     flexDirection: 'row',
@@ -691,15 +789,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   footerText: {
-    color: '#8A94A6',
-    fontSize: 13.5,
+    color: '#6A707C',
+    fontSize: 14,
   },
   footerLink: {
-    color: '#1E2432',
-    fontSize: 13.5,
+    color: '#1E232C',
+    fontSize: 14,
     fontWeight: '700',
     textDecorationLine: 'underline',
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+      },
+      default: {},
+    }),
   },
 });
-
-export default AuthScreen;
