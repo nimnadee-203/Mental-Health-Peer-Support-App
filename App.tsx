@@ -561,16 +561,59 @@ function App() {
     // Backend update
     if (userId) {
       try {
-        await fetch(`${COMMUNITY_API_BASE}/communities/${communityId}/join`, {
+        const res = await fetch(`${COMMUNITY_API_BASE}/communities/${communityId}/join`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId }),
         });
-        
-        // Refresh communities to get the updated member count
-        fetchCommunities();
+        if (res.ok) {
+          const data = await res.json();
+          if (data.community) {
+            setSelectedCommunity(prev => (prev && prev._id === communityId ? { ...prev, ...data.community } : prev));
+            setCommunities(current =>
+              current.map(c => (c._id === communityId ? { ...c, ...data.community } : c))
+            );
+          }
+        }
       } catch (err) {
         console.warn('Failed to join community on backend:', err);
+      }
+    }
+  };
+
+  const handleLeaveGroup = async (communityId: string) => {
+    const userId = getAuthUserId();
+
+    // Optimistic local update
+    setJoinedGroupIds(prev => {
+      const next = prev.filter(id => id !== communityId);
+      if (userId) {
+        AsyncStorage.setItem(`@joined_groups_${userId}`, JSON.stringify(next)).catch(err =>
+          console.warn('Failed to save joined groups:', err)
+        );
+      }
+      return next;
+    });
+
+    // Backend update
+    if (userId) {
+      try {
+        const res = await fetch(`${COMMUNITY_API_BASE}/communities/${communityId}/leave`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.community) {
+            setSelectedCommunity(prev => (prev && prev._id === communityId ? { ...prev, ...data.community } : prev));
+            setCommunities(current =>
+              current.map(c => (c._id === communityId ? { ...c, ...data.community } : c))
+            );
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to leave community on backend:', err);
       }
     }
   };
@@ -696,12 +739,18 @@ function App() {
     if (activeTab === 'Groups') {
       // Group Detail
       if (groupsView === 'detail' && selectedCommunity) {
+        const currentUserId = getAuthUserId();
+        const userIsJoined =
+          joinedGroupIds.includes(selectedCommunity._id) ||
+          (Array.isArray(selectedCommunity.members) && !!currentUserId && selectedCommunity.members.includes(currentUserId));
+
         return (
           <GroupDetailScreen
             community={selectedCommunity}
-            isJoined={joinedGroupIds.includes(selectedCommunity._id)}
+            isJoined={userIsJoined}
             onBack={handleBackToHome}
             onJoin={handleJoinGroup}
+            onLeave={handleLeaveGroup}
             onEnter={handleEnterCommunity}
             isAdmin={getAuthRole() === 'admin'}
             canManage={getAuthRole() === 'admin' || selectedCommunity.creatorId === getAuthUserId()}

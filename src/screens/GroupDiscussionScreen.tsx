@@ -32,6 +32,7 @@ export interface Community {
   description: string;
   guidelines: string;
   memberCount: number;
+  members?: string[];
   memberAvatarColors: string[];
   isJoined: boolean;
   creatorId?: string | null;
@@ -313,6 +314,24 @@ export default function GroupDiscussionScreen({
   const [blockedAuthors, setBlockedAuthors] = useState<string[]>([]);
   const [likedPostIds, setLikedPostIds] = useState<string[]>([]);
   const [showFullAbout, setShowFullAbout] = useState(false);
+  const [memberCount, setMemberCount] = useState<number>(
+    typeof community.memberCount === 'number' ? community.memberCount : 0
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch(`${COMMUNITY_API_BASE}/communities/${community._id}`)
+      .then(res => res.json())
+      .then(data => {
+        if (isMounted && typeof data.memberCount === 'number') {
+          setMemberCount(data.memberCount);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [community._id]);
 
   const fetchPosts = useCallback(async () => {
     setIsLoading(true); setLoadError(null);
@@ -400,7 +419,7 @@ export default function GroupDiscussionScreen({
                 <View key={i} style={[s.stackDot, { backgroundColor: c, marginLeft: i === 0 ? 0 : -8 }]} />
               ))}
             </View>
-            <Text style={s.memberCount}>{community.memberCount.toLocaleString()} members</Text>
+            <Text style={s.memberCount}>{memberCount.toLocaleString()} members</Text>
             <View style={s.activeChip}>
               <View style={s.activeDot} />
               <Text style={s.activeLabel}>Active today</Text>

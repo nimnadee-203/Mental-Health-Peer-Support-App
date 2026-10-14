@@ -101,7 +101,10 @@ const GroupsHomeScreen = ({
     }
   };
 
-  const joinedCommunities = communities.filter(c => joinedIds.includes(c._id));
+  const currentUserId = getAuthUserId();
+  const joinedCommunities = communities.filter(
+    c => joinedIds.includes(c._id) || (Array.isArray(c.members) && !!currentUserId && c.members.includes(currentUserId))
+  );
 
   const filteredCommunities = communities.filter(c => {
     const matchesCategory =
@@ -221,7 +224,9 @@ const GroupsHomeScreen = ({
             <Text style={styles.sectionTitle}>RECOMMENDED FOR YOU</Text>
 
             {recommendedResults.map(({ community, score, matchingTopics }) => {
-              const isJoined = joinedIds.includes(community._id);
+              const isJoined =
+                joinedIds.includes(community._id) ||
+                (Array.isArray(community.members) && !!currentUserId && community.members.includes(currentUserId));
               return (
                 <Pressable
                   key={`rec-${community._id}`}
@@ -326,7 +331,9 @@ const GroupsHomeScreen = ({
         <Text style={styles.sectionTitle}>ALL COMMUNITIES</Text>
 
         {filteredCommunities.map(community => {
-          const isJoined = joinedIds.includes(community._id);
+          const isJoined =
+            joinedIds.includes(community._id) ||
+            (Array.isArray(community.members) && !!currentUserId && community.members.includes(currentUserId));
           return (
             <Pressable
               key={community._id}

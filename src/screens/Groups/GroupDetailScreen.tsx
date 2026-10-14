@@ -26,6 +26,7 @@ interface GroupDetailScreenProps {
   isJoined: boolean;
   onBack: () => void;
   onJoin: (communityId: string) => void;
+  onLeave?: (communityId: string) => void;
   onEnter: (community: Community) => void;
   isAdmin?: boolean;
   canManage?: boolean;
@@ -44,6 +45,7 @@ export default function GroupDetailScreen({
   isJoined,
   onBack,
   onJoin,
+  onLeave,
   onEnter,
   isAdmin = false,
   canManage = false,
@@ -70,8 +72,14 @@ export default function GroupDetailScreen({
         const res = await fetch(`${COMMUNITY_API_BASE}/communities/${community._id}`);
         if (res.ok) {
           const data = await res.json();
-          if (isMounted && typeof data.memberCount === 'number') {
-            setMemberCount(data.memberCount);
+          if (isMounted) {
+            if (typeof data.memberCount === 'number') {
+              setMemberCount(data.memberCount);
+            }
+            const userId = getAuthUserId();
+            if (userId && Array.isArray(data.members)) {
+              setJoined(data.members.includes(userId));
+            }
           }
         }
       } catch {
@@ -99,16 +107,20 @@ export default function GroupDetailScreen({
       );
     } else {
       setMemberCount(prev => Math.max(0, prev - 1));
-      const userId = getAuthUserId();
-      if (userId) {
-        try {
-          await fetch(`${COMMUNITY_API_BASE}/communities/${community._id}/leave`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId }),
-          });
-        } catch {
-          // ignore
+      if (onLeave) {
+        onLeave(community._id);
+      } else {
+        const userId = getAuthUserId();
+        if (userId) {
+          try {
+            await fetch(`${COMMUNITY_API_BASE}/communities/${community._id}/leave`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId }),
+            });
+          } catch {
+            // ignore
+          }
         }
       }
     }
