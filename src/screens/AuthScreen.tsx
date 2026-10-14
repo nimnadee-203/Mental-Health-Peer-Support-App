@@ -1,6 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,12 +13,15 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { setAuthSession } from '../api/authStore';
 import { AUTH_BASE } from '../config/api';
 
-type AuthMode = 'login' | 'signup';
+type AuthMode = 'login' | 'signup' | 'resetPassword';
 
 type AuthScreenProps = {
+  initialMode?: AuthMode;
+  onBack?: () => void;
   onAuthenticated: (isSignup?: boolean) => void;
 };
 
@@ -29,25 +34,29 @@ interface FieldErrors {
 const API_BASE_URL = AUTH_BASE;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function AuthScreen({ onAuthenticated }: AuthScreenProps) {
-  const [mode, setMode] = useState<AuthMode>('login');
+function AuthScreen({
+  initialMode = 'login',
+  onBack,
+  onAuthenticated,
+}: AuthScreenProps) {
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isSignup = mode === 'signup';
-  const title = isSignup ? 'Create your account' : 'Welcome back';
-  const helperText = isSignup
-    ? 'Join the support space with a few simple details.'
-    : 'Log in to continue sharing and reading patient stories.';
+  const isReset = mode === 'resetPassword';
 
   const handleToggleMode = (newMode: AuthMode) => {
     setMode(newMode);
     setFieldErrors({});
     setErrorMessage('');
+    setSuccessMessage('');
   };
 
   const validateFields = (): boolean => {
@@ -67,10 +76,12 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
       errors.email = 'Please enter a valid email address (e.g. user@example.com).';
     }
 
-    if (!password) {
-      errors.password = 'Password is required.';
-    } else if (isSignup && password.length < 6) {
-      errors.password = 'Password must be at least 6 characters long.';
+    if (!isReset) {
+      if (!password) {
+        errors.password = 'Password is required.';
+      } else if (isSignup && password.length < 6) {
+        errors.password = 'Password must be at least 6 characters long.';
+      }
     }
 
     setFieldErrors(errors);
@@ -83,6 +94,23 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
     }
 
     setErrorMessage('');
+    setSuccessMessage('');
+
+    // Handle Reset Password Mode
+    if (isReset) {
+      setIsSubmitting(true);
+      setTimeout(() => {
+        setIsSubmitting(false);
+        setSuccessMessage(`Reset link sent! Please check ${email.trim()} for instructions.`);
+        Alert.alert(
+          'Reset Link Sent 📬',
+          `We have sent a password reset link to ${email.trim()}. Please check your inbox.`,
+          [{ text: 'Return to Sign In', onPress: () => handleToggleMode('login') }]
+        );
+      }, 700);
+      return;
+    }
+
     setIsSubmitting(true);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -136,6 +164,22 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
     }
   };
 
+  const handleGoogleSignIn = () => {
+    // Demo Google Sign In
+    Alert.alert(
+      'Continue with Google',
+      'Signing in with Google Account...',
+      [
+        {
+          text: 'Continue',
+          onPress: () => {
+            onAuthenticated(false);
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.screen}>
       <KeyboardAvoidingView
@@ -145,135 +189,281 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <View>
-            <View style={styles.brandMark}>
-              <Text style={styles.brandMarkText}>M</Text>
-            </View>
-
-            <View style={styles.header}>
-              <Text style={styles.title}>{title}</Text>
-              <Text style={styles.helperText}>{helperText}</Text>
-            </View>
-
-            <View style={styles.form}>
-              {isSignup ? (
-                <View style={styles.field}>
-                  <Text style={styles.label}>Full name</Text>
-                  <TextInput
-                    autoCapitalize="words"
-                    placeholder="Enter your name"
-                    placeholderTextColor="#9CA3AF"
-                    style={[styles.input, fieldErrors.fullName ? styles.inputError : null]}
-                    value={fullName}
-                    onChangeText={text => {
-                      setFullName(text);
-                      if (fieldErrors.fullName) {
-                        setFieldErrors(prev => ({ ...prev, fullName: undefined }));
-                      }
-                    }}
-                    testID="signup-name-input"
-                  />
-                  {fieldErrors.fullName ? (
-                    <Text style={styles.fieldErrorText}>{fieldErrors.fullName}</Text>
-                  ) : null}
-                </View>
-              ) : null}
-
-              <View style={styles.field}>
-                <Text style={styles.label}>Email</Text>
-                <TextInput
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  inputMode="email"
-                  keyboardType="email-address"
-                  placeholder="you@example.com"
-                  placeholderTextColor="#9CA3AF"
-                  style={[styles.input, fieldErrors.email ? styles.inputError : null]}
-                  value={email}
-                  onChangeText={text => {
-                    setEmail(text);
-                    if (fieldErrors.email) {
-                      setFieldErrors(prev => ({ ...prev, email: undefined }));
-                    }
-                  }}
-                  testID="auth-email-input"
-                />
-                {fieldErrors.email ? (
-                  <Text style={styles.fieldErrorText}>{fieldErrors.email}</Text>
-                ) : null}
-              </View>
-
-              <View style={styles.field}>
-                <Text style={styles.label}>Password</Text>
-                <TextInput
-                  placeholder="Enter your password"
-                  placeholderTextColor="#9CA3AF"
-                  secureTextEntry
-                  style={[styles.input, fieldErrors.password ? styles.inputError : null]}
-                  value={password}
-                  onChangeText={text => {
-                    setPassword(text);
-                    if (fieldErrors.password) {
-                      setFieldErrors(prev => ({ ...prev, password: undefined }));
-                    }
-                  }}
-                  testID="auth-password-input"
-                />
-                {fieldErrors.password ? (
-                  <Text style={styles.fieldErrorText}>{fieldErrors.password}</Text>
-                ) : null}
-              </View>
-
+          {/* Top Row / Back Button for Signup & Reset */}
+          {(isSignup || isReset) && (
+            <View style={styles.topBar}>
               <Pressable
-                accessibilityRole="button"
-                disabled={isSubmitting}
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  isSubmitting && styles.primaryButtonDisabled,
-                  pressed && !isSubmitting && styles.primaryButtonPressed,
-                ]}
-                onPress={handleSubmit}
-                testID="auth-submit-button"
+                accessibilityLabel="Back"
+                style={styles.backButton}
+                onPress={() => {
+                  if (isReset) {
+                    handleToggleMode('login');
+                  } else if (onBack) {
+                    onBack();
+                  } else {
+                    handleToggleMode('login');
+                  }
+                }}
               >
-                {isSubmitting ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.primaryButtonText}>
-                    {isSignup ? 'Sign Up' : 'Log In'}
-                  </Text>
-                )}
+                <Feather name="chevron-left" size={24} color="#1E2432" />
               </Pressable>
-
-              {errorMessage ? (
-                <Text accessibilityRole="alert" style={styles.errorText}>
-                  {errorMessage}
-                </Text>
-              ) : null}
             </View>
+          )}
+
+          {/* Reset Password Icon Box */}
+          {isReset && (
+            <View style={styles.mailIconBox}>
+              <Feather name="mail" size={26} color="#2563EB" />
+            </View>
+          )}
+
+          {/* Hero Illustration for Sign In Mode */}
+          {mode === 'login' && (
+            <View style={styles.illustrationContainer}>
+              <Image
+                source={require('../assets/signin-hero.png')}
+                style={styles.signinHero}
+                resizeMode="contain"
+              />
+            </View>
+          )}
+
+          {/* Header Title & Subtitle */}
+          <View style={styles.header}>
+            <Text style={styles.title}>
+              {isReset
+                ? 'Reset password'
+                : isSignup
+                ? 'Create your account'
+                : 'Welcome back'}
+            </Text>
+            <Text style={styles.helperText}>
+              {isReset
+                ? "Enter the email address linked to your account and we'll send you a reset link."
+                : isSignup
+                ? 'You deserve a place to feel heard.'
+                : "We're glad to see you again."}
+            </Text>
           </View>
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              {isSignup ? 'Already have an account?' : 'New to the app?'}
-            </Text>
+          {/* Form Fields */}
+          <View style={styles.form}>
+            {/* Display Name (Only in Signup) */}
+            {isSignup && (
+              <View style={styles.field}>
+                <Text style={styles.label}>Display name</Text>
+                <TextInput
+                  autoCapitalize="words"
+                  placeholder="How should we call you?"
+                  placeholderTextColor="#9CA3AF"
+                  style={[
+                    styles.input,
+                    fieldErrors.fullName ? styles.inputError : null,
+                  ]}
+                  value={fullName}
+                  onChangeText={text => {
+                    setFullName(text);
+                    if (fieldErrors.fullName) {
+                      setFieldErrors(prev => ({ ...prev, fullName: undefined }));
+                    }
+                  }}
+                  testID="signup-name-input"
+                />
+                {fieldErrors.fullName ? (
+                  <Text style={styles.fieldErrorText}>
+                    {fieldErrors.fullName}
+                  </Text>
+                ) : null}
+              </View>
+            )}
+
+            {/* Email Field */}
+            <View style={styles.field}>
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                autoCapitalize="none"
+                autoCorrect={false}
+                inputMode="email"
+                keyboardType="email-address"
+                placeholder="you@example.com"
+                placeholderTextColor="#9CA3AF"
+                style={[
+                  styles.input,
+                  fieldErrors.email ? styles.inputError : null,
+                ]}
+                value={email}
+                onChangeText={text => {
+                  setEmail(text);
+                  if (fieldErrors.email) {
+                    setFieldErrors(prev => ({ ...prev, email: undefined }));
+                  }
+                }}
+                testID="auth-email-input"
+              />
+              {fieldErrors.email ? (
+                <Text style={styles.fieldErrorText}>{fieldErrors.email}</Text>
+              ) : null}
+            </View>
+
+            {/* Password Field (Only in Login & Signup) */}
+            {!isReset && (
+              <View style={styles.field}>
+                <Text style={styles.label}>Password</Text>
+                <View
+                  style={[
+                    styles.passwordContainer,
+                    fieldErrors.password ? styles.inputError : null,
+                  ]}
+                >
+                  <TextInput
+                    placeholder={
+                      isSignup ? 'Create a password' : 'Your password'
+                    }
+                    placeholderTextColor="#9CA3AF"
+                    secureTextEntry={!showPassword}
+                    style={styles.passwordInput}
+                    value={password}
+                    onChangeText={text => {
+                      setPassword(text);
+                      if (fieldErrors.password) {
+                        setFieldErrors(prev => ({ ...prev, password: undefined }));
+                      }
+                    }}
+                    testID="auth-password-input"
+                  />
+                  <Pressable
+                    style={styles.eyeButton}
+                    onPress={() => setShowPassword(prev => !prev)}
+                    hitSlop={8}
+                  >
+                    <Feather
+                      name={showPassword ? 'eye' : 'eye-off'}
+                      size={18}
+                      color="#8A94A6"
+                    />
+                  </Pressable>
+                </View>
+                {fieldErrors.password ? (
+                  <Text style={styles.fieldErrorText}>
+                    {fieldErrors.password}
+                  </Text>
+                ) : null}
+              </View>
+            )}
+
+            {/* Forgot Password Link in Login Mode */}
+            {mode === 'login' && (
+              <Pressable
+                style={styles.forgotPasswordButton}
+                onPress={() => handleToggleMode('resetPassword')}
+                hitSlop={6}
+              >
+                <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+              </Pressable>
+            )}
+
+            {/* Error & Success Messages */}
+            {errorMessage ? (
+              <Text accessibilityRole="alert" style={styles.errorText}>
+                {errorMessage}
+              </Text>
+            ) : null}
+
+            {successMessage ? (
+              <Text accessibilityRole="alert" style={styles.successText}>
+                {successMessage}
+              </Text>
+            ) : null}
+
+            {/* Primary Action Button */}
             <Pressable
               accessibilityRole="button"
-              onPress={() => handleToggleMode(isSignup ? 'login' : 'signup')}
-              testID="auth-toggle-mode-button"
+              disabled={isSubmitting}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                isSubmitting && styles.primaryButtonDisabled,
+                pressed && !isSubmitting && styles.primaryButtonPressed,
+              ]}
+              onPress={handleSubmit}
+              testID="auth-submit-button"
             >
-              <Text style={styles.footerAction}>
-                {isSignup ? 'Log In' : 'Create Account'}
-              </Text>
+              {isSubmitting ? (
+                <ActivityIndicator color="#1E2432" />
+              ) : (
+                <Text style={styles.primaryButtonText}>
+                  {isReset
+                    ? 'Send Reset Link'
+                    : isSignup
+                    ? 'Create Account'
+                    : 'Sign In'}
+                </Text>
+              )}
             </Pressable>
 
-            <Pressable
-              accessibilityRole="button"
-              style={styles.guestButton}
-              onPress={() => onAuthenticated(false)}
-            >
-              <Text style={styles.guestButtonText}>Continue as Guest →</Text>
-            </Pressable>
+            {/* Social Divider & Google Button (Login & Signup) */}
+            {!isReset && (
+              <>
+                <View style={styles.dividerRow}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>or</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.googleButton,
+                    pressed && styles.googleButtonPressed,
+                  ]}
+                  onPress={handleGoogleSignIn}
+                >
+                  <Image
+                    source={require('../assets/google-icon.png')}
+                    style={styles.googleIcon}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.googleButtonText}>
+                    Continue with Google
+                  </Text>
+                </Pressable>
+              </>
+            )}
+          </View>
+
+          {/* Footer Navigation */}
+          <View style={styles.footer}>
+            {isReset ? (
+              <View style={styles.footerRow}>
+                <Text style={styles.footerText}>Remembered it? </Text>
+                <Pressable
+                  onPress={() => handleToggleMode('login')}
+                  testID="auth-toggle-mode-button"
+                >
+                  <Text style={styles.footerLink}>Sign In</Text>
+                </Pressable>
+              </View>
+            ) : isSignup ? (
+              <View style={styles.footerRow}>
+                <Text style={styles.footerText}>Already have an account? </Text>
+                <Pressable
+                  onPress={() => handleToggleMode('login')}
+                  testID="auth-toggle-mode-button"
+                >
+                  <Text style={styles.footerLink}>Sign In</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.footerRow}>
+                <Text style={styles.footerText}>Don't have an account? </Text>
+                <Pressable
+                  onPress={() => handleToggleMode('signup')}
+                  testID="auth-toggle-mode-button"
+                >
+                  <Text style={styles.footerLink}>Sign Up</Text>
+                </Pressable>
+              </View>
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -284,66 +474,110 @@ function AuthScreen({ onAuthenticated }: AuthScreenProps) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#FFFFFF',
   },
   keyboardView: {
     flex: 1,
   },
   content: {
     flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 28,
     justifyContent: 'space-between',
-    padding: 24,
   },
-  brandMark: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: '#2563EB',
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#EDF0F5',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 12,
   },
-  brandMarkText: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '900',
+  mailIconBox: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: '#DBEAFE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 18,
+    marginBottom: 6,
+  },
+  illustrationContainer: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  signinHero: {
+    width: 290,
+    height: 220,
   },
   header: {
-    marginTop: 36,
+    marginTop: 14,
+    marginBottom: 20,
   },
   title: {
-    color: '#111827',
-    fontSize: 34,
-    fontWeight: '900',
-    lineHeight: 40,
+    color: '#1E2432',
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
   helperText: {
-    color: '#4B5563',
-    fontSize: 16,
-    lineHeight: 24,
-    marginTop: 12,
+    color: '#64748B',
+    fontSize: 14.5,
+    lineHeight: 21,
+    marginTop: 6,
   },
   form: {
-    marginTop: 30,
     gap: 16,
   },
   field: {
     gap: 6,
   },
   label: {
-    color: '#111827',
-    fontSize: 14,
-    fontWeight: '800',
+    color: '#1E2432',
+    fontSize: 13,
+    fontWeight: '700',
   },
   input: {
-    minHeight: 50,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    backgroundColor: '#FFFFFF',
-    color: '#111827',
-    fontSize: 16,
-    paddingHorizontal: 14,
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.2,
+    borderColor: '#EDF0F5',
+    paddingHorizontal: 16,
+    fontSize: 14.5,
+    color: '#1E2432',
+  },
+  passwordContainer: {
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.2,
+    borderColor: '#EDF0F5',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  passwordInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 14.5,
+    color: '#1E2432',
+  },
+  eyeButton: {
+    padding: 6,
+    marginLeft: 6,
   },
   inputError: {
     borderColor: '#EF4444',
@@ -351,63 +585,120 @@ const styles = StyleSheet.create({
   fieldErrorText: {
     color: '#EF4444',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
     marginTop: 2,
+  },
+  forgotPasswordButton: {
+    alignSelf: 'flex-end',
+    marginTop: -4,
+  },
+  forgotPasswordText: {
+    color: '#64748B',
+    fontSize: 13,
+    fontWeight: '600',
   },
   primaryButton: {
     height: 52,
-    borderRadius: 8,
-    backgroundColor: '#2563EB',
+    borderRadius: 26,
+    backgroundColor: '#A8E4D8',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
-  },
-  primaryButtonPressed: {
-    backgroundColor: '#1D4ED8',
+    marginTop: 6,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 2,
   },
   primaryButtonDisabled: {
-    backgroundColor: '#93C5FD',
+    opacity: 0.65,
+  },
+  primaryButtonPressed: {
+    backgroundColor: '#95D6C9',
+    transform: [{ scale: 0.99 }],
   },
   primaryButtonText: {
-    color: '#FFFFFF',
+    color: '#1E2432',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#EDF0F5',
+  },
+  dividerText: {
+    paddingHorizontal: 12,
+    color: '#94A3B8',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  googleButton: {
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.2,
+    borderColor: '#E2E8F0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  googleButtonPressed: {
+    backgroundColor: '#F8FAFC',
+  },
+  googleIcon: {
+    width: 20,
+    height: 20,
+  },
+  googleButtonText: {
+    color: '#1E2432',
+    fontSize: 15,
+    fontWeight: '600',
   },
   errorText: {
-    color: '#B91C1C',
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 20,
+    color: '#DC2626',
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FCA5A5',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  successText: {
+    color: '#065F46',
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 13,
     textAlign: 'center',
   },
   footer: {
-    flexDirection: 'column',
+    marginTop: 24,
+    alignItems: 'center',
+  },
+  footerRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-    paddingTop: 28,
   },
   footerText: {
-    color: '#6B7280',
-    fontSize: 14,
+    color: '#8A94A6',
+    fontSize: 13.5,
+  },
+  footerLink: {
+    color: '#1E2432',
+    fontSize: 13.5,
     fontWeight: '700',
-  },
-  footerAction: {
-    color: '#2563EB',
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  guestButton: {
-    marginTop: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: '#EFF6FF',
-  },
-  guestButtonText: {
-    color: '#2563EB',
-    fontSize: 14,
-    fontWeight: '800',
+    textDecorationLine: 'underline',
   },
 });
 

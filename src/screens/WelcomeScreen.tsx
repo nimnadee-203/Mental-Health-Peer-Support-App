@@ -1,6 +1,8 @@
 import React from 'react';
 import {
+  Image,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -9,58 +11,77 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 type WelcomeScreenProps = {
   onGetStarted: () => void;
+  onSignIn?: () => void;
 };
 
-const supportPoints = [
-  'Share what feels safe',
-  'Read real patient stories',
-  'Find steady peer support',
-];
-
-function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
+function WelcomeScreen({ onGetStarted, onSignIn }: WelcomeScreenProps) {
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.content}>
-        <View style={styles.brandMark}>
-          <Text style={styles.brandMarkText}>M</Text>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Top Brand Pill Badge */}
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>MIND MATE</Text>
         </View>
 
-        <View style={styles.hero}>
-          <Text style={styles.eyebrow}>Mental Health Peer Support</Text>
-          <Text style={styles.title}>You do not have to carry it alone.</Text>
-          <Text style={styles.subtitle}>
-            A gentle space to share your health journey, hear from people who
-            understand, and take the next small step at your pace.
-          </Text>
+        {/* Hero Illustration */}
+        <View style={styles.imageContainer}>
+          <Image
+            source={require('../assets/welcome-hero.png')}
+            style={styles.heroImage}
+            resizeMode="contain"
+          />
         </View>
 
-        <View style={styles.supportList}>
-          {supportPoints.map(point => (
-            <View key={point} style={styles.supportItem}>
-              <View style={styles.checkCircle}>
-                <Text style={styles.checkText}>+</Text>
-              </View>
-              <Text style={styles.supportText}>{point}</Text>
-            </View>
-          ))}
+        {/* Main Heading */}
+        <Text style={styles.title}>
+          You don't have to{'\n'}go through this alone.
+        </Text>
+
+        {/* Subtitle Description */}
+        <Text style={styles.subtitle}>
+          Connect with peers who understand.{'\n'}Share your story, listen to others, and{'\n'}find comfort together.
+        </Text>
+
+        {/* Category Pills */}
+        <View style={styles.chipRow}>
+          <View style={[styles.chip, { backgroundColor: '#BDE0FE' }]}>
+            <Text style={[styles.chipText, { color: '#1E40AF' }]}>Anxiety</Text>
+          </View>
+          <View style={[styles.chip, { backgroundColor: '#FBCFE8' }]}>
+            <Text style={[styles.chipText, { color: '#9D174D' }]}>Grief</Text>
+          </View>
+          <View style={[styles.chip, { backgroundColor: '#FED7AA' }]}>
+            <Text style={[styles.chipText, { color: '#9A3412' }]}>Burnout</Text>
+          </View>
+          <View style={[styles.chip, { backgroundColor: '#A7F3D0' }]}>
+            <Text style={[styles.chipText, { color: '#065F46' }]}>Recovery</Text>
+          </View>
         </View>
 
-        <View style={styles.footer}>
-          <Pressable
-            accessibilityRole="button"
-            style={({ pressed }) => [
-              styles.primaryButton,
-              pressed && styles.primaryButtonPressed,
-            ]}
-            onPress={onGetStarted}
-          >
-            <Text style={styles.primaryButtonText}>Get Started</Text>
+        {/* Primary Call to Action Button */}
+        <Pressable
+          accessibilityRole="button"
+          style={({ pressed }) => [
+            styles.primaryButton,
+            pressed && styles.primaryButtonPressed,
+          ]}
+          onPress={onGetStarted}
+          testID="welcome-get-started-button"
+        >
+          <Text style={styles.primaryButtonText}>Get Started</Text>
+        </Pressable>
+
+        {/* Footer Link */}
+        <View style={styles.footerRow}>
+          <Text style={styles.footerText}>Already have an account? </Text>
+          <Pressable onPress={onSignIn || onGetStarted} hitSlop={8}>
+            <Text style={styles.footerLink}>Sign In</Text>
           </Pressable>
-          <Text style={styles.disclaimer}>
-            Your story stays yours. Share only when you feel ready.
-          </Text>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -68,105 +89,112 @@ function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#FFFFFF',
   },
   content: {
-    flex: 1,
-    padding: 24,
+    flexGrow: 1,
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 28,
     justifyContent: 'space-between',
   },
-  brandMark: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: '#2563EB',
+  badge: {
+    backgroundColor: '#A8F0D0',
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 20,
+    marginTop: 4,
+  },
+  badgeText: {
+    color: '#065F46',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+  },
+  imageContainer: {
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 12,
+    marginVertical: 14,
   },
-  brandMarkText: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '900',
-  },
-  hero: {
-    marginTop: 36,
-  },
-  eyebrow: {
-    color: '#2563EB',
-    fontSize: 13,
-    fontWeight: '800',
-    textTransform: 'uppercase',
+  heroImage: {
+    width: 320,
+    height: 250,
   },
   title: {
-    color: '#111827',
-    fontSize: 40,
-    fontWeight: '900',
-    lineHeight: 46,
-    marginTop: 14,
+    fontSize: 29,
+    fontWeight: '800',
+    color: '#1E2432',
+    textAlign: 'center',
+    lineHeight: 37,
+    letterSpacing: -0.4,
+    marginTop: 4,
   },
   subtitle: {
-    color: '#4B5563',
-    fontSize: 17,
-    lineHeight: 26,
-    marginTop: 16,
+    fontSize: 14.5,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginTop: 12,
+    paddingHorizontal: 8,
   },
-  supportList: {
-    gap: 14,
-  },
-  supportItem: {
-    minHeight: 54,
+  chipRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    paddingHorizontal: 14,
-  },
-  checkCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#D1FAE5',
-    alignItems: 'center',
+    flexWrap: 'wrap',
     justifyContent: 'center',
-    marginRight: 12,
+    gap: 8,
+    marginTop: 22,
+    marginBottom: 8,
   },
-  checkText: {
-    color: '#047857',
-    fontSize: 16,
-    fontWeight: '900',
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 20,
   },
-  supportText: {
-    flex: 1,
-    color: '#111827',
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  footer: {
-    gap: 14,
+  chipText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   primaryButton: {
-    height: 52,
-    borderRadius: 8,
-    backgroundColor: '#2563EB',
+    width: '100%',
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#A8E4D8',
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 28,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 2,
   },
   primaryButtonPressed: {
-    backgroundColor: '#1D4ED8',
+    backgroundColor: '#95D6C9',
+    transform: [{ scale: 0.99 }],
   },
   primaryButtonText: {
-    color: '#FFFFFF',
+    color: '#1E2432',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
-  disclaimer: {
-    color: '#6B7280',
-    fontSize: 13,
-    lineHeight: 19,
-    textAlign: 'center',
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 18,
+  },
+  footerText: {
+    color: '#8A94A6',
+    fontSize: 13.5,
+  },
+  footerLink: {
+    color: '#1E2432',
+    fontSize: 13.5,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
 });
 

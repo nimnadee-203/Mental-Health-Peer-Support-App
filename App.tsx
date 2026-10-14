@@ -198,6 +198,7 @@ function App() {
   const isDarkMode = useColorScheme() === 'dark';
 
   const [activeScreen, setActiveScreen] = useState<AppScreen>('splash');
+  const [authInitialMode, setAuthInitialMode] = useState<'login' | 'signup' | 'resetPassword'>('login');
 
   // ── Tab Navigation ─────────────────────────────────────────────────────────
 
@@ -980,9 +981,20 @@ function App() {
       {activeScreen === 'splash' ? (
         <SplashScreen onFinish={handleSplashFinish} />
       ) : activeScreen === 'welcome' ? (
-        <WelcomeScreen onGetStarted={() => setActiveScreen('auth')} />
+        <WelcomeScreen
+          onGetStarted={() => {
+            setAuthInitialMode('signup');
+            setActiveScreen('auth');
+          }}
+          onSignIn={() => {
+            setAuthInitialMode('login');
+            setActiveScreen('auth');
+          }}
+        />
       ) : activeScreen === 'auth' ? (
         <AuthScreen
+          initialMode={authInitialMode}
+          onBack={() => setActiveScreen('welcome')}
           onAuthenticated={isSignup =>
             setActiveScreen(isSignup ? 'onboarding' : 'home')
           }
