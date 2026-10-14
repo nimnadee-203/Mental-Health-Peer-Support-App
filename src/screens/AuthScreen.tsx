@@ -114,11 +114,11 @@ export default function AuthScreen({
     }
 
     setIsSubmitting(true);
-    const endpoint = isSignup ? '/api/auth/register' : '/api/auth/login';
+    const endpoint = isSignup ? '/auth/signup' : '/auth/login';
 
     const payload = isSignup
       ? {
-          name: fullName.trim(),
+          fullName: fullName.trim(),
           email: email.trim().toLowerCase(),
           password,
         }
@@ -141,10 +141,15 @@ export default function AuthScreen({
         signal: controller.signal,
       });
 
-      const result = await response.json();
+      let result: any = null;
+      try {
+        result = await response.json();
+      } catch {
+        // Fallback for non-JSON response
+      }
 
       if (!response.ok) {
-        setErrorMessage(result.message || 'Something went wrong. Please try again.');
+        setErrorMessage(result?.message || 'Something went wrong. Please try again.');
         return;
       }
 
